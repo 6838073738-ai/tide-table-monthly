@@ -1,0 +1,13 @@
+{
+  "name": "Tide Table · Monthly",
+  "short_name": "Tide Table",
+  "description": "A tracker for a monthly buying plan. Everything you enter stays on this device.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0a1120",
+  "theme_color": "#0a1120",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

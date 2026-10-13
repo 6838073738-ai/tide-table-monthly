@@ -1,0 +1,1395 @@
+{
+  "version": 1,
+  "planId": "monthly-2026-27",
+  "meta": {
+    "title": "Tide Table",
+    "subtitle": "$500 a month · November 2026 to October 2027",
+    "planLabel": "$500 a month",
+    "sourceDoc": "Buying plan: $500 a month, November 2026 to October 2027",
+    "docDate": "2026-10-09",
+    "timezone": "Asia/Bangkok",
+    "budgetUsd": 6000,
+    "monthlyUsd": 500,
+    "investUsd": 6000,
+    "stockMoneyUsd": 5750,
+    "planFx": 33.0,
+    "orderCount": 28,
+    "dateCount": 12,
+    "disclaimer": "A tracker for a written plan, shared as an illustration. It is not personal advice: check that it fits your own money, goals and taxes. Prices and news are information, not advice. A market fall or a rally is never a reason to change a date."
+  },
+  "fx": [
+    {
+      "id": "USDTHB",
+      "symbol": "USDTHB=X",
+      "label": "USD/THB",
+      "plan": 33.0,
+      "note": "Plan assumes ฿33.00 per US dollar."
+    }
+  ],
+  "groups": [
+    {
+      "id": "index",
+      "label": "Index funds",
+      "rebalanceTargetPct": 85.2
+    },
+    {
+      "id": "growth",
+      "label": "Growth stocks + quantum fund",
+      "rebalanceTargetPct": 14.8
+    },
+    {
+      "id": "crypto",
+      "label": "Crypto",
+      "rebalanceTargetPct": null
+    }
+  ],
+  "instruments": [
+    {
+      "id": "VWRA",
+      "name": "Vanguard FTSE All-World",
+      "longName": "Vanguard FTSE All-World UCITS ETF, accumulating",
+      "symbol": "VWRA.L",
+      "account": "IBKR",
+      "venue": "LSE",
+      "quoteCurrency": "USD",
+      "group": "index",
+      "targetUsd": 4150,
+      "sharePct": 69.2,
+      "ceiling": null,
+      "orderStyle": "whole_usd",
+      "region": "global"
+    },
+    {
+      "id": "XDEW",
+      "name": "Xtrackers S&P 500 Equal Weight",
+      "longName": "Xtrackers S&P 500 Equal Weight UCITS ETF (1C)",
+      "symbol": "XDEW.L",
+      "account": "IBKR",
+      "venue": "LSE",
+      "quoteCurrency": "USD",
+      "group": "index",
+      "targetUsd": 500,
+      "sharePct": 8.3,
+      "ceiling": null,
+      "orderStyle": "whole_usd",
+      "region": "us"
+    },
+    {
+      "id": "EIMI",
+      "name": "iShares Core MSCI EM IMI",
+      "longName": "iShares Core MSCI EM IMI UCITS ETF (Acc)",
+      "symbol": "EIMI.L",
+      "account": "IBKR",
+      "venue": "LSE",
+      "quoteCurrency": "USD",
+      "group": "index",
+      "targetUsd": 250,
+      "sharePct": 4.2,
+      "ceiling": null,
+      "orderStyle": "whole_usd",
+      "region": "em"
+    },
+    {
+      "id": "QNTM",
+      "name": "VanEck Quantum Computing",
+      "longName": "VanEck Quantum Computing UCITS ETF (Acc)",
+      "symbol": "QNTM.L",
+      "account": "IBKR",
+      "venue": "LSE",
+      "quoteCurrency": "USD",
+      "group": "growth",
+      "targetUsd": 150,
+      "sharePct": 2.5,
+      "ceiling": {
+        "type": "close_plus",
+        "date": "2026-11-27",
+        "pct": 15,
+        "unit": "USD"
+      },
+      "orderStyle": "whole_usd",
+      "region": "global",
+      "isin": "IE0007Y8Y157"
+    },
+    {
+      "id": "NVDA",
+      "name": "Nvidia",
+      "longName": "NVIDIA Corporation",
+      "symbol": "NVDA",
+      "account": "IBKR",
+      "venue": "US",
+      "quoteCurrency": "USD",
+      "group": "growth",
+      "targetUsd": 100,
+      "sharePct": 1.7,
+      "ceiling": {
+        "type": "fixed",
+        "value": 243,
+        "unit": "USD"
+      },
+      "orderStyle": "fractional_usd",
+      "region": "us"
+    },
+    {
+      "id": "LLY",
+      "name": "Eli Lilly",
+      "longName": "Eli Lilly and Company",
+      "symbol": "LLY",
+      "account": "IBKR",
+      "venue": "US",
+      "quoteCurrency": "USD",
+      "group": "growth",
+      "targetUsd": 100,
+      "sharePct": 1.7,
+      "ceiling": {
+        "type": "fixed",
+        "value": 1300,
+        "unit": "USD"
+      },
+      "orderStyle": "fractional_usd",
+      "region": "us"
+    },
+    {
+      "id": "GEV",
+      "name": "GE Vernova",
+      "longName": "GE Vernova Inc.",
+      "symbol": "GEV",
+      "account": "IBKR",
+      "venue": "US",
+      "quoteCurrency": "USD",
+      "group": "growth",
+      "targetUsd": 100,
+      "sharePct": 1.7,
+      "ceiling": {
+        "type": "close_plus",
+        "date": "2026-11-27",
+        "pct": 10,
+        "unit": "USD"
+      },
+      "orderStyle": "fractional_usd",
+      "region": "us"
+    },
+    {
+      "id": "VRT",
+      "name": "Vertiv",
+      "longName": "Vertiv Holdings Co",
+      "symbol": "VRT",
+      "account": "IBKR",
+      "venue": "US",
+      "quoteCurrency": "USD",
+      "group": "growth",
+      "targetUsd": 100,
+      "sharePct": 1.7,
+      "ceiling": {
+        "type": "close_plus",
+        "date": "2026-11-27",
+        "pct": 10,
+        "unit": "USD"
+      },
+      "orderStyle": "fractional_usd",
+      "region": "us"
+    },
+    {
+      "id": "ARGX",
+      "name": "argenx",
+      "longName": "argenx SE",
+      "symbol": "ARGX",
+      "account": "IBKR",
+      "venue": "US",
+      "quoteCurrency": "USD",
+      "group": "growth",
+      "targetUsd": 100,
+      "sharePct": 1.7,
+      "ceiling": {
+        "type": "close_plus",
+        "date": "2026-11-27",
+        "pct": 10,
+        "unit": "USD"
+      },
+      "orderStyle": "fractional_usd",
+      "region": "dev"
+    },
+    {
+      "id": "SPCX",
+      "name": "SpaceX",
+      "longName": "Space Exploration Technologies Corp.",
+      "symbol": "SPCX",
+      "account": "IBKR",
+      "venue": "US",
+      "quoteCurrency": "USD",
+      "group": "growth",
+      "targetUsd": 100,
+      "sharePct": 1.7,
+      "ceiling": {
+        "type": "fixed",
+        "value": 170,
+        "unit": "USD"
+      },
+      "orderStyle": "fractional_usd",
+      "region": "us"
+    },
+    {
+      "id": "INSM",
+      "name": "Insmed",
+      "longName": "Insmed Incorporated",
+      "symbol": "INSM",
+      "account": "IBKR",
+      "venue": "US",
+      "quoteCurrency": "USD",
+      "group": "growth",
+      "targetUsd": 100,
+      "sharePct": 1.7,
+      "ceiling": {
+        "type": "close_plus",
+        "date": "2026-11-27",
+        "pct": 10,
+        "unit": "USD"
+      },
+      "orderStyle": "fractional_usd",
+      "region": "us"
+    },
+    {
+      "id": "BTC",
+      "name": "Bitcoin",
+      "longName": "Bitcoin",
+      "symbol": "BTC-USD",
+      "coingeckoId": "bitcoin",
+      "account": "SwissBorg",
+      "venue": "CRYPTO",
+      "quoteCurrency": "USD",
+      "group": "crypto",
+      "targetUsd": 125,
+      "sharePct": 2.1,
+      "ceiling": null,
+      "feePct": 0.99,
+      "orderStyle": "usd_amount",
+      "region": "crypto"
+    },
+    {
+      "id": "ETH",
+      "name": "Ether",
+      "longName": "Ether",
+      "symbol": "ETH-USD",
+      "coingeckoId": "ethereum",
+      "account": "SwissBorg",
+      "venue": "CRYPTO",
+      "quoteCurrency": "USD",
+      "group": "crypto",
+      "targetUsd": 85,
+      "sharePct": 1.4,
+      "ceiling": null,
+      "feePct": 0.99,
+      "orderStyle": "usd_amount",
+      "region": "crypto"
+    },
+    {
+      "id": "SOL",
+      "name": "Solana",
+      "longName": "Solana",
+      "symbol": "SOL-USD",
+      "coingeckoId": "solana",
+      "account": "SwissBorg",
+      "venue": "CRYPTO",
+      "quoteCurrency": "USD",
+      "group": "crypto",
+      "targetUsd": 40,
+      "sharePct": 0.7,
+      "ceiling": null,
+      "feePct": 0.99,
+      "orderStyle": "usd_amount",
+      "region": "crypto"
+    }
+  ],
+  "accounts": [
+    {
+      "id": "IBKR",
+      "label": "Interactive Brokers"
+    },
+    {
+      "id": "SwissBorg",
+      "label": "SwissBorg"
+    }
+  ],
+  "venues": [
+    {
+      "id": "LSE",
+      "label": "London",
+      "tz": "Europe/London",
+      "sessions": [
+        [
+          "08:00",
+          "16:30"
+        ]
+      ],
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    },
+    {
+      "id": "US",
+      "label": "US",
+      "tz": "America/New_York",
+      "sessions": [
+        [
+          "09:30",
+          "16:00"
+        ]
+      ],
+      "days": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    },
+    {
+      "id": "CRYPTO",
+      "label": "Crypto",
+      "tz": "Asia/Bangkok",
+      "sessions": [
+        [
+          "00:00",
+          "24:00"
+        ]
+      ],
+      "days": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ]
+    }
+  ],
+  "hoursNote": "Place each order at least 30 minutes after the open. London: 15:00–23:30 Bangkok time until 27 March 2027, then 14:00–22:30 until 30 October 2027. US: 21:30–04:00 Bangkok time until 12 March 2027, then 20:30–03:00 until 5 November 2027.",
+  "orderDates": [
+    {
+      "id": "m01",
+      "step": 2,
+      "date": "2026-11-10",
+      "weekday": "Tue",
+      "title": "Month 1: bitcoin + VWRA",
+      "summary": "Two orders: $125 of bitcoin on SwissBorg, then $250 of VWRA at Interactive Brokers.",
+      "ibkrTotalUsd": 250
+    },
+    {
+      "id": "m02",
+      "step": 3,
+      "date": "2026-12-08",
+      "weekday": "Tue",
+      "title": "Month 2: equal-weight S&P 500 + VWRA",
+      "summary": "Two orders at Interactive Brokers for $500: XDEW $250 and VWRA $250.",
+      "ibkrTotalUsd": 500
+    },
+    {
+      "id": "m03",
+      "step": 4,
+      "date": "2027-01-12",
+      "weekday": "Tue",
+      "title": "Month 3: coins, quantum fund, Nvidia",
+      "summary": "Five orders: ether and solana from the SwissBorg wallet, then the quantum fund, VWRA and Nvidia at Interactive Brokers for $500.",
+      "ibkrTotalUsd": 500
+    },
+    {
+      "id": "m04",
+      "step": 5,
+      "date": "2027-02-09",
+      "weekday": "Tue",
+      "title": "Month 4: emerging markets + Eli Lilly",
+      "summary": "Three orders at Interactive Brokers for $500: EIMI $125, VWRA $275 and Eli Lilly $100.",
+      "ibkrTotalUsd": 500
+    },
+    {
+      "id": "m05",
+      "step": 6,
+      "date": "2027-03-09",
+      "weekday": "Tue",
+      "title": "Month 5: GE Vernova + Vertiv",
+      "summary": "Three orders at Interactive Brokers for $500: VWRA $300, GE Vernova $100 and Vertiv $100.",
+      "ibkrTotalUsd": 500
+    },
+    {
+      "id": "m06",
+      "step": 7,
+      "date": "2027-04-13",
+      "weekday": "Tue",
+      "title": "Month 6: SpaceX + argenx",
+      "summary": "Three orders at Interactive Brokers for $500: VWRA $300, SpaceX $100 and argenx $100.",
+      "ibkrTotalUsd": 500
+    },
+    {
+      "id": "m07",
+      "step": 8,
+      "date": "2027-05-11",
+      "weekday": "Tue",
+      "title": "Month 7: Insmed",
+      "summary": "Two orders at Interactive Brokers for $500: VWRA $400 and Insmed $100.",
+      "ibkrTotalUsd": 500
+    },
+    {
+      "id": "m08",
+      "step": 9,
+      "date": "2027-06-08",
+      "weekday": "Tue",
+      "title": "Month 8: equal-weight S&P 500 + VWRA",
+      "summary": "Two orders at Interactive Brokers for $500: XDEW $250 and VWRA $250.",
+      "ibkrTotalUsd": 500
+    },
+    {
+      "id": "m09",
+      "step": 10,
+      "date": "2027-07-13",
+      "weekday": "Tue",
+      "title": "Month 9: quantum fund, second slice",
+      "summary": "Two orders at Interactive Brokers for $500: the quantum fund $75 and VWRA $425.",
+      "ibkrTotalUsd": 500
+    },
+    {
+      "id": "m10",
+      "step": 11,
+      "date": "2027-08-10",
+      "weekday": "Tue",
+      "title": "Month 10: emerging markets + VWRA",
+      "summary": "Two orders at Interactive Brokers for $500: EIMI $125 and VWRA $375.",
+      "ibkrTotalUsd": 500
+    },
+    {
+      "id": "m11",
+      "step": 12,
+      "date": "2027-09-14",
+      "weekday": "Tue",
+      "title": "Month 11: VWRA",
+      "summary": "One order at Interactive Brokers: VWRA $500.",
+      "ibkrTotalUsd": 500
+    },
+    {
+      "id": "m12",
+      "step": 13,
+      "date": "2027-10-12",
+      "weekday": "Tue",
+      "title": "Month 12: VWRA — year one complete",
+      "summary": "One order at Interactive Brokers: VWRA $500. After it, all $6,000 is invested apart from whole-share remainders.",
+      "ibkrTotalUsd": 500
+    }
+  ],
+  "orders": [
+    {
+      "id": "p01",
+      "dateId": "m01",
+      "instrument": "BTC",
+      "account": "SwissBorg",
+      "time": "any",
+      "kind": "usd",
+      "usd": 125,
+      "ceiling": null,
+      "then": "Leave it in the SwissBorg wallet. The other $125 waits there as dollars or USDC, not in Earn, until 12 January."
+    },
+    {
+      "id": "p02",
+      "dateId": "m01",
+      "instrument": "VWRA",
+      "account": "IBKR",
+      "time": "16:00",
+      "kind": "usd",
+      "usd": 250,
+      "ceiling": null,
+      "wholeShares": true,
+      "carryTarget": true
+    },
+    {
+      "id": "p03",
+      "dateId": "m02",
+      "instrument": "XDEW",
+      "account": "IBKR",
+      "time": "16:00",
+      "kind": "usd",
+      "usd": 250,
+      "ceiling": null,
+      "wholeShares": true
+    },
+    {
+      "id": "p04",
+      "dateId": "m02",
+      "instrument": "VWRA",
+      "account": "IBKR",
+      "time": "16:00",
+      "kind": "usd",
+      "usd": 250,
+      "ceiling": null,
+      "wholeShares": true,
+      "carryTarget": true
+    },
+    {
+      "id": "p05",
+      "dateId": "m03",
+      "instrument": "ETH",
+      "account": "SwissBorg",
+      "time": "any",
+      "kind": "usd",
+      "usd": 85,
+      "ceiling": null,
+      "cryptoWait": true,
+      "then": "Leave it in the SwissBorg wallet.",
+      "note": "Paid from the $125 waiting in the wallet. Wait to 9 Feb if it rose over 30% in the past 30 days (rule r8)."
+    },
+    {
+      "id": "p06",
+      "dateId": "m03",
+      "instrument": "SOL",
+      "account": "SwissBorg",
+      "time": "any",
+      "kind": "usd",
+      "usd": 40,
+      "ceiling": null,
+      "cryptoWait": true,
+      "then": "Leave it in the SwissBorg wallet.",
+      "note": "Paid from the $125 waiting in the wallet. Wait to 9 Feb if it rose over 30% in the past 30 days (rule r8)."
+    },
+    {
+      "id": "p07",
+      "dateId": "m03",
+      "instrument": "QNTM",
+      "account": "IBKR",
+      "time": "16:00",
+      "kind": "usd",
+      "usd": 75,
+      "ceiling": "instrument",
+      "wholeShares": true,
+      "thesisGate": true,
+      "note": "Quantum fund, first slice. Buy it only if its thesis check passes."
+    },
+    {
+      "id": "p08",
+      "dateId": "m03",
+      "instrument": "VWRA",
+      "account": "IBKR",
+      "time": "16:00",
+      "kind": "usd",
+      "usd": 325,
+      "ceiling": null,
+      "wholeShares": true,
+      "carryTarget": true
+    },
+    {
+      "id": "p09",
+      "dateId": "m03",
+      "instrument": "NVDA",
+      "account": "IBKR",
+      "time": "22:30",
+      "kind": "usd",
+      "usd": 100,
+      "ceiling": "instrument",
+      "fractional": true,
+      "thesisGate": true,
+      "note": "Single $100 slice. Buy it only if its thesis check passes."
+    },
+    {
+      "id": "p10",
+      "dateId": "m04",
+      "instrument": "EIMI",
+      "account": "IBKR",
+      "time": "16:00",
+      "kind": "usd",
+      "usd": 125,
+      "ceiling": null,
+      "wholeShares": true
+    },
+    {
+      "id": "p11",
+      "dateId": "m04",
+      "instrument": "VWRA",
+      "account": "IBKR",
+      "time": "16:00",
+      "kind": "usd",
+      "usd": 275,
+      "ceiling": null,
+      "wholeShares": true,
+      "carryTarget": true
+    },
+    {
+      "id": "p12",
+      "dateId": "m04",
+      "instrument": "LLY",
+      "account": "IBKR",
+      "time": "22:30",
+      "kind": "usd",
+      "usd": 100,
+      "ceiling": "instrument",
+      "fractional": true,
+      "thesisGate": true,
+      "note": "Single $100 slice. Buy it only if its thesis check passes; Lilly reports in late January or early February."
+    },
+    {
+      "id": "p13",
+      "dateId": "m05",
+      "instrument": "VWRA",
+      "account": "IBKR",
+      "time": "16:00",
+      "kind": "usd",
+      "usd": 300,
+      "ceiling": null,
+      "wholeShares": true,
+      "carryTarget": true
+    },
+    {
+      "id": "p14",
+      "dateId": "m05",
+      "instrument": "GEV",
+      "account": "IBKR",
+      "time": "22:30",
+      "kind": "usd",
+      "usd": 100,
+      "ceiling": "instrument",
+      "fractional": true,
+      "thesisGate": true,
+      "note": "Single $100 slice. Buy it only if its thesis check passes."
+    },
+    {
+      "id": "p15",
+      "dateId": "m05",
+      "instrument": "VRT",
+      "account": "IBKR",
+      "time": "22:30",
+      "kind": "usd",
+      "usd": 100,
+      "ceiling": "instrument",
+      "fractional": true,
+      "thesisGate": true,
+      "note": "Single $100 slice. Buy it only if its thesis check passes; Vertiv reports in February."
+    },
+    {
+      "id": "p16",
+      "dateId": "m06",
+      "instrument": "VWRA",
+      "account": "IBKR",
+      "time": "16:00",
+      "kind": "usd",
+      "usd": 300,
+      "ceiling": null,
+      "wholeShares": true,
+      "carryTarget": true
+    },
+    {
+      "id": "p17",
+      "dateId": "m06",
+      "instrument": "SPCX",
+      "account": "IBKR",
+      "time": "21:30",
+      "kind": "usd",
+      "usd": 100,
+      "ceiling": "instrument",
+      "fractional": true,
+      "thesisGate": true,
+      "note": "Single $100 slice. Buy it only if its thesis check passes. US markets open an hour earlier in Bangkok time from 15 March."
+    },
+    {
+      "id": "p18",
+      "dateId": "m06",
+      "instrument": "ARGX",
+      "account": "IBKR",
+      "time": "21:30",
+      "kind": "usd",
+      "usd": 100,
+      "ceiling": "instrument",
+      "fractional": true,
+      "thesisGate": true,
+      "note": "Single $100 slice. Buy it only if its thesis check passes."
+    },
+    {
+      "id": "p19",
+      "dateId": "m07",
+      "instrument": "VWRA",
+      "account": "IBKR",
+      "time": "16:00",
+      "kind": "usd",
+      "usd": 400,
+      "ceiling": null,
+      "wholeShares": true,
+      "carryTarget": true
+    },
+    {
+      "id": "p20",
+      "dateId": "m07",
+      "instrument": "INSM",
+      "account": "IBKR",
+      "time": "21:30",
+      "kind": "usd",
+      "usd": 100,
+      "ceiling": "instrument",
+      "fractional": true,
+      "thesisGate": true,
+      "note": "Single $100 slice. Buy it only if its thesis check passes."
+    },
+    {
+      "id": "p21",
+      "dateId": "m08",
+      "instrument": "XDEW",
+      "account": "IBKR",
+      "time": "16:00",
+      "kind": "usd",
+      "usd": 250,
+      "ceiling": null,
+      "wholeShares": true
+    },
+    {
+      "id": "p22",
+      "dateId": "m08",
+      "instrument": "VWRA",
+      "account": "IBKR",
+      "time": "16:00",
+      "kind": "usd",
+      "usd": 250,
+      "ceiling": null,
+      "wholeShares": true,
+      "carryTarget": true
+    },
+    {
+      "id": "p23",
+      "dateId": "m09",
+      "instrument": "QNTM",
+      "account": "IBKR",
+      "time": "16:00",
+      "kind": "usd",
+      "usd": 75,
+      "ceiling": "instrument",
+      "wholeShares": true,
+      "thesisGate": true,
+      "note": "Quantum fund, second slice. Buy it only if its thesis check still passes."
+    },
+    {
+      "id": "p24",
+      "dateId": "m09",
+      "instrument": "VWRA",
+      "account": "IBKR",
+      "time": "16:00",
+      "kind": "usd",
+      "usd": 425,
+      "ceiling": null,
+      "wholeShares": true,
+      "carryTarget": true
+    },
+    {
+      "id": "p25",
+      "dateId": "m10",
+      "instrument": "EIMI",
+      "account": "IBKR",
+      "time": "16:00",
+      "kind": "usd",
+      "usd": 125,
+      "ceiling": null,
+      "wholeShares": true
+    },
+    {
+      "id": "p26",
+      "dateId": "m10",
+      "instrument": "VWRA",
+      "account": "IBKR",
+      "time": "16:00",
+      "kind": "usd",
+      "usd": 375,
+      "ceiling": null,
+      "wholeShares": true,
+      "carryTarget": true
+    },
+    {
+      "id": "p27",
+      "dateId": "m11",
+      "instrument": "VWRA",
+      "account": "IBKR",
+      "time": "16:00",
+      "kind": "usd",
+      "usd": 500,
+      "ceiling": null,
+      "wholeShares": true,
+      "carryTarget": true
+    },
+    {
+      "id": "p28",
+      "dateId": "m12",
+      "instrument": "VWRA",
+      "account": "IBKR",
+      "time": "16:00",
+      "kind": "usd",
+      "usd": 500,
+      "ceiling": null,
+      "wholeShares": true,
+      "carryTarget": true,
+      "note": "Last order of year one. Its whole-share remainder stays as cash at Interactive Brokers."
+    }
+  ],
+  "dateNotes": {
+    "m01": [
+      "Both November transfers go on Mon 2 Nov: $250 to SwissBorg and $250 to Interactive Brokers.",
+      "Leave the other $125 in the SwissBorg wallet as dollars or USDC, not in Earn, until 12 January."
+    ],
+    "m02": [
+      "XDEW and VWRA are bought in whole shares. The cash left over joins the next VWRA order."
+    ],
+    "m03": [
+      "Ether and solana are paid from the $125 waiting in the SwissBorg wallet. No new money goes to SwissBorg.",
+      "Buy the quantum fund and Nvidia only if their thesis checks still pass."
+    ],
+    "m05": [
+      "US daylight saving starts on 14 March. From April the US orders move an hour earlier, to 21:30 Bangkok time."
+    ],
+    "m06": [
+      "13 April is Songkran, a Thai public holiday, which doesn't matter: only London and US orders are placed."
+    ],
+    "m09": [
+      "Second slice of the quantum fund: buy it only if its thesis check still passes."
+    ],
+    "m12": [
+      "After this order all $6,000 is invested apart from its whole-share remainder, which stays as cash at Interactive Brokers. Year two is not planned yet."
+    ]
+  },
+  "funding": {
+    "mode": "monthly",
+    "monthlyUsd": 500,
+    "transfers": [
+      {
+        "id": "S01",
+        "to": "SwissBorg",
+        "label": "To SwissBorg",
+        "usd": 250,
+        "send": "2026-11-02",
+        "arriveBy": "2026-11-06",
+        "forDate": "m01",
+        "pays": "Bitcoin on 10 Nov ($125), then ether and solana on 12 Jan ($125)",
+        "how": "Use a route you have tested. For USDC, buy it on a licensed exchange and send it on the exact network SwissBorg shows."
+      },
+      {
+        "id": "W01",
+        "to": "IBKR",
+        "label": "November money",
+        "usd": 250,
+        "send": "2026-11-02",
+        "arriveBy": "2026-11-06",
+        "forDate": "m01",
+        "pays": "VWRA on 10 Nov",
+        "how": "Create the deposit notification first, then send from an account in your own name."
+      },
+      {
+        "id": "W02",
+        "to": "IBKR",
+        "label": "December money",
+        "usd": 500,
+        "send": "2026-11-30",
+        "arriveBy": "2026-12-04",
+        "forDate": "m02",
+        "pays": "XDEW and VWRA on 8 Dec",
+        "how": "Same as November."
+      },
+      {
+        "id": "W03",
+        "to": "IBKR",
+        "label": "January money",
+        "usd": 500,
+        "send": "2027-01-05",
+        "arriveBy": "2027-01-08",
+        "forDate": "m03",
+        "pays": "The quantum fund, VWRA and Nvidia on 12 Jan",
+        "how": "Same as November."
+      },
+      {
+        "id": "W04",
+        "to": "IBKR",
+        "label": "February money",
+        "usd": 500,
+        "send": "2027-02-01",
+        "arriveBy": "2027-02-05",
+        "forDate": "m04",
+        "pays": "EIMI, VWRA and Eli Lilly on 9 Feb",
+        "how": "Same as November."
+      },
+      {
+        "id": "W05",
+        "to": "IBKR",
+        "label": "March money",
+        "usd": 500,
+        "send": "2027-03-01",
+        "arriveBy": "2027-03-05",
+        "forDate": "m05",
+        "pays": "VWRA, GE Vernova and Vertiv on 9 Mar",
+        "how": "Same as November."
+      },
+      {
+        "id": "W06",
+        "to": "IBKR",
+        "label": "April money",
+        "usd": 500,
+        "send": "2027-04-05",
+        "arriveBy": "2027-04-09",
+        "forDate": "m06",
+        "pays": "VWRA, SpaceX and argenx on 13 Apr",
+        "how": "Same as November."
+      },
+      {
+        "id": "W07",
+        "to": "IBKR",
+        "label": "May money",
+        "usd": 500,
+        "send": "2027-04-30",
+        "arriveBy": "2027-05-07",
+        "forDate": "m07",
+        "pays": "VWRA and Insmed on 11 May",
+        "how": "Send it on Friday 30 April: Tuesday 4 May is a Thai public holiday, and Monday 3 May may be one too."
+      },
+      {
+        "id": "W08",
+        "to": "IBKR",
+        "label": "June money",
+        "usd": 500,
+        "send": "2027-06-01",
+        "arriveBy": "2027-06-04",
+        "forDate": "m08",
+        "pays": "XDEW and VWRA on 8 Jun",
+        "how": "Same as November. Sent on Tuesday: Monday is a US bank holiday, when US-dollar transfers do not move."
+      },
+      {
+        "id": "W09",
+        "to": "IBKR",
+        "label": "July money",
+        "usd": 500,
+        "send": "2027-07-06",
+        "arriveBy": "2027-07-09",
+        "forDate": "m09",
+        "pays": "The quantum fund and VWRA on 13 Jul",
+        "how": "Same as November. Sent on Tuesday: Monday is a US bank holiday, when US-dollar transfers do not move."
+      },
+      {
+        "id": "W10",
+        "to": "IBKR",
+        "label": "August money",
+        "usd": 500,
+        "send": "2027-08-02",
+        "arriveBy": "2027-08-06",
+        "forDate": "m10",
+        "pays": "EIMI and VWRA on 10 Aug",
+        "how": "Same as November."
+      },
+      {
+        "id": "W11",
+        "to": "IBKR",
+        "label": "September money",
+        "usd": 500,
+        "send": "2027-09-07",
+        "arriveBy": "2027-09-10",
+        "forDate": "m11",
+        "pays": "VWRA on 14 Sep",
+        "how": "Same as November. Sent on Tuesday: Monday is a US bank holiday, when US-dollar transfers do not move."
+      },
+      {
+        "id": "W12",
+        "to": "IBKR",
+        "label": "October money",
+        "usd": 500,
+        "send": "2027-10-04",
+        "arriveBy": "2027-10-08",
+        "forDate": "m12",
+        "pays": "VWRA on 12 Oct",
+        "how": "Same as November."
+      }
+    ],
+    "lateRule": "If a month's money lands after its Friday, place that month's orders on the next open day after it lands. A date never moves earlier.",
+    "feeNote": "A bank's fixed fee per transfer is a larger share of a small monthly amount than of a large one. Sending two or three months together pays it less often; the order dates stay the same."
+  },
+  "differenceRules": [
+    {
+      "id": "monthly-diff",
+      "text": "Sent more or less than planned to Interactive Brokers in a month: that month's VWRA order changes by the difference.",
+      "target": "carry"
+    },
+    {
+      "id": "swissborg",
+      "text": "Sent more or less than $250 to SwissBorg: bitcoin stays at $125, and ether and solana share what is left in proportion, up to their $85 and $40. Anything above that stays in the wallet.",
+      "target": "coins"
+    },
+    {
+      "id": "leftover",
+      "text": "Cash left over from whole shares, a skipped order, or an order still above its ceiling after four weeks: it joins the next VWRA order.",
+      "target": "carry"
+    }
+  ],
+  "rules": [
+    {
+      "id": "r1",
+      "if": "A stock or fund is above its ceiling on its date",
+      "then": "Check again each Tuesday for four weeks. Still above: that money joins the next VWRA order."
+    },
+    {
+      "id": "r2",
+      "if": "A growth stock or the quantum fund fails its thesis check before its order",
+      "then": "Skip the order and put the money into the next VWRA order. Do the written review in the thesis section."
+    },
+    {
+      "id": "r8",
+      "if": "Ether or solana rose more than 30% in the 30 days before 12 January",
+      "then": "Buy it on 9 February instead. If it has jumped more than 30% again by then, that money buys bitcoin."
+    },
+    {
+      "id": "r9",
+      "if": "A month's money lands after its Friday",
+      "then": "Place that month's orders on the next open day after it lands. A date never moves earlier."
+    },
+    {
+      "id": "r10",
+      "if": "A month's money to Interactive Brokers is more or less than planned",
+      "then": "Only that month's VWRA order changes, by the difference. If VWRA would drop below zero, the other orders wait for next month's money."
+    },
+    {
+      "id": "r4",
+      "if": "Anything you own falls 50% below what you paid",
+      "then": "Write a review against its thesis checks within a week. Sell only if a check has failed."
+    },
+    {
+      "id": "r5",
+      "if": "You want to trade something not in this plan",
+      "then": "Wait 72 hours. If it is trending online or in the news, it goes on a 30-day watchlist first."
+    },
+    {
+      "id": "r6",
+      "if": "A dividend arrives",
+      "then": "Interactive Brokers reinvests it."
+    },
+    {
+      "id": "r7",
+      "if": "A market fall or a rally",
+      "then": "Never a reason to change a date."
+    }
+  ],
+  "never": "Never use options, margin, leverage, SwissBorg Earn or staking.",
+  "cryptoRule": "Crypto never grows past this plan, and none is added after a month in which it rose more than 30%.",
+  "orderHowTo": [
+    {
+      "kind": "Index funds: VWRA, XDEW, EIMI, QNTM",
+      "find": "The London listing in US dollars, ending “Acc”",
+      "order": "Limit at the current ask",
+      "count": "Dollar amount ÷ ask, rounded down",
+      "styles": [
+        "whole_usd"
+      ],
+      "groups": [
+        "index"
+      ]
+    },
+    {
+      "kind": "US growth stocks",
+      "find": "The US listing",
+      "order": "A $100 cash amount, limit at the ask + 0.5%, never above the ceiling",
+      "count": "Fractional; if the app wants shares, $100 ÷ ask to two decimals",
+      "styles": [
+        "fractional_usd"
+      ],
+      "groups": [
+        "growth"
+      ]
+    },
+    {
+      "kind": "Bitcoin, ether, solana",
+      "find": "SwissBorg exchange",
+      "order": "Limit where offered",
+      "count": "By dollar amount",
+      "styles": [
+        "usd_amount"
+      ],
+      "groups": [
+        "crypto"
+      ]
+    }
+  ],
+  "thesis": [
+    {
+      "instrument": "NVDA",
+      "heldBecause": "AI data centres run on its chips",
+      "holdsIf": "Data-centre revenue grows year on year and gross margin stays above 60%"
+    },
+    {
+      "instrument": "LLY",
+      "heldBecause": "It leads the obesity-drug market",
+      "holdsIf": "Zepbound and Mounjaro sales grow year on year, with no major safety withdrawal"
+    },
+    {
+      "instrument": "GEV",
+      "heldBecause": "AI needs power equipment it builds",
+      "holdsIf": "Its order backlog keeps rising toward its $200 billion goal for 2027"
+    },
+    {
+      "instrument": "VRT",
+      "heldBecause": "AI data centres need its power and cooling",
+      "holdsIf": "Organic orders and backlog grow year on year"
+    },
+    {
+      "instrument": "ARGX",
+      "heldBecause": "Vyvgart keeps winning new uses",
+      "holdsIf": "Vyvgart sales grow year on year, with no failed late-stage trial in a main new use"
+    },
+    {
+      "instrument": "INSM",
+      "heldBecause": "Its lung-disease drug is launching",
+      "holdsIf": "Product revenue rises every quarter"
+    },
+    {
+      "instrument": "SPCX",
+      "heldBecause": "Starlink is a growing cash engine",
+      "holdsIf": "Revenue grows year on year"
+    },
+    {
+      "instrument": "QNTM",
+      "heldBecause": "Quantum computing reaches commercial scale",
+      "holdsIf": "IonQ, D-Wave and Rigetti keep growing revenue, and IBM stays on track for fault tolerance in 2029"
+    },
+    {
+      "instrument": "ETH",
+      "heldBecause": "It leads tokenized assets",
+      "holdsIf": "Ethereum keeps more than half of tokenized assets and the ether supply stops growing"
+    },
+    {
+      "instrument": "SOL",
+      "heldBecause": "Fast, cheap and widely used",
+      "holdsIf": "Network revenue grows year on year, with no outage lasting hours"
+    }
+  ],
+  "prep": [
+    {
+      "id": "p1",
+      "text": "Interactive Brokers approved: cash account, W-8BEN filed (claiming your country's tax treaty, if it has one), US and London stock permissions, fractional shares on, dividend reinvestment on."
+    },
+    {
+      "id": "p2",
+      "text": "SwissBorg ready: passkey or two-factor on, residence set correctly, funding route tested with $20."
+    },
+    {
+      "id": "p3",
+      "text": "Three to six months of living costs kept in savings, outside this plan."
+    },
+    {
+      "id": "p4",
+      "text": "Practice run at Interactive Brokers: buy $5 of a US stock, then find the fill and the fee in the account's history."
+    },
+    {
+      "id": "p5",
+      "text": "Thesis checks written for the growth stocks, the quantum fund and the coins (on the Rules page)."
+    },
+    {
+      "id": "p6",
+      "text": "All twelve order dates and the twelve transfer days (both November transfers go on 2 Nov) in your phone calendar."
+    },
+    {
+      "id": "p7",
+      "text": "On Friday 27 November, write down the closing prices of GE Vernova, Vertiv, argenx, Insmed and QNTM. They set those five ceilings.",
+      "appNote": "Type them in Settings here, and each ceiling is worked out for you."
+    }
+  ],
+  "prepDeadline": "2026-10-30",
+  "milestones": [
+    {
+      "id": "m-ceil",
+      "date": "2026-11-27",
+      "title": "Ceiling day",
+      "text": "Closing prices of GE Vernova, Vertiv, argenx, Insmed (close + 10%) and QNTM (close + 15%) set their ceilings."
+    }
+  ],
+  "maintenance": [
+    {
+      "when": "First Sunday of every month",
+      "what": "Look, don't trade",
+      "detail": "Log each account's value. Price alerts stay off."
+    },
+    {
+      "when": "Wed 1 Dec 2027, then every 1 June and 1 December",
+      "what": "Rebalancing check",
+      "detail": "Targets as shares of the stock money: index funds 85.2%, growth stocks and the quantum fund 14.8%. Act only on a block more than 5 points off, by pointing the next months' money at the block that is under target. During year one the blocks are off target by design, because growth stocks are bought early and VWRA through to October."
+    },
+    {
+      "when": "Before November 2027",
+      "what": "Year two",
+      "detail": "Not planned yet. Write the next twelve months before then: the 27 Nov 2026 ceilings will not fit them."
+    },
+    {
+      "when": "Any month you save more",
+      "what": "The extra money",
+      "detail": "It buys VWRA that month."
+    }
+  ],
+  "templates": {
+    "/meta/subtitle": "{$month} a month · November 2026 to October 2027",
+    "/meta/planLabel": "{$month} a month",
+    "/meta/sourceDoc": "Buying plan: {$month} a month, November 2026 to October 2027",
+    "/fx/USDTHB/note": "Plan assumes {฿fx} per US dollar.",
+    "/orderDates/m01/summary": "Two orders: {$p01} of bitcoin on SwissBorg, then {$p02} of VWRA at Interactive Brokers.",
+    "/orderDates/m02/summary": "Two orders at Interactive Brokers for {$ibkr:m02}: XDEW {$p03} and VWRA {$p04}.",
+    "/orderDates/m03/title": [
+      {
+        "if": [
+          "p05",
+          "p06"
+        ],
+        "text": "Month 3: coins, quantum fund, Nvidia"
+      },
+      {
+        "if": [
+          "p05",
+          "!p06"
+        ],
+        "text": "Month 3: ether, quantum fund, Nvidia"
+      },
+      {
+        "if": [
+          "!p05",
+          "!p06"
+        ],
+        "text": "Month 3: quantum fund, Nvidia"
+      }
+    ],
+    "/orderDates/m03/summary": [
+      {
+        "if": [
+          "p05",
+          "p06"
+        ],
+        "text": "Five orders: ether and solana from the SwissBorg wallet, then the quantum fund, VWRA and Nvidia at Interactive Brokers for {$ibkr:m03}."
+      },
+      {
+        "if": [
+          "p05",
+          "!p06"
+        ],
+        "text": "Four orders: ether from the SwissBorg wallet, then the quantum fund, VWRA and Nvidia at Interactive Brokers for {$ibkr:m03}."
+      },
+      {
+        "if": [
+          "!p05",
+          "!p06"
+        ],
+        "text": "Three orders at Interactive Brokers for {$ibkr:m03}: the quantum fund {$p07}, VWRA {$p08} and Nvidia {$p09}."
+      }
+    ],
+    "/orderDates/m04/summary": "Three orders at Interactive Brokers for {$ibkr:m04}: EIMI {$p10}, VWRA {$p11} and Eli Lilly {$p12}.",
+    "/orderDates/m05/summary": "Three orders at Interactive Brokers for {$ibkr:m05}: VWRA {$p13}, GE Vernova {$p14} and Vertiv {$p15}.",
+    "/orderDates/m06/summary": "Three orders at Interactive Brokers for {$ibkr:m06}: VWRA {$p16}, SpaceX {$p17} and argenx {$p18}.",
+    "/orderDates/m07/summary": "Two orders at Interactive Brokers for {$ibkr:m07}: VWRA {$p19} and Insmed {$p20}.",
+    "/orderDates/m08/summary": "Two orders at Interactive Brokers for {$ibkr:m08}: XDEW {$p21} and VWRA {$p22}.",
+    "/orderDates/m09/summary": "Two orders at Interactive Brokers for {$ibkr:m09}: the quantum fund {$p23} and VWRA {$p24}.",
+    "/orderDates/m10/summary": "Two orders at Interactive Brokers for {$ibkr:m10}: EIMI {$p25} and VWRA {$p26}.",
+    "/orderDates/m11/summary": "One order at Interactive Brokers: VWRA {$p27}.",
+    "/orderDates/m12/summary": "One order at Interactive Brokers: VWRA {$p28}. After it, all {$year} is invested apart from whole-share remainders.",
+    "/orders/p01/then": [
+      {
+        "if": [
+          "p05"
+        ],
+        "text": "Leave it in the SwissBorg wallet. The other {$coins} waits there as dollars or USDC, not in Earn, until 12 January."
+      },
+      {
+        "if": [
+          "!p05",
+          "!p06"
+        ],
+        "text": "Leave it in the SwissBorg wallet."
+      }
+    ],
+    "/orders/p05/note": "Paid from the {$coins} waiting in the wallet. Wait to 9 Feb if it rose over 30% in the past 30 days (rule r8).",
+    "/orders/p06/note": "Paid from the {$coins} waiting in the wallet. Wait to 9 Feb if it rose over 30% in the past 30 days (rule r8).",
+    "/orders/p09/note": "Single {$p09} slice. Buy it only if its thesis check passes.",
+    "/orders/p12/note": "Single {$p12} slice. Buy it only if its thesis check passes; Lilly reports in late January or early February.",
+    "/orders/p14/note": "Single {$p14} slice. Buy it only if its thesis check passes.",
+    "/orders/p15/note": "Single {$p15} slice. Buy it only if its thesis check passes; Vertiv reports in February.",
+    "/orders/p17/note": "Single {$p17} slice. Buy it only if its thesis check passes. US markets open an hour earlier in Bangkok time from 15 March.",
+    "/orders/p18/note": "Single {$p18} slice. Buy it only if its thesis check passes.",
+    "/orders/p20/note": "Single {$p20} slice. Buy it only if its thesis check passes.",
+    "/dateNotes/m01/0": "Both November transfers go on Mon 2 Nov: {$S01} to SwissBorg and {$W01} to Interactive Brokers.",
+    "/dateNotes/m01/1": [
+      {
+        "if": [
+          "p05"
+        ],
+        "text": "Leave the other {$coins} in the SwissBorg wallet as dollars or USDC, not in Earn, until 12 January."
+      },
+      {
+        "if": [
+          "!p05",
+          "!p06"
+        ],
+        "text": "At this amount only bitcoin is bought on SwissBorg: the ether and solana share is in this month's VWRA order."
+      }
+    ],
+    "/dateNotes/m03/0": [
+      {
+        "if": [
+          "p05",
+          "p06"
+        ],
+        "text": "Ether and solana are paid from the {$coins} waiting in the SwissBorg wallet. No new money goes to SwissBorg."
+      },
+      {
+        "if": [
+          "p05",
+          "!p06"
+        ],
+        "text": "Ether is paid from the {$coins} waiting in the SwissBorg wallet. Solana is not bought at this amount: its share is in the 10 Nov VWRA order. No new money goes to SwissBorg."
+      },
+      {
+        "if": [
+          "!p05",
+          "!p06"
+        ],
+        "text": "Ether and solana are not bought at this amount: their share is in the 10 Nov VWRA order. No new money goes to SwissBorg."
+      }
+    ],
+    "/dateNotes/m12/0": "After this order all {$year} is invested apart from its whole-share remainder, which stays as cash at Interactive Brokers. Year two is not planned yet.",
+    "/funding/transfers/S01/pays": [
+      {
+        "if": [
+          "p05",
+          "p06"
+        ],
+        "text": "Bitcoin on 10 Nov ({$p01}), then ether and solana on 12 Jan ({$coins})"
+      },
+      {
+        "if": [
+          "p05",
+          "!p06"
+        ],
+        "text": "Bitcoin on 10 Nov ({$p01}), then ether on 12 Jan ({$coins})"
+      },
+      {
+        "if": [
+          "!p05",
+          "!p06"
+        ],
+        "text": "Bitcoin on 10 Nov ({$p01})"
+      }
+    ],
+    "/differenceRules/swissborg/text": [
+      {
+        "if": [
+          "p05",
+          "p06"
+        ],
+        "text": "Sent more or less than {$S01} to SwissBorg: bitcoin stays at {$p01}, and ether and solana share what is left in proportion, up to their {$p05} and {$p06}. Anything above that stays in the wallet."
+      },
+      {
+        "if": [
+          "p05",
+          "!p06"
+        ],
+        "text": "Sent more or less than {$S01} to SwissBorg: bitcoin stays at {$p01}, and ether takes what is left, up to its {$p05}. Anything above that stays in the wallet."
+      },
+      {
+        "if": [
+          "!p05",
+          "!p06"
+        ],
+        "text": "Sent more or less than {$S01} to SwissBorg: bitcoin stays at {$p01}. Anything above that stays in the wallet."
+      }
+    ],
+    "/orderHowTo/1/order": "A {$p09} cash amount, limit at the ask + 0.5%, never above the ceiling",
+    "/orderHowTo/1/count": "Fractional; if the app wants shares, {$p09} ÷ ask to two decimals"
+  }
+}

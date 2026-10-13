@@ -1,0 +1,188 @@
+/* Tide Table design tokens. Night sea (dark) and Chart paper (light). Shared by app.css and intel.css. */
+
+:root {
+  /* type */
+  --font-display: "Fraunces", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --font-ui: "Instrument Sans", "Segoe UI", system-ui, -apple-system, "IBM Plex Sans Thai", "Leelawadee UI", sans-serif;
+  --font-mono: "JetBrains Mono", "Cascadia Mono", Consolas, ui-monospace, monospace;
+
+  --fs-xs: 0.75rem;
+  --fs-sm: 0.8125rem;
+  --fs-md: 0.9375rem;
+  --fs-lg: 1.125rem;
+  --fs-xl: 1.5rem;
+  --fs-2xl: clamp(1.75rem, 1.2rem + 2vw, 2.5rem);
+  --fs-hero: clamp(2.5rem, 1.4rem + 5vw, 4.5rem);
+
+  /* space + shape */
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 24px; --sp-6: 32px; --sp-7: 48px; --sp-8: 64px;
+  --radius: 14px;
+  --radius-sm: 8px;
+  --radius-pill: 999px;
+  --gutter: 16px;
+  --content-max: 1280px;
+  --rail-w: 232px;
+
+  /* motion */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-1: 180ms;
+  --dur-2: 320ms;
+  --dur-3: 700ms;
+  --tide-loop: 14s;
+
+  color-scheme: light;
+
+  /* Chart paper (light) */
+  --bg: #f6f1e7;
+  --bg-deep: #ede5d6;
+  --surface: #fffdf8;
+  --surface-2: #f9f4ea;
+  --raised: #ffffff;
+  --line: rgba(27, 36, 51, 0.12);
+  --line-strong: rgba(27, 36, 51, 0.24);
+  --text: #1b2433;
+  --text-2: #3d4757;
+  --muted: #5b6577;
+  --faint: #656f80;       /* AA: 4.5:1 on --bg */
+
+  --moon: #7f580e;        /* next / now (AA on its own soft tint) */
+  --moon-soft: rgba(127, 88, 14, 0.12);
+  --kelp: #0a6a5a;        /* under ceiling, done, positive */
+  --kelp-soft: rgba(10, 106, 90, 0.12);
+  --coral: #a83223;       /* over ceiling, alerts, negative */
+  --coral-soft: rgba(168, 50, 35, 0.11);
+  --amber: #8a4f00;       /* waiting, warn */
+  --amber-soft: rgba(138, 79, 0, 0.12);
+  --sky: #2f5db8;         /* info, links */
+  --sky-soft: rgba(47, 93, 184, 0.10);
+
+  --wave-1: rgba(47, 93, 184, 0.16);
+  --wave-2: rgba(15, 125, 107, 0.14);
+  --wave-3: rgba(154, 107, 18, 0.12);
+  --glow: 0 1px 0 rgba(255, 255, 255, 0.9) inset;
+  --shadow: 0 1px 2px rgba(27, 36, 51, 0.06), 0 8px 24px rgba(27, 36, 51, 0.06);
+  --focus: 0 0 0 2px var(--surface), 0 0 0 4px var(--sky);
+
+  /* chart series (validated for both themes against their surfaces) */
+  --series-1: #2f5db8;
+  --series-2: #0f7d6b;
+  --series-3: #9a6b12;
+  --series-4: #b93a28;
+  --series-5: #6b4fb3;
+  --series-6: #4a6a2a;
+  --series-7: #a2457a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0a1120;
+    --bg-deep: #070c18;
+    --surface: #101a2e;
+    --surface-2: #0d1627;
+    --raised: #15213a;
+    --line: rgba(148, 163, 184, 0.14);
+    --line-strong: rgba(148, 163, 184, 0.28);
+    --text: #e6ecf5;
+    --text-2: #c6d0df;
+    --muted: #93a1b8;
+    --faint: #8090a6;
+
+    --moon: #ecd9a4;
+    --moon-soft: rgba(236, 217, 164, 0.12);
+    --kelp: #3fd5b6;
+    --kelp-soft: rgba(63, 213, 182, 0.12);
+    --coral: #ff8a7a;
+    --coral-soft: rgba(255, 138, 122, 0.12);
+    --amber: #f5b65a;
+    --amber-soft: rgba(245, 182, 90, 0.12);
+    --sky: #86afff;
+    --sky-soft: rgba(134, 175, 255, 0.12);
+
+    --wave-1: rgba(134, 175, 255, 0.12);
+    --wave-2: rgba(63, 213, 182, 0.10);
+    --wave-3: rgba(236, 217, 164, 0.08);
+    --glow: 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 12px 32px rgba(0, 0, 0, 0.28);
+    --focus: 0 0 0 2px var(--surface), 0 0 0 4px var(--sky);
+
+    --series-1: #86afff;
+    --series-2: #3fd5b6;
+    --series-3: #ecd9a4;
+    --series-4: #ff8a7a;
+    --series-5: #b9a4ff;
+    --series-6: #a7d36d;
+    --series-7: #f39ac7;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0a1120;
+  --bg-deep: #070c18;
+  --surface: #101a2e;
+  --surface-2: #0d1627;
+  --raised: #15213a;
+  --line: rgba(148, 163, 184, 0.14);
+  --line-strong: rgba(148, 163, 184, 0.28);
+  --text: #e6ecf5;
+  --text-2: #c6d0df;
+  --muted: #93a1b8;
+  --faint: #8090a6;
+
+  --moon: #ecd9a4;
+  --moon-soft: rgba(236, 217, 164, 0.12);
+  --kelp: #3fd5b6;
+  --kelp-soft: rgba(63, 213, 182, 0.12);
+  --coral: #ff8a7a;
+  --coral-soft: rgba(255, 138, 122, 0.12);
+  --amber: #f5b65a;
+  --amber-soft: rgba(245, 182, 90, 0.12);
+  --sky: #86afff;
+  --sky-soft: rgba(134, 175, 255, 0.12);
+
+  --wave-1: rgba(134, 175, 255, 0.12);
+  --wave-2: rgba(63, 213, 182, 0.10);
+  --wave-3: rgba(236, 217, 164, 0.08);
+  --glow: 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 12px 32px rgba(0, 0, 0, 0.28);
+  --focus: 0 0 0 2px var(--surface), 0 0 0 4px var(--sky);
+
+  --series-1: #86afff;
+  --series-2: #3fd5b6;
+  --series-3: #ecd9a4;
+  --series-4: #ff8a7a;
+  --series-5: #b9a4ff;
+  --series-6: #a7d36d;
+  --series-7: #f39ac7;
+}
+
+/* base */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: var(--fs-md);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+a { color: var(--sky); text-underline-offset: 2px; }
+/* An opaque outline (survives forced-colours mode; --sky on the surfaces is 6:1 light, 8:1 dark). */
+:focus-visible { outline: 2px solid var(--sky); outline-offset: 2px; box-shadow: none; border-radius: var(--radius-sm); }
+.num, .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.visually-hidden { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+}
