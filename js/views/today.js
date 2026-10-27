@@ -1,6 +1,6 @@
-// Today: the countdown to the next step (an order date, a day to send money, the getting-ready
-// deadline), the getting-ready checklist, progress, alerts from the plan's own rules, and the order
-// desk with its fill and skip dialogs.
+// Today: the next-step panel (brief 4.7 and 4.8.1: a wash panel with one heading, when it is, the two
+// calendar chips and the main button; the steps after it in a quiet list under it), the getting-ready
+// checklist, progress, alerts from the plan's own rules, and the order desk with its fill and skip dialogs.
 
 import {
   app, h, icon, toast, ui, L, S, $, svg, hooks, prices, now, today, ost, isDone, instById, rule,
@@ -9,12 +9,44 @@ import {
   autoDeskDate, dateOfId, ordersOn, orderWhat, adjustFor, nextCarryTarget, howTo, statusPill, ceilPill, fmtCeil, STATUS_PILL, pill,
   card, cardHead, ruleQuote, disclosure, field, afterRender, sourceLink, commit, modal, confirmDialog, plural,
   pre, isPreOrder, isPreTransfer, isPreDate, joinedPlan, joinedBudgetUsd, progressNow, coinQty, leftoverText, coinMinUsd, skippedUsd,
-  copyDue, exportState, howOf, dateNotesFor,
-} from "../core.js";
+  copyDue, exportState, howOf, dateNotesFor, openMonthIds, isBoughtInst, prepNotNeeded,
+  tickerOf, isFieldInst, universeOn, hasFieldMonths, fixed, monthOf,
+} from "../core.js?v=2.0.0";
+import { ownIdMonth } from "../scale.js?v=2.0.0";
+import { orderWhy, waitingWhy } from "../split.js?v=2.0.0";
+import * as book from "../book.js?v=2.0.0";
+import * as FU from "../fieldsui.js?v=2.0.0";
+import * as D from "../datafiles.js?v=2.0.0";
+import { fieldName } from "../fields-catalog.js?v=2.0.0";
+import { monthAmountLink } from "./amounts.js?v=2.0.0";
+import { splitLine } from "./split.js?v=2.0.0";
+import { upcomingChecked } from "./fields.js?v=2.0.0";
+
+/** The one-time panel for a friend with records, on their first 2.0 visit (spec 8.2), is remembered here. */
+const INTRO_KEY = "ttm:fields-intro";
+const INTRO_TEXT = "You can now choose fields for the months that have no records yet. Your months with records stay as they are.";
+const CHAPTER_WORDS = ["one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"];
+
+/** A VWRA order of $0 (an own mix that leaves it nothing) with nothing carried into it: it is there to take
+ *  leftovers and the rules' carries, and reads "VWRA: takes any leftover". */
+const takesLeftover = (o, cr) => !!o.carryTarget && !(o.usd > 0) && !isDone(o.id) && !(cr && cr.byOrder[o.id] && cr.byOrder[o.id].usd > 0);
+/** What to buy, in words (core.orderWhat), with a $0 VWRA order as "VWRA: takes any leftover". */
+const whatOf = (o, cr) => (takesLeftover(o, cr) ? `${instById(o.instrument).id}: takes any leftover` : orderWhat(o, cr));
+
+/** The getting-ready items that apply to this friend's plan (a SwissBorg item is not needed without coins; the
+ *  thesis checks and the 27 Nov closes are not needed when the plan buys none of those holdings). */
+const prepNeeded = () => app.plan.prep.filter((p) => !prepNotNeeded(p.id));
+/** The checklist in a few words, naming the thesis checks only when the friend's plan needs them. */
+function prepSummary() {
+  const thesis = app.plan.prep.find((p) => /^Thesis checks\b/.test(p.text));
+  return thesis && !prepNotNeeded(thesis.id)
+    ? "Accounts, a practice run, the thesis checks and your calendar, before any money moves."
+    : "Accounts, a practice run and your calendar, before any money moves.";
+}
+/** An instrument with a ceiling still to set on 27 Nov, among the ones the friend's plan buys. */
+const ceilingPending = () => app.plan.instruments.filter((i) => isBoughtInst(i.id) && ceilingOf(i).kind === "pending");
 
 const EVENT_KIND = { order: "Order date", funding: "Money must arrive", send: "Send money", milestone: "Plan date", prep: "Getting ready" };
-/** The dial's word on the day of an event the plan gives no clock time for. */
-const DAY_WORD = { send: "send day", funding: "money due", prep: "deadline", milestone: "plan date" };
 const VENUE_SHORT = { LSE: "London", US: "US", CRYPTO: "Crypto" };
 const dest = (to) => (to === "IBKR" ? "Interactive Brokers" : to);
 /** A send day, an arrive-by day, the checklist deadline or a plan date: shown by date, all day long. */
@@ -33,7 +65,7 @@ function planEvents() {
       const t = fund.transfers.find((x) => x.id === tidOf(e));
       if (e.kind === "send" && t) return { ...e, forDate: t.forDate, title: `Send the money for ${monthName(dateOfId(t.forDate), false, true)}` };
       if (e.kind === "funding" && t) return { ...e, forDate: t.forDate, title: `The money for ${monthName(dateOfId(t.forDate), false, true)} must arrive` };
-      if (e.kind === "prep") return { ...e, title: "Finish getting ready", summary: "Accounts, a practice run, the thesis checks and your calendar, before any money moves." };
+      if (e.kind === "prep") return { ...e, title: "Finish getting ready", summary: prepSummary() };
       return e;
     });
   const fs = st.funding || {};
@@ -51,8 +83,8 @@ function planEvents() {
       return true;
     }
     if (e.kind === "order") return ordersOn(e.id).some((o) => !isDone(o.id));
-    if (e.kind === "prep") return app.plan.prep.some((p) => !st.prep[p.id]);
-    if (e.kind === "milestone") return app.plan.instruments.some((i) => ceilingOf(i).kind === "pending");
+    if (e.kind === "prep") return prepNeeded().some((p) => !st.prep[p.id]);
+    if (e.kind === "milestone") return ceilingPending().length > 0;
     return true;
   });
   return { all, open, fund };
@@ -62,76 +94,170 @@ export function stopTodayTicker() {
   if (app.todayTimer) { clearInterval(app.todayTimer); app.todayTimer = null; }
 }
 
+/** The next-step panel's main button (the screen's one filled button, book.js button()). */
+function mainButton(label, href, fk, onClick) {
+  const b = book.button({ label, href, onClick });
+  b.setAttribute("data-fk", fk);
+  return b;
+}
+
+const CAL_WHAT = { order: "Order day", funding: "Money arrives", send: "Send money", prep: "Getting ready", milestone: "Plan date" };
+/** Two calendar-page chips (brief G6): the next day money must arrive and the next order day, with "in N days". */
+function calendarChips(future, td) {
+  const pick = [future.find((e) => e.kind === "funding"), future.find((e) => e.kind === "order")].filter(Boolean)
+    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  if (!pick.length) return null;
+  return h("div.hero-cal", { "data-fk": "hero-cal" }, pick.map((e) => {
+    const p = ui.dayParts(e.date);
+    return book.calendarChip({ day: p.day, date: p.date, what: CAL_WHAT[e.kind] || "Plan date", when: inDays(L.daysBetween(td, e.date)), full: ui.dateWordsFull(e.date) });
+  }));
+}
+
+/**
+ * The open data's notices on Today (spec 8.8, Appendix C): for a friend with fields, the facts did not load or
+ * are old; a newer app is out; and once, for a friend whose records predate fields, that fields can now be chosen.
+ */
+function dataNotices() {
+  const out = [];
+  const st = app.data;
+  const withFields = hasFieldMonths();
+  if (st && st.status === "failed" && withFields) out.push(book.banner({ state: "problem", content: FU.COPY.failed }));
+  if (st && st.status === "ok") {
+    if (st.stale && withFields) {
+      const p = FU.bangkokParts(st.asOf);
+      out.push(book.banner({ state: "wait", content: `These facts were rebuilt on ${p ? FU.dayWords(p.date) : "—"}, ${FU.intWords(st.days ?? 0)} days ago. Tide Table rebuilds them every morning when its sources answer.` }));
+    }
+    if (st.newer) out.push(book.banner({ state: "info", content: "A newer Tide Table is out. Reload the page." }));
+  }
+  let seen = false;
+  try { seen = localStorage.getItem(INTRO_KEY) === "1"; } catch { /* storage blocked */ }
+  if (universeOn() && !withFields && fixed().size > 0 && !seen) {
+    const choose = book.textButton({ label: "Choose fields", href: "#/fields" });
+    choose.setAttribute("data-fk", "intro-fields");
+    const later = book.textButton({ label: "Not now", onClick: () => {
+      try { localStorage.setItem(INTRO_KEY, "1"); } catch { /* blocked */ }
+      const p = document.querySelector('[data-fk="fields-intro"]');
+      if (p) p.remove();
+      const hd = document.getElementById("h-today");
+      if (hd) hd.focus({ preventScroll: true });
+    } });
+    later.setAttribute("data-fk", "intro-later");
+    const b = book.banner({ state: "info", content: INTRO_TEXT, actions: [choose, later] });
+    b.setAttribute("data-fk", "fields-intro");
+    out.push(b);
+  }
+  return out;
+}
+
+/** The twelve months as chapter pages (brief 4.8.1), each opening its order date on the desk; then "So far". */
+function chapterPages({ large = false } = {}) {
+  const sch = schedule();
+  const auto = autoDeskDate(sch);
+  const pages = sch.dates.map((d, k) => {
+    const r = monthOf(d.id);
+    const os = sch.orders.filter((o) => o.dateId === d.id);
+    const before = isPreDate(d.id);
+    const done = !before && os.length > 0 && os.every((o) => isDone(o.id));
+    const status = done ? "done" : auto && auto.id === d.id ? "now" : "later";
+    const el = book.chapterPage({
+      index: k + 1, month: monthName(d.effective, true), full: monthName(d.effective), large,
+      amount: before ? "—" : r ? fM(r.usd) : fM(app.plan.funding.monthlyUsd), status,
+      word: before ? "Before you joined" : undefined, onOpen: () => openDesk(d.id),
+    });
+    const b = el.querySelector("button");
+    if (b) b.setAttribute("data-fk", "chap-" + d.id);
+    return el;
+  });
+  return book.chapterList({ pages, large });
+}
+export { chapterPages };
+
 export function renderToday() {
   const plan = app.plan;
   const st = S();
-  const { all, open, fund } = planEvents();
+  const { open, fund } = planEvents();
   const t = now();
   const td = today();
   const todayOrder = open.find((e) => e.kind === "order" && e.date === td);
   // A day event stays next for all of its day: the plan gives a send day no clock time.
   const future = open.filter((e) => (isDayEvent(e) ? e.date >= td : e.at > t));
   const next = todayOrder || future[0] || null;
-  const prevAt = next ? Math.max(L.bkkToEpoch(plan.meta.docDate, "00:00"), ...all.filter((e) => e.at < next.at && e.at <= t).map((e) => e.at)) : t;
   const name = st.profile && st.profile.name;
+  // The chapter heading (brief 4.8.1): the month of the next order date (or the last one), as a chapter of the year.
+  const sch0 = schedule();
+  const focusDate = autoDeskDate(sch0) || sch0.dates[sch0.dates.length - 1];
+  const k = Math.max(0, sch0.dates.findIndex((d) => d.id === focusDate.id));
   const out = [
-    h("h1.visually-hidden", { id: "h-today", tabindex: "-1" }, "Today"),
-    h("p.greet.rise", name ? `Hello, ${name}.` : "Hello.", h("span.greet-date", ` ${new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: "Asia/Bangkok" }).format(new Date(t))}`)),
+    book.openingHead({
+      kicker: `Chapter ${CHAPTER_WORDS[k] || String(k + 1)}`, title: monthName(focusDate.effective, false, true), level: 1, id: "h-today",
+      lines: [h("span.greet", name ? `Hello, ${name}.` : "Hello.", h("span.greet-date", ` Today is ${new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: "Asia/Bangkok" }).format(new Date(t))}.`))],
+      vignette: book.vignette("today"),
+    }),
+    ...dataNotices(),
   ];
 
-  // ---- hero
-  const hero = card(".hero", { "aria-labelledby": "next-title" });
-  const grid = h("div.hero-grid");
+  // ---- the next-step panel (brief 4.7 and 4.8.1): a wash panel with one heading, the when
+  // line, the two calendar chips and the main button. What comes after it is a quiet list under the panel.
+  let kids;
+  let after = null;
   if (next) {
-    const moon = moonDial();
     const money = next.kind === "send" || next.kind === "funding" ? moneyGroup(next, fund, st) : null;
     // Money due with a transfer still to send: say "Send" until it is marked sent.
     const title = money && next.kind === "funding" && money.toSend ? `Send the money for ${monthName(dateOfId(next.forDate), false, true)}` : next.title;
-    grid.append(moon.el);
-    grid.append(h("div.hero-main",
-      h("p.eyebrow.eyebrow-moon", next === todayOrder ? "Today · order day" : `${next.date === td ? "Today" : "Next"} · ${EVENT_KIND[next.kind] || "Event"}${next.step ? " · step " + next.step : ""}`),
-      h("h2.hero-title#next-title", title),
-      h("p.hero-when", h("span", long(next.date)), heroWhen(next)),
+    const isToday = next === todayOrder;
+    const count = h("span.hero-count", { "data-fk": "hero-count" }, ` · ${countWords(next, isToday)}`);
+    kids = [
+      h("p.eyebrow", isToday ? "Today · order day" : `${next.date === td ? "Today" : "Next"} · ${EVENT_KIND[next.kind] || "Event"}${next.step ? " · step " + next.step : ""}`),
+      h("h2.bk-h2#next-title", title),
+      h("p.hero-when", h("span", long(next.date)), heroWhen(next), count),
+      calendarChips(future, td),
       // The plan's summary quotes plan amounts: left out when a rule for differences changed one of them
       // (the list below shows the amounts that apply), and for a month's money with several transfers.
       next.summary && (!money || money.group.length === 1) && !(next.kind === "order" && ordersOn(next.id).some((o) => !isDone(o.id) && adjustFor(o, carry()) !== 0))
         ? h("p.hero-summary", next.summary) : null,
-      heroTodo(next, fund, st, money)));
-    const after = future.filter((e) => e !== next).slice(0, 4);
-    grid.append(h("aside.hero-side", { "aria-label": "Coming up" },
-      h("p.eyebrow", "After that"),
-      after.length ? h("ol.upcoming", after.map((e) => h("li",
-        h("span.up-date.num", short(e.date)),
-        h("span.up-text", h("span.up-title", e.title), h("span.up-rel", `${EVENT_KIND[e.kind] || ""} · ${inDays(L.daysBetween(td, e.date))}`))))) : h("p.muted", "Nothing else scheduled."),
-      h("a.link-arrow", { href: "#/year", "data-fk": "hero-year" }, "The whole year", h("span", { "aria-hidden": "true" }, " →"))));
-    afterRender(() => startTodayTicker(moon, next, prevAt, next === todayOrder));
+      heroTodo(next, fund, st, money),
+    ];
+    after = afterList(future.filter((e) => e !== next).slice(0, 4), td);
+    afterRender(() => startTodayTicker(count, next, isToday));
   } else {
     const left = schedule().orders.filter((o) => !isDone(o.id)).sort((a, b) => a.at - b.at);
     const last = plan.orderDates[plan.orderDates.length - 1];
     if (left.length) {
       // Every date has passed but some orders were never logged: the year is not complete yet.
       const dates = [...new Set(left.map((o) => o.dateId))];
-      grid.append(h("div.hero-main.is-complete", h("p.eyebrow", "Every order date has passed"), h("h2.hero-title#next-title", `${plural(left.length, "order")} still open`),
+      kids = [h("p.eyebrow", "Every order date has passed"), h("h2.bk-h2#next-title", `${plural(left.length, "order")} still open`),
         h("p.hero-summary", `${dates.map((d) => short(dateOfId(d))).join(", ")}: log each fill, or record a skip, so your records are complete.`),
-        h("a.btn.btn-moon", { href: "#desk", "data-fk": "hero-desk", on: { click: (e) => { e.preventDefault(); openDesk(dates[0]); } } }, "Open the order desk")));
+        mainButton("Open the order desk", "#desk", "hero-desk", (e) => { e.preventDefault(); openDesk(dates[0]); })];
     } else if (!joinedPlan().orders.length) {
-      grid.append(h("div.hero-main.is-complete", h("p.eyebrow", "Before you joined"), h("h2.hero-title#next-title", "The plan's twelve months had passed."),
+      kids = [h("p.eyebrow", "Before you joined"), h("h2.bk-h2#next-title", "The plan's twelve months had passed."),
         h("p.hero-summary", "Nothing is due. The plan's maintenance calendar is on the Rules page."),
-        h("a.link-arrow", { href: "#/rules", "data-fk": "hero-maint" }, "The maintenance calendar →")));
+        h("a.link-arrow", { href: "#/rules", "data-fk": "hero-maint" }, "The maintenance calendar →")];
     } else {
-      grid.append(h("div.hero-main.is-complete", h("p.eyebrow", "Year one complete"), h("h2.hero-title#next-title", "Every order is done."),
+      kids = [h("p.eyebrow", "Year one complete"), h("h2.bk-h2#next-title", "Every order is done."),
         h("p.hero-summary", ((plan.dateNotes || {})[last.id] || [])[0] || "The maintenance calendar takes over."),
-        h("a.link-arrow", { href: "#/rules", "data-fk": "hero-maint" }, "The maintenance calendar →")));
+        h("a.link-arrow", { href: "#/rules", "data-fk": "hero-maint" }, "The maintenance calendar →")];
     }
   }
-  hero.append(grid, tideWaves());
-  out.push(hero);
+  const panel = book.washPanel({ live: true, as: "section", labelledBy: "next-title", children: kids });
+  panel.classList.add("ttm-step");
+  panel.setAttribute("data-fk", "next-step");
+  out.push(panel);
+  if (after) out.push(after);
 
   out.push(keepCopyCard());
   out.push(readyCard());
   out.push(renderProgress(st));
   out.push(renderAlerts());
   out.push(renderDesk());
+  const pr = progressNow();
+  out.push(h("section.bk-section.ttm-chapters", { "aria-labelledby": "today-year-h" },
+    book.sectionHead({ title: "Your year, chapter by chapter", level: 2, id: "today-year-h" }),
+    chapterPages(),
+    book.note(`So far: ${pr.done + pr.skipped} of ${plural(pr.total, "order")} done.`, { tone: "ink" })));
+  const fresh = app.data && app.data.status === "ok" && hasFieldMonths() ? FU.freshnessWords(app.data.index.asOf) : null;
+  out.push(h("div.bk-section.bk-stack.ttm-records",
+    book.note(["Your records live only in this browser. ", h("a", { href: "#/settings", "data-fk": "records-copy" }, "Save a copy"), "."]),
+    fresh ? book.note(fresh) : null));
   return out;
 }
 
@@ -163,9 +289,9 @@ function heroTodo(next, fund, st, money) {
     const os = ordersOn(next.id).filter((o) => !isDone(o.id));
     const shown = os.slice(0, 4);
     return h("div.hero-todo",
-      h("ul.todo-list", shown.map((o) => h("li", h("span.todo-time.num", timeLabel(o)), h("span.todo-acct", o.account), h("span.todo-what", orderWhat(o, cr))))),
+      h("ul.todo-list", shown.map((o) => h("li", h("span.todo-time.num", timeLabel(o)), h("span.todo-acct", o.account), h("span.todo-what", whatOf(o, cr))))),
       os.length > shown.length ? h("p.muted.small", `+ ${os.length - shown.length} more on the order desk below`) : null,
-      h("a.btn.btn-moon", { href: "#desk", "data-fk": "hero-desk", on: { click: (e) => { e.preventDefault(); openDesk(next.id); } } }, "Open the order desk"));
+      mainButton("Open the order desk", "#desk", "hero-desk", (e) => { e.preventDefault(); openDesk(next.id); }));
   }
   if (money) {
     const { group, stOf, toSend } = money;
@@ -182,18 +308,21 @@ function heroTodo(next, fund, st, money) {
             : h("span.todo-what", `in ${dest(t.to)}`, h("span.muted", ` · sent${s.sentAt ? " " + short(s.sentAt) : ""}, not marked arrived yet`)));
       })),
       toDo.map((t) => h("p.muted.small", toDo.length > 1 || group.length > 1 ? `${dest(t.to)}: ${howOf(t)}` : howOf(t))),
-      h("a.btn.btn-moon", { href: "#/money", "data-fk": "hero-money" }, toSend ? "Record it on Money" : "Open Money"));
+      // Before any of the month's money goes, its amount can still change (no record fixes the month yet).
+      toSend && openMonthIds().includes(next.forDate) ? monthAmountLink(next.forDate, "td-month-" + next.forDate) : null,
+      mainButton(toSend ? "Record it on Money" : "Open Money", "#/money", "hero-money"));
   }
   if (next.kind === "prep") {
-    const done = app.plan.prep.filter((p) => st.prep[p.id]).length;
+    const items = prepNeeded();
+    const done = items.filter((p) => st.prep[p.id]).length;
     return h("div.hero-todo",
-      h("p.todo-line", h("strong", `${done} of ${app.plan.prep.length}`), " getting-ready checks done."),
-      h("a.btn.btn-moon", { href: "#ready", "data-fk": "hero-checklist", on: { click: (e) => { e.preventDefault(); const r = $("#ready") || $("#prep-h"); if (r) { r.scrollIntoView({ behavior: ui.reducedMotion() ? "auto" : "smooth", block: "start" }); r.focus({ preventScroll: true }); } else hooks.go("rules"); } } }, "Open the checklist"));
+      h("p.todo-line", h("strong", `${done} of ${items.length}`), " getting-ready checks done."),
+      mainButton("Open the checklist", "#ready", "hero-checklist", (e) => { e.preventDefault(); const r = $("#ready") || $("#prep-h"); if (r) { r.scrollIntoView({ behavior: ui.reducedMotion() ? "auto" : "smooth", block: "start" }); r.focus({ preventScroll: true }); } else hooks.go("rules"); }));
   }
   if (next.kind === "milestone") {
     return h("div.hero-todo",
       h("p.todo-line", "Look up each one's closing price that day, then type them in Settings."),
-      h("a.btn.btn-moon", { href: "#/settings", "data-fk": "hero-ceilings" }, "Enter the closes"));
+      mainButton("Enter the closes", "#/settings", "hero-ceilings"));
   }
   return null;
 }
@@ -206,79 +335,43 @@ export function openDesk(dateId) {
   setTimeout(() => { const d = $("#desk"); if (d) { d.scrollIntoView({ behavior: ui.reducedMotion() ? "auto" : "smooth", block: "start" }); d.focus({ preventScroll: true }); } }, 120);
 }
 
-function moonDial() {
-  const size = 236, c = size / 2, r = 96;
-  const C = 2 * Math.PI * r;
-  const ticks = svg("g.moon-ticks");
-  for (let k = 0; k < 60; k++) {
-    const a = (k / 60) * 2 * Math.PI - Math.PI / 2;
-    const r1 = r + 10, r2 = r + (k % 5 === 0 ? 18 : 14);
-    ticks.append(svg("line", { x1: (c + r1 * Math.cos(a)).toFixed(2), y1: (c + r1 * Math.sin(a)).toFixed(2), x2: (c + r2 * Math.cos(a)).toFixed(2), y2: (c + r2 * Math.sin(a)).toFixed(2), class: k % 5 === 0 ? "major" : "" }));
-  }
-  const arc = svg("circle.moon-arc", { cx: c, cy: c, r, transform: `rotate(-90 ${c} ${c})`, "stroke-dasharray": `${C} ${C}` });
-  const dot = svg("circle.moon-dot", { cx: c, cy: c - r, r: 7 });
-  const gid = "moonglow" + Math.random().toString(36).slice(2, 7);
-  const s = svg("svg.moon-svg", { viewBox: `0 0 ${size} ${size}`, "aria-hidden": "true" },
-    svg("defs", {}, svg("radialGradient", { id: gid, cx: "50%", cy: "38%", r: "60%" },
-      svg("stop", { offset: "0%", class: "moon-g0" }), svg("stop", { offset: "100%", class: "moon-g1" }))),
-    svg("circle.moon-disc", { cx: c, cy: c, r: r - 16, fill: `url(#${gid})` }),
-    ticks,
-    svg("circle.moon-track", { cx: c, cy: c, r }),
-    arc, dot);
-  const big = h("span.moon-big"), unit = h("span.moon-unit"), small = h("span.moon-small.num");
-  const el = h("div.moon", { role: "img" }, s, h("div.moon-face", big, unit, small));
-  return { el, arc, dot, big, unit, small, C, c, r };
+/**
+ * How far off the next step is, in words, the same count as the calendar chips: "in 18 days", "tomorrow",
+ * "today", or for a step with a clock time later today "in 3 h 20 min". A send day, an arrive-by day or the
+ * checklist deadline has no clock time in the plan, so it is counted in calendar days only.
+ */
+function countWords(next, isToday) {
+  const days = L.daysBetween(today(), next.date);
+  if (days > 0) return inDays(days);
+  if (isToday || isDayEvent(next)) return "today";
+  const rem = next.at - now();
+  if (rem <= 0) return "today";
+  const hh = Math.floor(rem / 3600000), mm = Math.floor((rem % 3600000) / 60000);
+  return `in ${hh ? `${hh} h ` : ""}${mm} min`;
 }
 
-function startTodayTicker(m, next, prevAt, isToday) {
+/** Keeps the count words current, and draws Today again once a step with a clock time has come. */
+function startTodayTicker(el, next, isToday) {
   stopTodayTicker();
-  let lastLabelMin = -1;
-  const pad = (n) => String(n).padStart(2, "0");
-  // A day event (send day, money due, deadline) has no clock time in the plan: the dial counts calendar
-  // days to it, the same count as everywhere else on the page, and says "Today" on the day.
   const dayEvent = isDayEvent(next);
-  const target = dayEvent ? L.bkkToEpoch(next.date, "00:00") : next.at;
   const tick = () => {
-    const t = now();
-    const rem = target - t;
-    const win = Math.max(60000, target - prevAt);
-    const frac = isToday ? 0 : Math.max(0, Math.min(1, rem / win));
-    m.arc.setAttribute("stroke-dasharray", `${(frac * m.C).toFixed(2)} ${m.C.toFixed(2)}`);
-    const a = -Math.PI / 2 + frac * 2 * Math.PI;
-    m.dot.setAttribute("cx", (m.c + m.r * Math.cos(a)).toFixed(2));
-    m.dot.setAttribute("cy", (m.c + m.r * Math.sin(a)).toFixed(2));
-    let label;
-    if (dayEvent) {
-      const days = L.daysBetween(today(), next.date);
-      if (days <= 0) { m.big.textContent = "Today"; m.big.classList.add("is-word"); m.unit.textContent = DAY_WORD[next.kind] || "today"; m.small.textContent = dayShort(next.date); label = `Today: ${next.title}`; }
-      else { m.big.textContent = String(days); m.big.classList.remove("is-word"); m.unit.textContent = days === 1 ? "day" : "days"; m.small.textContent = dayShort(next.date); label = `${plural(days, "day")} until: ${next.title}`; }
-    } else if (isToday || rem <= 0) {
-      m.big.textContent = "Today"; m.big.classList.add("is-word"); m.unit.textContent = "order day"; m.small.textContent = bkkTime(t) + " Bangkok";
-      label = `Today is an order day: ${next.title}`;
-    } else {
-      const d = Math.floor(rem / 86400000), hh = Math.floor((rem % 86400000) / 3600000), mm = Math.floor((rem % 3600000) / 60000), ss = Math.floor((rem % 60000) / 1000);
-      if (d >= 1) { m.big.textContent = String(d); m.unit.textContent = d === 1 ? "day" : "days"; m.small.textContent = `${pad(hh)}:${pad(mm)}:${pad(ss)}`; }
-      else { m.big.textContent = `${hh}:${pad(mm)}`; m.unit.textContent = "hours"; m.small.textContent = `${pad(ss)} s`; }
-      label = `${ui.fmtCountdown(rem)} until: ${next.title}`;
-    }
-    const minute = Math.floor(t / 60000);
-    if (minute !== lastLabelMin) { lastLabelMin = minute; m.el.setAttribute("aria-label", label); }
-    if (!isToday && !dayEvent && rem <= 0) { stopTodayTicker(); hooks.invalidate("time"); }
+    const w = ` · ${countWords(next, isToday)}`;
+    if (el.textContent !== w) el.textContent = w;
+    if (!isToday && !dayEvent && next.at - now() <= 0) { stopTodayTicker(); hooks.invalidate("time"); }
   };
   tick();
   app.todayTimer = setInterval(() => { if (!document.hidden) tick(); }, 1000);
 }
 
-function wavePath(width, height, amp, wavelength, base, phase = 0) {
-  let d = `M0,${height} L0,${(base + amp * Math.sin(phase)).toFixed(1)}`;
-  for (let x = 8; x <= width; x += 8) d += ` L${x},${(base + amp * Math.sin((x / wavelength) * 2 * Math.PI + phase)).toFixed(1)}`;
-  return d + ` L${width},${height} Z`;
-}
-export function tideWaves() {
-  const W = 1440, H = 120;
-  const layer = (cls, amp, wl, base, ph) => svg(`g.tide-layer.${cls}`, {}, svg("path", { d: wavePath(W * 2, H, amp, wl, base, ph) }));
-  return svg("svg.tide", { viewBox: `0 0 ${W} ${H}`, preserveAspectRatio: "none", "aria-hidden": "true", focusable: "false" },
-    layer("l1", 9, 480, 46, 0), layer("l2", 7, 360, 64, 1.3), layer("l3", 5, 720, 82, 2.1));
+/** "After that": the next few steps under the panel, a quiet list, and a link to the whole year. */
+function afterList(after, td) {
+  return h("section.bk-section.ttm-after", { "aria-labelledby": "after-h", "data-fk": "hero-after" },
+    book.sectionHead({ title: "After that", level: 2, id: "after-h" }),
+    after.length ? h("ol.upcoming", after.map((e) => h("li",
+      h("span.up-date.num", short(e.date)),
+      h("span.up-text", h("span.up-title", e.title), h("span.up-rel", `${EVENT_KIND[e.kind] || ""} · ${inDays(L.daysBetween(td, e.date))}`)))))
+      : book.note("Nothing else scheduled."),
+    h("a.link-arrow", { href: "#/year", "data-fk": "hero-year" }, "The whole year", h("span", { "aria-hidden": "true" }, " →")));
 }
 
 // ---------------------------------------------------------------- keep a copy
@@ -297,11 +390,14 @@ function keepCopyCard() {
 
 // ---------------------------------------------------------------- getting ready
 
-/** The plan's final checks, on Today until they are done (or the ceiling day has passed); always on Rules. */
+/** The plan's final checks, on Today until they are done (or the ceiling day has passed); always on Rules.
+ *  An item the friend's plan does not need (SwissBorg without coins) is shown muted, without a box, and is
+ *  left out of the counts. */
 function readyCard() {
   const plan = app.plan, st = S();
-  const n = plan.prep.length;
-  const done = plan.prep.filter((p) => st.prep[p.id]).length;
+  const items = prepNeeded();
+  const n = items.length;
+  const done = items.filter((p) => st.prep[p.id]).length;
   const ms = (plan.milestones || []).find((m) => m.id === "m-ceil");
   if (done === n || today() > (ms ? ms.date : plan.orderDates[0].date)) return null;
   const dd = L.daysBetween(today(), plan.prepDeadline);
@@ -316,11 +412,19 @@ function readyCard() {
         svg("svg.mini-ring", { viewBox: "0 0 56 56", "aria-hidden": "true" }, svg("circle.mr-track", { cx: 28, cy: 28, r: 22 }), svg("circle.mr-arc", { cx: 28, cy: 28, r: 22, transform: "rotate(-90 28 28)", "stroke-dasharray": `${((done / n) * ringC).toFixed(1)} ${ringC.toFixed(1)}` })),
         h("p.prep-num", h("span.num-display", String(done)), h("span.stat-of", `/${n}`)),
         h("p.prep-due", `${n - done} to go`))),
-    h("ul.checklist", plan.prep.map((p) => h(`li${st.prep[p.id] ? ".is-done" : ""}`,
-      h("label.check",
-        h("input", { type: "checkbox", checked: !!st.prep[p.id], "data-fk": "ready-" + p.id, on: { change: (e) => { const v = e.target.checked; commit((d) => { d.prep[p.id] = v; }); } } }),
-        h("span.check-box", { "aria-hidden": "true" }, icon("check")),
-        h("span.check-text", p.text, p.appNote ? h("span.check-note", ` ${p.appNote}`) : null))))));
+    h("ul.checklist", plan.prep.map((p) => {
+      const off = prepNotNeeded(p.id);
+      if (off) {
+        return h("li.am-off", { "data-fk": "ready-off-" + p.id },
+          h("div.check", h("span.check-box", { "aria-hidden": "true" }, "–"),
+            h("span.check-text", p.text, h("span.check-note.am-off-note", ` ${off}`))));
+      }
+      return h(`li${st.prep[p.id] ? ".is-done" : ""}`,
+        h("label.check",
+          h("input", { type: "checkbox", checked: !!st.prep[p.id], "data-fk": "ready-" + p.id, on: { change: (e) => { const v = e.target.checked; commit((d) => { d.prep[p.id] = v; }); } } }),
+          h("span.check-box", { "aria-hidden": "true" }, icon("check")),
+          h("span.check-text", p.text, p.appNote ? h("span.check-note", ` ${p.appNote}`) : null)));
+    })));
 }
 
 // ---------------------------------------------------------------- progress
@@ -347,7 +451,8 @@ function renderProgress(st) {
   const orders = sch.orders.filter((o) => !isPreOrder(o.id));
   const datesDone = dates.filter((d) => orders.filter((o) => o.dateId === d.id).every((o) => isDone(o.id))).length;
   const planned = joinedBudgetUsd(); // the money of the months that count (coins with an empty wallet buy nothing)
-  const ticks = h("div.ticks", { role: "img", "aria-label": progressLabel(pr) },
+  // An own mix buys every holding every month (over a hundred orders): small ticks that wrap on a phone.
+  const ticks = h(`div.ticks${orders.length > 40 ? ".am-many" : ""}`, { role: "img", "aria-label": progressLabel(pr) },
     orders.slice().sort((a, b) => a.at - b.at).map((o) => h(`span.tick.is-${ost(o.id).status || "pending"}`, { title: `${short(o.date)} · ${instById(o.instrument).name} · ${(STATUS_PILL[ost(o.id).status || "pending"] || [])[0]}` })));
   return card(".progress", { "aria-label": "Plan progress" },
     h("div.stats",
@@ -435,22 +540,24 @@ function buildAlerts() {
       body: c ? `Only the ${short(dateOfId(t.forDate))} VWRA order changes, by ${diff < 0 ? "−" : "+"}${fUsd(Math.abs(diff), 2)}. ${L.round2(c.carryUsd) !== diff ? "With earlier leftovers it" : "It"} is now ${fUsd(c.usd, 2)} (plan ${fM(target.usd)}).${c.shortUsd ? ` That is ${fUsd(c.shortUsd, 2)} short, so the other orders wait for next month's money.` : ""}` : "",
       rule: rule("r10"), href: "#/money" });
   }
-  // r8: ether and solana, in the weeks before their date (no price history here, so this is a reminder);
-  // not when the wallet holds nothing for them
-  const coins = orders.filter((o) => o.cryptoWait && !isDone(o.id) && !(cr.coinUsd && cr.coinUsd[o.id] === 0));
+  // r8: ether and solana, and every coin an own mix buys, in the weeks before their date (no price history
+  // here, so this is a reminder); not when the wallet holds nothing for them. One reminder: the next date.
+  const coinsAll = orders.filter((o) => (o.cryptoWait || (o.account === "SwissBorg" && ownIdMonth(o.id))) && !isDone(o.id) && o.date >= td && !(cr.coinUsd && cr.coinUsd[o.id] === 0))
+    .sort((a, b) => a.at - b.at);
+  const coins = coinsAll.filter((o) => coinsAll.length && o.date === coinsAll[0].date);
   if (coins.length) {
     const d = L.daysBetween(td, coins[0].date);
     if (d >= 0 && d <= 14) {
       out.push({ level: "info", key: "r8", title: `Rule r8 check before ${long(coins[0].date)}`,
-        body: `Look at how much ${coins.map((o) => instById(o.instrument).name.toLowerCase()).join(" and ")} moved over the 30 days before the order (your SwissBorg app shows it).`,
+        body: `Look at how much ${[...new Set(coins.map((o) => instById(o.instrument).name.toLowerCase()))].join(" and ")} moved over the 30 days before the order (your SwissBorg app shows it).`,
         rule: rule("r8"), href: "#desk" });
     }
   }
-  // ceiling day (27 Nov)
+  // ceiling day (27 Nov): only the instruments the friend's plan buys
   const m = (plan.milestones || []).find((x) => x.id === "m-ceil");
   if (m) {
     const dd = L.daysBetween(td, m.date);
-    const pending = plan.instruments.filter((i) => ceilingOf(i).kind === "pending").map((i) => i.name);
+    const pending = ceilingPending().map((i) => i.name);
     const p7 = plan.prep.find((p) => p.appNote) || {};
     if (dd >= 0 && dd <= 14 && pending.length) {
       out.push({ level: dd <= 1 ? "warn" : "info", key: "ceil-day", title: `Ceiling day ${inDays(dd)}: ${long(m.date)}`, body: `${m.text}${p7.appNote ? " " + p7.appNote : ""}`,
@@ -461,9 +568,10 @@ function buildAlerts() {
   }
   // the getting-ready deadline, once the checklist has left Today
   const pd = L.daysBetween(td, plan.prepDeadline);
-  const done = plan.prep.filter((p) => st.prep[p.id]).length;
-  if (done < plan.prep.length && !readyShown() && pd >= -14 && pd <= 30) {
-    out.push({ level: pd <= 3 ? "warn" : "info", key: "prep", title: `Getting ready: ${done} of ${plan.prep.length} done`,
+  const needed = prepNeeded();
+  const done = needed.filter((p) => st.prep[p.id]).length;
+  if (done < needed.length && !readyShown() && pd >= -14 && pd <= 30) {
+    out.push({ level: pd <= 3 ? "warn" : "info", key: "prep", title: `Getting ready: ${done} of ${needed.length} done`,
       body: `The plan says finish them by ${long(plan.prepDeadline)}${pd >= 0 ? `, ${inDays(pd)}` : ""}, before any money moves.`, href: "#/rules" });
   }
   const rank = { alert: 0, warn: 1, info: 2 };
@@ -472,7 +580,7 @@ function buildAlerts() {
 function readyShown() {
   const plan = app.plan, st = S();
   const ms = (plan.milestones || []).find((m) => m.id === "m-ceil");
-  return plan.prep.some((p) => !st.prep[p.id]) && today() <= (ms ? ms.date : plan.orderDates[0].date);
+  return prepNeeded().some((p) => !st.prep[p.id]) && today() <= (ms ? ms.date : plan.orderDates[0].date);
 }
 
 function renderAlerts() {
@@ -531,6 +639,8 @@ function renderDesk() {
 
   const rows = os.map((o) => deskRow(o, ctx));
   const notes = selPre ? [] : dateNotesFor(sel.id);
+  const fieldLines = selPre ? [] : fieldMonthLines(sel.id);
+  if (universeOn()) afterRender(() => markDelisted(os));
   const body = [
     h("div.desk-cols", { "aria-hidden": "true" }, ["Time", "Order", "Price", "Ceiling", "Size at this price", "Market", ""].map((t) => h("span", t))),
     h("ol.desk-list", { "aria-labelledby": "desk-h" }, rows),
@@ -539,9 +649,75 @@ function renderDesk() {
   else if (dd < 0 && openCount) body.unshift(h("p.desk-past", icon("info"), `This date has passed with ${plural(openCount, "order")} still open. The plan: if an exchange was closed, place the order on its next open day; then log the fill or record a skip.`));
   return card(".desk", { id: "desk", tabindex: "-1", "aria-labelledby": "desk-h" }, head,
     h("p.desk-help", "For each order: type the price your broker's app shows (coins update by themselves), place the order there, then log the fill here. “How to place” explains each step."),
+    fieldLines.length ? h("div.desk-fields", fieldLines) : null,
     body,
     notes.length ? h("div.desk-notes", h("p.eyebrow", "Notes for this date, from the plan"), h("ul", notes.map((n) => h("li", n)))) : null,
     hasCoins ? h("p.fine.desk-src", icon("info"), h("span", sourceLink(prices.SOURCES.crypto), prices.data.cryptoAt ? `, updated ${ui.relTime(prices.data.cryptoAt / 1000)}` : "", ". Stock and fund prices are the ones you type.")) : null);
+}
+
+/** Why a field month's order has its amount (brief G5): "Half of Retail", "60% of the month, plus …". */
+function whyLine(o) {
+  const w = orderWhy(app.plan, o.id, fieldName);
+  return w ? h("p.dr-why", { "data-fk": "why-" + o.id }, w) : null;
+}
+
+/**
+ * A field month on the desk: the month's split in words (and where to change it), and for each upcoming listing
+ * the friend ticked that does not trade yet, where its part went this month (upcoming-api.md 6).
+ */
+function fieldMonthLines(dateId) {
+  const f = app.plan.scale && app.plan.scale.fields ? app.plan.scale.fields[dateId] : null;
+  if (!f) return [];
+  const out = [];
+  const spec = (monthOf(dateId) || {}).fields || { chosen: f.F, split: f.s };
+  const words = splitLine(spec);
+  if (words) {
+    out.push(h("p.desk-split", { "data-fk": "desk-split" }, words, " ",
+      fixed().has(dateId) ? "This month has records, so its split stays as it is." : [h("a", { href: "#/split" }, "Change it on My split"), "."]));
+  }
+  for (const id of f.W || []) {
+    const w = waitingWhy(app.plan, dateId, id, fieldName);
+    // "is not trading yet" always carries the date it was last checked (upcoming-api.md 4)
+    const checked = upcomingChecked(id);
+    if (w) out.push(h("p.desk-waiting", { "data-fk": "waiting-" + id }, icon("info"), h("span", w, checked ? h("span.desk-checked", ` ${checked}`) : null)));
+  }
+  return out;
+}
+
+/**
+ * A company whose listing ended (spec 8.8), or whose main listing moved over the counter so that it can no longer be
+ * added to a list: its order rows say so, from its record in the open data. The orders stay as the friend set them.
+ */
+function markDelisted(os) {
+  const ids = os.map((o) => instById(o.instrument)).filter(isFieldInst);
+  if (!ids.length) return;
+  // Only companies the data still names (search.json keeps those that left for 400 days): an upcoming listing or a
+  // company long gone has no record to read, and asking for it would only fetch a file that is not there.
+  D.loadSearch().then((s) => {
+    const known = new Set(((s && s.items) || []).map((r) => r.id));
+    for (const o of os) markOne(o, known);
+  }).catch(() => { /* the facts did not load: the orders stay as they are */ });
+}
+
+function markOne(o, known) {
+  const i = instById(o.instrument);
+  if (!isFieldInst(i) || !known.has(i.id)) return;
+  D.loadCompany(i.id).then((rec) => {
+    if (!rec) return;
+    // not addable any more and still listed: its main listing is over the counter now (spec 8.3; the order was made
+    // from the listing saved when it was ticked, names[id].v)
+    const co = FU.companyInfo({ id: i.id, ...rec });
+    const otc = !rec.delisted && co.addable === false && (co.otc || co.venue === "OTC");
+    // or its main listing moved to the Texas Stock Exchange (G4 fix of review finding ibkr-otc-txse)
+    const txse = !rec.delisted && !otc && co.addable === false && co.venue === "TXSE";
+    if (!rec.delisted && !otc && !txse) return;
+    const cell = document.querySelector(`[data-row="${CSS.escape(o.id)}"] .dr-order`);
+    if (!cell || cell.querySelector(".dr-delisted")) return;
+    cell.append(rec.delisted
+      ? h("p.dr-delisted", { "data-fk": "delisted-" + o.id }, `SEC's list shows no listing for ${i.name} since ${FU.dayWords(rec.delisted)}. Your order stays as you set it.`)
+      : otc ? h("p.dr-delisted", { "data-fk": "otc-" + o.id }, `SEC's list now shows ${i.name} over the counter. Your order stays as you set it.`)
+        : h("p.dr-delisted", { "data-fk": "txse-" + o.id }, `SEC's list now shows ${i.name} on the Texas Stock Exchange. Your order stays as you set it.`));
+  }).catch(() => { /* the facts did not load: the order stays as it is */ });
 }
 
 function priceCell(o, i, pi) {
@@ -614,7 +790,7 @@ function preRow(o) {
   const i = instById(o.instrument);
   return h("li.desk-row.is-pre", { "data-row": o.id },
     h("div.dr-time", h("span.num", timeLabel(o)), o.time !== "any" ? h("span.dr-tz", "Bangkok") : null),
-    h("div.dr-order", h("p.dr-name", i.name, h("span.ticker.num", i.id)), h("p.dr-what", h("span.acct-chip", o.account), " ", orderWhat(o))),
+    h("div.dr-order", h("p.dr-name", i.name, h("span.ticker.num", tickerOf(i))), h("p.dr-what", h("span.acct-chip", o.account), " ", orderWhat(o))),
     h("div.dr-act", pill("Before you joined", "muted", "–")));
 }
 
@@ -654,6 +830,10 @@ function deskRow(o, ctx) {
     const goes = o.account === "SwissBorg" ? "stays in the SwissBorg wallet"
       : s.redirect === "VWRA" ? (where ? `moved to ${where}` : "stays as cash at Interactive Brokers") : "kept as cash at Interactive Brokers";
     sizeBits.push(h("span.size-qty", "Not bought"), h("span.size-note", `${fUsd(moved, 2)} ${goes}`));
+  } else if (takesLeftover(o, ctx.carry)) {
+    // An own mix that leaves VWRA nothing this month: the order is there for leftovers and carries.
+    sizeBits.push(h("span.size-qty", "Takes any leftover"), h("p.size-zero", { "data-fk": "vwra-zero-" + o.id }, icon("info"),
+      h("span", "Your mix leaves nothing for VWRA this month. A leftover carried here is bought with it; if it stays at $0, record a skip.")));
   } else if (p == null) {
     sizeBits.push(h("span.size-qty", "—"), h("span.size-note", i.coingeckoId ? "Sized once the live price arrives." : "Type the price from your app to size this order."));
   } else if (o.wholeShares) {
@@ -674,7 +854,7 @@ function deskRow(o, ctx) {
     sizeBits.push(h("span.size-qty.num", `≈ ${qtyWords(i, sz.qty)}`), h("span.size-cost.num", `for ${fUsd(usdNow, usdNow % 1 ? 2 : 0)}, fee included`));
   }
   if (adj && !isDone(o.id) && !(coinNote && usdNow <= 0)) sizeBits.push(h("span.size-note", `${adj > 0 ? "+" : "−"}${fUsd(Math.abs(adj), 2)} by the rules for differences`));
-  const skipFirst = zero || !!coinNote;
+  const skipFirst = zero || !!coinNote || takesLeftover(o, ctx.carry);
   const nothing = !!coinNote && usdNow <= 0;
 
   let actions;
@@ -716,8 +896,9 @@ function deskRow(o, ctx) {
   return h(`li.desk-row.is-${status}${o.thesisGate ? ".is-gated" : ""}${skipFirst ? ".is-zero" : ""}`, { "data-row": o.id },
     h("div.dr-time", h("span.num", timeLabel(o)), o.time !== "any" ? h("span.dr-tz", "Bangkok") : null),
     h("div.dr-order",
-      h("p.dr-name", i.name, h("span.ticker.num", i.id)),
-      h("p.dr-what", h("span.acct-chip", o.account), " ", orderWhat(o, ctx.carry)),
+      h("p.dr-name", i.name, h("span.ticker.num", tickerOf(i))),
+      h("p.dr-what", h("span.acct-chip", o.account), " ", whatOf(o, ctx.carry)),
+      whyLine(o),
       o.thesisGate ? h("p.dr-gate", icon("rules"), "Thesis check first (rule r2)") : null),
     priceCell(o, i, pi),
     h("div.dr-ceil", h("span.cell-label", "Ceiling"), c.kind === "none" ? null : h("span.num.dr-ceil-val", fmtCeil(c, i)), ceilPill(cs), hr != null ? h("span.dr-head.num", hr >= 0 ? `${fNum(hr, 1)}% below it` : `${fNum(-hr, 1)}% over`) : null),
@@ -807,7 +988,7 @@ export function openFillDialog(o) {
 
   modal({
     title: `${Number.isFinite(s.costUsd) ? "Edit fill" : "Log fill"}: ${i.name}`,
-    lede: `${long(o.date)} · ${o.account} · ${orderWhat(o, cr)}`,
+    lede: `${long(o.date)} · ${o.account} · ${whatOf(o, cr)}`,
     body: [
       h("p.modal-help", "Copy these from the order confirmation in your broker's app."),
       h("div.form-grid",
@@ -881,7 +1062,7 @@ export function openSkipDialog(o) {
   const leftover = { then: leftoverText() };
   modal({
     title: `Skip: ${i.name}`,
-    lede: `${long(o.date)} · ${orderWhat(o, cr)}`,
+    lede: `${long(o.date)} · ${whatOf(o, cr)}`,
     body: [
       zero ? h("p.skip-zero", icon("info"), h("span", ct
         ? `At ${fPrice(pi.price, i.quoteCurrency)} a share, this order buys no whole share. The plan's leftover rule: its money joins the next VWRA order.`

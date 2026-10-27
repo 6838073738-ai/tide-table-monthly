@@ -2,14 +2,22 @@
 
 const SVGNS = "http://www.w3.org/2000/svg";
 
-export const reducedMotion = () => window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+/** True when motion should stop: the reader asked for reduced motion, turned on Still pictures
+ * (html[data-motion="still"]), or the tab is hidden (html[data-tab="hidden"]). Safe to import anywhere. */
+export const reducedMotion = () => {
+  if (typeof window === "undefined") return true;
+  const d = typeof document !== "undefined" ? document.documentElement : null;
+  if (d && (d.getAttribute("data-motion") === "still" || d.getAttribute("data-tab") === "hidden")) return true;
+  return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+};
 
 export function esc(s) {
   return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
-/** Only http(s) links survive; everything else becomes "#". */
+/** Only http(s) links and same-page "#..." routes survive; everything else becomes "#". */
 export function safeUrl(u) {
+  if (typeof u === "string" && u.startsWith("#") && !/[\s<>"']/.test(u)) return u;
   try { const x = new URL(u, location.href); return x.protocol === "http:" || x.protocol === "https:" ? x.href : "#"; }
   catch { return "#"; }
 }
@@ -52,26 +60,12 @@ export function clear(el) { while (el.firstChild) el.removeChild(el.firstChild);
 // ---------- motion helpers ----------
 
 /**
- * Animate a number into el.textContent using fmt. Falls back to the final value immediately when
- * motion is reduced or rAF never fires (background tab / headless).
+ * Write a number into el.textContent using fmt. Money never counts up in the storybook look, so this sets the
+ * final value at once (the signature stays for the views that call it; from and duration are ignored).
  */
-export function countUp(el, to, fmt = (x) => String(Math.round(x)), { from, duration = 700 } = {}) {
-  const start = Number.isFinite(from) ? from : Number.isFinite(el._cu) ? el._cu : 0;
+export function countUp(el, to, fmt = (x) => String(Math.round(x))) {
   el._cu = to;
-  if (!Number.isFinite(to)) { el.textContent = fmt(to); return; }
-  if (reducedMotion() || start === to) { el.textContent = fmt(to); return; }
-  el.textContent = fmt(start);
-  const t0 = performance.now();
-  let done = false;
-  const fallback = setTimeout(() => { if (!done) { done = true; el.textContent = fmt(to); } }, duration + 250);
-  const step = (t) => {
-    if (done) return;
-    const p = Math.min(1, (t - t0) / duration);
-    const e = 1 - Math.pow(1 - p, 3);
-    el.textContent = fmt(start + (to - start) * e);
-    if (p < 1) requestAnimationFrame(step); else { done = true; clearTimeout(fallback); }
-  };
-  requestAnimationFrame(step);
+  el.textContent = fmt(to);
 }
 
 /** Flash an element green/red on price change. */
@@ -210,8 +204,12 @@ export function pill(text, kind = "neutral", icon) {
 export function toast(msg, kind = "info", ms = 3600) {
   const host = document.querySelector("[data-toasts]");
   if (!host) return;
-  const t = h(`div.toast.toast-${kind}`, { role: kind === "alert" ? "alert" : "status" }, msg);
+  // The host is not a live region itself (book-api.md: <div data-toasts></div>), so each toast is the one live
+  // region of its event, never nested. It goes in empty and gets its words a moment later, so screen readers that
+  // only follow changes to a region already in the page still read it once.
+  const t = h(`div.toast.toast-${kind}`, { role: kind === "alert" ? "alert" : "status" });
   host.appendChild(t);
+  setTimeout(() => { t.textContent = msg; }, 100);
   setTimeout(() => t.classList.add("is-leaving"), ms);
   setTimeout(() => t.remove(), ms + 400);
 }
@@ -283,6 +281,132 @@ export function fmtDateLong(dateStr) {
 export function fmtDateShort(dateStr) {
   const t = isoDay(dateStr);
   return t ? new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(t) : "—";
+}
+
+// ---------- words for dates, money and shares (the storybook's formats; pure, no clock unless passed in) ----------
+
+const MINUS = "−";
+const DAYS3 = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const MON3 = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October",
+  "November", "December"];
+
+/** x with dp decimals, rounded the way Python formats a float: the exact binary value, ties to even
+ * (12.5 -> "12", 1.25 -> "1.2"). Number.toFixed alone sends ties up. x is assumed finite and dp <= 20. */
+export function pyFixed(x, dp = 0) {
+  const neg = x < 0 || Object.is(x, -0);
+  const a = Math.abs(x);
+  let s = a.toFixed(dp);
+  const exact = a.toFixed(Math.min(100, dp + 30));    // every digit of the binary value up to here
+  const tail = exact.slice(exact.length - 30);
+  if (/^50*$/.test(tail)) {                            // exactly half way: keep the even neighbour
+    const down = exact.slice(0, exact.length - 30).replace(/\.$/, "");
+    const last = Number(down.replace(".", "").slice(-1));
+    if (last % 2 === 0) s = down;
+  }
+  return (neg && Number(s) !== 0 ? "-" : "") + s;
+}
+
+function groupThousands(s) {
+  const [i, f] = s.split(".");
+  const g = i.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return f === undefined ? g : g + "." + f;
+}
+
+function dayOf(iso) {
+  const t = isoDay(iso);
+  if (!t) return null;
+  const [y, m, d] = iso.split("-").map(Number);
+  if (t.getUTCFullYear() !== y || t.getUTCMonth() !== m - 1 || t.getUTCDate() !== d) return null;  // 2026-02-30
+  return t;
+}
+
+/** "Tue 8 Dec 2026" (no comma); "—" for anything that is not a real YYYY-MM-DD. */
+export function dateWords(iso) {
+  const t = dayOf(iso);
+  return t ? `${DAYS3[t.getUTCDay()]} ${t.getUTCDate()} ${MON3[t.getUTCMonth()]} ${t.getUTCFullYear()}` : "—";
+}
+
+/** "Tuesday 8 December 2026". */
+export function dateWordsFull(iso) {
+  const t = dayOf(iso);
+  return t ? `${DAYS[t.getUTCDay()]} ${t.getUTCDate()} ${MONTHS[t.getUTCMonth()]} ${t.getUTCFullYear()}` : "—";
+}
+
+/** "Sep 2021" for "2021-09" (a YYYY-MM-DD gives its month too); "—" otherwise. */
+export function monthWords(key) {
+  const m = typeof key === "string" && /^(\d{4})-(\d{2})(?:-\d{2})?$/.exec(key);
+  const n = m ? Number(m[2]) : 0;
+  return m && n >= 1 && n <= 12 ? `${MON3[n - 1]} ${m[1]}` : "—";
+}
+
+/** {day: "Fri", date: "6", month: "Nov", year: "2026"} for a calendar chip; every part "—" for a bad date. */
+export function dayParts(iso) {
+  const t = dayOf(iso);
+  if (!t) return { day: "—", date: "—", month: "—", year: "—" };
+  return { day: DAYS3[t.getUTCDay()], date: String(t.getUTCDate()), month: MON3[t.getUTCMonth()], year: String(t.getUTCFullYear()) };
+}
+
+/** "today", "tomorrow", "in 11 days", "yesterday", "11 days ago"; "" when either date is not a real day. */
+export function inDays(iso, todayIso) {
+  const a = dayOf(iso), b = dayOf(todayIso);
+  if (!a || !b) return "";
+  const n = Math.round((a.getTime() - b.getTime()) / 86400000);
+  if (n === 0) return "today";
+  if (n === 1) return "tomorrow";
+  if (n === -1) return "yesterday";
+  return n > 0 ? `in ${n} days` : `${-n} days ago`;
+}
+
+/** "฿15,000": no decimals from ฿100 up; below that, two decimals only when there are satang. True minus. */
+export function bahtWords(n) {
+  if (!Number.isFinite(n)) return "—";
+  const a = Math.abs(n);
+  let body;
+  if (a >= 100 || Math.abs(Number(pyFixed(a, 2)) - Math.round(a)) < 1e-9) body = groupThousands(pyFixed(a, 0));
+  else body = pyFixed(a, 2);
+  return (n < 0 && Number(body.replace(/,/g, "")) !== 0 ? MINUS : "") + "฿" + body;
+}
+
+/** Sizes in words: "฿1.2 billion", "฿32.2 trillion", "฿150 billion"; below a billion, as bahtWords. */
+export function bahtSize(n) {
+  if (!Number.isFinite(n)) return "—";
+  const a = Math.abs(n), neg = n < 0 ? MINUS : "";
+  if (a >= 1e12) return `${neg}฿${groupThousands(pyFixed(a / 1e12, 1))} trillion`;
+  if (a >= 1e9) return `${neg}฿${a < 1e11 ? pyFixed(a / 1e9, 1) : pyFixed(a / 1e9, 0)} billion`;
+  return bahtWords(n);
+}
+
+/** "about $149" (whole dollars, true minus). */
+export function aboutUsd(n) {
+  if (!Number.isFinite(n)) return "—";
+  const body = groupThousands(pyFixed(Math.abs(n), 0));
+  return `about ${n < 0 && body !== "0" ? MINUS : ""}$${body}`;
+}
+
+/** p in percent: whole numbers from 10% up, one decimal below, "0%" for nothing, a true minus, "+" when signed. */
+export function pctWords(p, { signed = false } = {}) {
+  if (!Number.isFinite(p)) return "—";
+  const a = Math.abs(p);
+  const s = a >= 9.95 ? groupThousands(pyFixed(a, 0)) : pyFixed(a, 1);
+  if (s === "0" || s === "0.0") return "0%";
+  if (p < 0) return MINUS + s + "%";
+  return (signed ? "+" : "") + s + "%";
+}
+
+/** A share of a budget, always one decimal: "30.1%". */
+export function shareWords(p) {
+  if (!Number.isFinite(p)) return "—";
+  const s = pyFixed(Math.abs(p), 1);
+  return (p < 0 && s !== "0.0" ? MINUS : "") + s + "%";
+}
+
+/** "14:32", Bangkok time (UTC+7, no daylight saving), from epoch milliseconds. */
+export function timeWords(epochMs) {
+  if (!Number.isFinite(epochMs)) return "—";
+  const t = new Date(epochMs + 7 * 3600000);
+  return `${String(t.getUTCHours()).padStart(2, "0")}:${String(t.getUTCMinutes()).padStart(2, "0")}`;
 }
 
 // ---------- icons (stroke, 20px) ----------

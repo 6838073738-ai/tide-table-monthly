@@ -1,188 +1,247 @@
-/* Tide Table design tokens. Night sea (dark) and Chart paper (light). Shared by app.css and intel.css. */
+/* Tide Table design tokens: the Warm Storybook look, Day pages and Night pages. Shared by both apps; do not fork.
+   Every colour, size and motion value the pages use comes from here. Night pages apply when the device is dark and
+   the reader has not chosen Day, and again when the reader chooses Night (data-theme="dark"). */
 
 :root {
-  /* type */
-  --font-display: "Fraunces", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
-  --font-ui: "Instrument Sans", "Segoe UI", system-ui, -apple-system, "IBM Plex Sans Thai", "Leelawadee UI", sans-serif;
-  --font-mono: "JetBrains Mono", "Cascadia Mono", Consolas, ui-monospace, monospace;
-
-  --fs-xs: 0.75rem;
-  --fs-sm: 0.8125rem;
-  --fs-md: 0.9375rem;
-  --fs-lg: 1.125rem;
-  --fs-xl: 1.5rem;
-  --fs-2xl: clamp(1.75rem, 1.2rem + 2vw, 2.5rem);
-  --fs-hero: clamp(2.5rem, 1.4rem + 5vw, 4.5rem);
-
-  /* space + shape */
-  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 24px; --sp-6: 32px; --sp-7: 48px; --sp-8: 64px;
-  --radius: 14px;
-  --radius-sm: 8px;
-  --radius-pill: 999px;
-  --gutter: 16px;
-  --content-max: 1280px;
-  --rail-w: 232px;
-
-  /* motion */
-  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
-  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
-  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --dur-1: 180ms;
-  --dur-2: 320ms;
-  --dur-3: 700ms;
-  --tide-loop: 14s;
-
   color-scheme: light;
 
-  /* Chart paper (light) */
-  --bg: #f6f1e7;
-  --bg-deep: #ede5d6;
-  --surface: #fffdf8;
-  --surface-2: #f9f4ea;
-  --raised: #ffffff;
-  --line: rgba(27, 36, 51, 0.12);
-  --line-strong: rgba(27, 36, 51, 0.24);
-  --text: #1b2433;
-  --text-2: #3d4757;
-  --muted: #5b6577;
-  --faint: #656f80;       /* AA: 4.5:1 on --bg */
+  /* paper */
+  --paper: #FBF6EA;            /* the page */
+  --paper-raised: #FFFCF4;     /* cards, the book spread, inputs, chapter pages */
+  --paper-deep: #F2E9D6;       /* contents column, wells, the dock */
+  --paper-grain: url("../img/paper-day.svg");
+  --rule: #DCCFB4;             /* decorative hairlines only, never the only edge of a control */
+  --line: #857860;             /* edges of controls and the split strip's outline (4.0:1 on paper) */
 
-  --moon: #7f580e;        /* next / now (AA on its own soft tint) */
-  --moon-soft: rgba(127, 88, 14, 0.12);
-  --kelp: #0a6a5a;        /* under ceiling, done, positive */
-  --kelp-soft: rgba(10, 106, 90, 0.12);
-  --coral: #a83223;       /* over ceiling, alerts, negative */
-  --coral-soft: rgba(168, 50, 35, 0.11);
-  --amber: #8a4f00;       /* waiting, warn */
-  --amber-soft: rgba(138, 79, 0, 0.12);
-  --sky: #2f5db8;         /* info, links */
-  --sky-soft: rgba(47, 93, 184, 0.10);
+  /* ink */
+  --ink: #23304A;              /* body text, 12.2:1 on paper */
+  --ink-soft: #4C566C;         /* secondary text, 6.8:1 on paper */
+  --ink-line: #2C3550;         /* outlines in the pictures, and the hatch */
 
-  --wave-1: rgba(47, 93, 184, 0.16);
-  --wave-2: rgba(15, 125, 107, 0.14);
-  --wave-3: rgba(154, 107, 18, 0.12);
-  --glow: 0 1px 0 rgba(255, 255, 255, 0.9) inset;
-  --shadow: 0 1px 2px rgba(27, 36, 51, 0.06), 0 8px 24px rgba(27, 36, 51, 0.06);
-  --focus: 0 0 0 2px var(--surface), 0 0 0 4px var(--sky);
+  /* actions and states: always with a word or an icon, never colour alone */
+  --action: #24548A;           /* harbour blue: the one main button of a screen */
+  --on-action: #FFFFFF;
+  --action-deep: #183C66;      /* the button's lip */
+  --link: #1F4F86;
+  --focus: #1B5FA8;            /* a colour: the 3px focus ring */
+  --done: #2F6B36;
+  --wait: #8A5300;
 
-  /* chart series (validated for both themes against their surfaces) */
-  --series-1: #2f5db8;
-  --series-2: #0f7d6b;
-  --series-3: #9a6b12;
-  --series-4: #b93a28;
-  --series-5: #6b4fb3;
-  --series-6: #4a6a2a;
-  --series-7: #a2457a;
+  /* watercolour washes (pictures and panels) */
+  --w-sky: #9CC8DE;
+  --w-sea: #6FA7C6;
+  --w-meadow: #AFCF8C;
+  --w-marigold: #F2C766;
+  --w-rose: #EBA9A3;
+  --w-lilac: #C3B1DD;
+  --w-sand: #E6CFA0;
+  --w-white: #FFFDF8;
+  --w-glow: #F2C766;
+  --w-next: var(--w-marigold); /* the next-step panel: marigold by day, twilight lilac at night */
+  --wash-strength: .9;         /* pictures */
+  --wash-under-text: .45;      /* any wash with text on it */
+
+  /* the split, the chart and the builder's "being added" */
+  --split-fields: var(--w-marigold);   /* always hatched; never the only cue */
+  --split-world: var(--w-sea);         /* always solid */
+  --hatch: repeating-linear-gradient(135deg, transparent 0 6px,
+           color-mix(in srgb, var(--ink-line) 55%, transparent) 6px 8px);
+  --chart-mix: var(--action);
+  --chart-world: var(--ink-soft);      /* drawn dotted, 2px */
+  --chart-area: color-mix(in srgb, var(--w-sea) 30%, transparent);
+  --dip-band: color-mix(in srgb, var(--w-sand) 75%, transparent);   /* never red */
+
+  /* type */
+  --font-hand: "Mali", "Comic Neue", "Segoe Print", ui-rounded, system-ui, sans-serif;
+  --font-body: "Andika", "Noto Sans Thai", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --t-small: 18px;             /* the floor for any text, money included */
+  --t-body: 19px;
+  --t-lede: 21px;
+  --t-button: 19px;
+  --t-amount: 21px;
+  --t-number: 28px;
+  --t-stat: clamp(32px, 4vw, 44px);
+  --t-h3: 23px;
+  --t-h2: clamp(26px, 3vw, 31px);
+  --t-page: clamp(36px, 4.4vw, 56px);
+  --t-chapter: clamp(42px, 5.2vw, 68px);
+  --t-h1: var(--t-chapter);
+  --lh-body: 1.6;
+  --lh-head: 1.12;
+  --measure: 40em;
+
+  /* space (a 4-point scale) and the frame */
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 48px; --s8: 64px; --s9: 96px;
+  --gutter: 16px;
+  --section-gap: 56px;
+  --main-max: 1080px;
+  --rail-width: 300px;
+  --tab-h: 64px;
+  --dock-bottom: 76px;
+
+  /* radii: soft and a little uneven, like cut paper */
+  --r-chip: 999px;
+  --r-control: 14px;
+  --r-button: 18px;
+  --r-page: 10px;
+  --r-tile: 28px 24px 30px 22px;
+  --r-wash: 46% 54% 42% 58% / 54% 44% 56% 46%;
+
+  /* shadows: warm paper, never grey */
+  --shadow-lift: 0 1px 0 rgba(120, 92, 40, .10), 0 10px 24px -14px rgba(84, 62, 28, .35);
+  --shadow-pages: 0 2px 0 var(--paper-raised), 0 3px 0 var(--rule), 0 5px 0 var(--paper-raised), 0 6px 0 var(--rule),
+                  0 16px 30px -18px rgba(84, 62, 28, .40);
+  --shadow-button: 0 3px 0 var(--action-deep);
+
+  /* motion */
+  --ease-soft: cubic-bezier(.3, .7, .3, 1);
+  --ease-float: cubic-bezier(.45, 0, .55, 1);
+  --d-press: 140ms;
+  --d-open: 320ms;
+  --d-bloom: 900ms;
+  --d-bob: 7s;
+  --d-drift: 26s;
+  --d-announce: 500ms;
+
+  /* tap targets */
+  --tap: 48px;                 /* every control */
+  --tap-big: 56px;             /* main buttons, inputs, contents rows */
+  --tap-min: 44px;             /* chips only */
+
+  /* chart series: literal #RRGGBB (scripts read and tint them), each 3:1 or more on raised paper */
+  --series-1: #24548A;
+  --series-2: #8A5300;
+  --series-3: #6B4F9E;
+  --series-4: #1F6F78;
+  --series-5: #9A4A5E;
+  --series-6: #4C566C;
+  --series-7: #7A5C1E;
+
+  /* legacy names: map to the storybook */
+  --bg: var(--paper);
+  --bg-deep: var(--paper-deep);
+  --surface: var(--paper-raised);
+  --surface-2: var(--paper-deep);
+  --raised: var(--paper-raised);
+  --text: var(--ink);
+  --text-2: var(--ink-soft);
+  --muted: var(--ink-soft);
+  --faint: var(--ink-soft);
+  --line-strong: var(--line);
+  --moon: var(--action);
+  --moon-soft: color-mix(in srgb, var(--action) 14%, transparent);
+  --kelp: var(--ink);
+  --coral: var(--ink);
+  --kelp-soft: color-mix(in srgb, var(--w-sand) 40%, transparent);
+  --coral-soft: color-mix(in srgb, var(--w-sand) 40%, transparent);
+  --amber: var(--wait);
+  --amber-soft: color-mix(in srgb, var(--wait) 12%, transparent);
+  --sky: var(--link);
+  --sky-soft: color-mix(in srgb, var(--link) 10%, transparent);
+  --wave-1: color-mix(in srgb, var(--w-sky) 35%, transparent);
+  --wave-2: color-mix(in srgb, var(--w-sea) 30%, transparent);
+  --wave-3: color-mix(in srgb, var(--w-sand) 35%, transparent);
+  --glow: 0 0 0 transparent;
+  --shadow: var(--shadow-lift);
+  --font-display: var(--font-hand);
+  --font-ui: var(--font-body);
+  --font-mono: var(--font-body);
+  --fs-xs: var(--t-small);
+  --fs-sm: var(--t-small);
+  --fs-md: var(--t-body);
+  --fs-lg: var(--t-lede);
+  --fs-xl: var(--t-h3);
+  --fs-2xl: var(--t-h2);
+  --fs-hero: var(--t-chapter);
+  --sp-1: var(--s1); --sp-2: var(--s2); --sp-3: var(--s3); --sp-4: var(--s4);
+  --sp-5: var(--s5); --sp-6: var(--s6); --sp-7: var(--s7); --sp-8: var(--s8);
+  --radius: var(--r-control);
+  --radius-sm: var(--r-page);
+  --radius-pill: var(--r-chip);
+  --content-max: var(--main-max);
+  --rail-w: var(--rail-width);
+  --ease-out: var(--ease-soft);
+  --ease-spring: var(--ease-soft);
+  --ease-in-out: var(--ease-float);
+  --dur-1: var(--d-press);
+  --dur-2: var(--d-open);
+  --dur-3: var(--d-bloom);
+  --tide-loop: var(--d-drift);
 }
 
+/* Night pages: when the device is dark and the reader has not chosen Day */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --bg: #0a1120;
-    --bg-deep: #070c18;
-    --surface: #101a2e;
-    --surface-2: #0d1627;
-    --raised: #15213a;
-    --line: rgba(148, 163, 184, 0.14);
-    --line-strong: rgba(148, 163, 184, 0.28);
-    --text: #e6ecf5;
-    --text-2: #c6d0df;
-    --muted: #93a1b8;
-    --faint: #8090a6;
-
-    --moon: #ecd9a4;
-    --moon-soft: rgba(236, 217, 164, 0.12);
-    --kelp: #3fd5b6;
-    --kelp-soft: rgba(63, 213, 182, 0.12);
-    --coral: #ff8a7a;
-    --coral-soft: rgba(255, 138, 122, 0.12);
-    --amber: #f5b65a;
-    --amber-soft: rgba(245, 182, 90, 0.12);
-    --sky: #86afff;
-    --sky-soft: rgba(134, 175, 255, 0.12);
-
-    --wave-1: rgba(134, 175, 255, 0.12);
-    --wave-2: rgba(63, 213, 182, 0.10);
-    --wave-3: rgba(236, 217, 164, 0.08);
-    --glow: 0 1px 0 rgba(255, 255, 255, 0.04) inset;
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 12px 32px rgba(0, 0, 0, 0.28);
-    --focus: 0 0 0 2px var(--surface), 0 0 0 4px var(--sky);
-
-    --series-1: #86afff;
-    --series-2: #3fd5b6;
-    --series-3: #ecd9a4;
-    --series-4: #ff8a7a;
-    --series-5: #b9a4ff;
-    --series-6: #a7d36d;
-    --series-7: #f39ac7;
+    --paper: #182033; --paper-raised: #1F2840; --paper-deep: #131A2A;
+    --paper-grain: url("../img/paper-night.svg");
+    --rule: #34405C; --line: #8E9AB5;
+    --ink: #F4ECDA; --ink-soft: #CFC6B2; --ink-line: #E8DEC6;
+    --action: #F3C969; --on-action: #1A2133; --action-deep: #B8913A;
+    --link: #9FD0EA; --focus: #F3C969; --done: #A8D58F; --wait: #F3C969;
+    --w-sky: #2C5873; --w-sea: #24506B; --w-meadow: #3F6142; --w-marigold: #8A6A2A; --w-rose: #7A4650;
+    --w-lilac: #54497A; --w-sand: #5C4D33; --w-white: #EFE6D2; --w-glow: #F3C969; --w-next: #54497A;
+    --wash-strength: .85; --wash-under-text: .45;
+    --shadow-lift: 0 1px 0 rgba(0, 0, 0, .25), 0 12px 26px -14px rgba(0, 0, 0, .6);
+    --shadow-pages: 0 2px 0 var(--paper-raised), 0 3px 0 var(--rule), 0 5px 0 var(--paper-raised), 0 6px 0 var(--rule),
+                    0 16px 30px -18px rgba(0, 0, 0, .7);
+    --series-1: #9FD0EA; --series-2: #F3C969; --series-3: #C3B1DD; --series-4: #8FD3C8;
+    --series-5: #EBA9A3; --series-6: #CFC6B2; --series-7: #E6CFA0;
   }
 }
 
+/* Night pages chosen by the reader */
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #0a1120;
-  --bg-deep: #070c18;
-  --surface: #101a2e;
-  --surface-2: #0d1627;
-  --raised: #15213a;
-  --line: rgba(148, 163, 184, 0.14);
-  --line-strong: rgba(148, 163, 184, 0.28);
-  --text: #e6ecf5;
-  --text-2: #c6d0df;
-  --muted: #93a1b8;
-  --faint: #8090a6;
-
-  --moon: #ecd9a4;
-  --moon-soft: rgba(236, 217, 164, 0.12);
-  --kelp: #3fd5b6;
-  --kelp-soft: rgba(63, 213, 182, 0.12);
-  --coral: #ff8a7a;
-  --coral-soft: rgba(255, 138, 122, 0.12);
-  --amber: #f5b65a;
-  --amber-soft: rgba(245, 182, 90, 0.12);
-  --sky: #86afff;
-  --sky-soft: rgba(134, 175, 255, 0.12);
-
-  --wave-1: rgba(134, 175, 255, 0.12);
-  --wave-2: rgba(63, 213, 182, 0.10);
-  --wave-3: rgba(236, 217, 164, 0.08);
-  --glow: 0 1px 0 rgba(255, 255, 255, 0.04) inset;
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 12px 32px rgba(0, 0, 0, 0.28);
-  --focus: 0 0 0 2px var(--surface), 0 0 0 4px var(--sky);
-
-  --series-1: #86afff;
-  --series-2: #3fd5b6;
-  --series-3: #ecd9a4;
-  --series-4: #ff8a7a;
-  --series-5: #b9a4ff;
-  --series-6: #a7d36d;
-  --series-7: #f39ac7;
+  --paper: #182033; --paper-raised: #1F2840; --paper-deep: #131A2A;
+  --paper-grain: url("../img/paper-night.svg");
+  --rule: #34405C; --line: #8E9AB5;
+  --ink: #F4ECDA; --ink-soft: #CFC6B2; --ink-line: #E8DEC6;
+  --action: #F3C969; --on-action: #1A2133; --action-deep: #B8913A;
+  --link: #9FD0EA; --focus: #F3C969; --done: #A8D58F; --wait: #F3C969;
+  --w-sky: #2C5873; --w-sea: #24506B; --w-meadow: #3F6142; --w-marigold: #8A6A2A; --w-rose: #7A4650;
+  --w-lilac: #54497A; --w-sand: #5C4D33; --w-white: #EFE6D2; --w-glow: #F3C969; --w-next: #54497A;
+  --wash-strength: .85; --wash-under-text: .45;
+  --shadow-lift: 0 1px 0 rgba(0, 0, 0, .25), 0 12px 26px -14px rgba(0, 0, 0, .6);
+  --shadow-pages: 0 2px 0 var(--paper-raised), 0 3px 0 var(--rule), 0 5px 0 var(--paper-raised), 0 6px 0 var(--rule),
+                  0 16px 30px -18px rgba(0, 0, 0, .7);
+  --series-1: #9FD0EA; --series-2: #F3C969; --series-3: #C3B1DD; --series-4: #8FD3C8;
+  --series-5: #EBA9A3; --series-6: #CFC6B2; --series-7: #E6CFA0;
 }
 
-/* base */
+/* ---------------------------------------------------------------- base */
 *, *::before, *::after { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 body {
   margin: 0;
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--font-ui);
-  font-size: var(--fs-md);
-  line-height: 1.5;
+  background: var(--paper) var(--paper-grain);
+  color: var(--ink);
+  font: 400 var(--t-body)/var(--lh-body) var(--font-body);
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
 }
-a { color: var(--sky); text-underline-offset: 2px; }
-/* An opaque outline (survives forced-colours mode; --sky on the surfaces is 6:1 light, 8:1 dark). */
-:focus-visible { outline: 2px solid var(--sky); outline-offset: 2px; box-shadow: none; border-radius: var(--radius-sm); }
-.num, .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
-.visually-hidden { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+h1, h2, h3, h4 { font-family: var(--font-hand); font-weight: 600; line-height: var(--lh-head); margin: 0; text-wrap: balance; }
+p { text-wrap: pretty; }
+a { color: var(--link); text-decoration-thickness: 2px; text-underline-offset: 4px; }
+a:hover { text-decoration-thickness: 3px; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; box-shadow: none; }
+.num, .mono { font-variant-numeric: lining-nums tabular-nums; white-space: nowrap; }
+.visually-hidden {
+  position: absolute !important; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0;
+  overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+}
 
+/* ---------------------------------------------------------------- motion stops: Still pictures, a hidden tab, reduced motion.
+   Every animated element's own style is its final state, so "none" draws the final state. */
+:root[data-motion="still"] *, :root[data-motion="still"] *::before, :root[data-motion="still"] *::after,
+:root[data-tab="hidden"] *, :root[data-tab="hidden"] *::before, :root[data-tab="hidden"] *::after {
+  animation: none !important;
+  transition-duration: .01ms !important;
+}
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
-    animation-duration: 1ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 1ms !important;
+    animation: none !important;
+    transition-duration: .01ms !important;
     scroll-behavior: auto !important;
   }
 }

@@ -1,17 +1,25 @@
 // Holdings: what the friend owns from the fills they logged, valued where a price is known (coins
 // live, stocks and funds at the last price they typed or filled, each labelled), the split between
-// index funds and growth against the plan's 85.2 / 14.8, the plan's allocation, the VWRA carry month
-// by month, and the fill log with a CSV export.
+// index funds and growth against its targets (the plan's 85.2 / 14.8, or those of the friend's own mix),
+// the year's allocation (the plan's mix, or the friend's), the VWRA carry month by month, and the fill
+// log with a CSV export.
+//
+// With field months the year is the friend's own: the mix shows their fields' money as its own group ("Your
+// fields"), and the example plan's targets are not shown. Their split is restated in their own words, with no
+// target and nothing to steer toward (spec 12.1 rule 6).
 
 import {
   app, h, ui, L, S, toast, ost, instById, schedule, carry, priceInfo, priceSource, quotesForHoldings,
   fM, fUsd, fPct, fNum, fPrice, short, fmtQty, plural, statusPill, pill,
   card, cardHead, viewHead, empty, chipGroup, downloadFile, today, hooks, progressNow, joinedBudgetUsd, isPreOrder, isPreTransfer,
-} from "../core.js";
-import { openFillDialog, undoOrder } from "./today.js";
+  mixIsOwn, resolvedMonths, amountWords, tickerOf, isFieldInst, fieldMonthsOn, fieldsSpecNow,
+} from "../core.js?v=2.0.0";
+import { openFillDialog, undoOrder } from "./today.js?v=2.0.0";
+import { notBought, notBoughtMonth } from "./mix.js?v=2.0.0";
+import { splitLine } from "./split.js?v=2.0.0";
 
-const GROUP_TOKEN = { index: "--series-1", growth: "--series-7", crypto: "--series-5" };
-const GROUP_ORDER = ["index", "growth", "crypto"];
+const GROUP_TOKEN = { index: "--series-1", growth: "--series-7", crypto: "--series-5", fields: "--series-4" };
+const GROUP_ORDER = ["index", "growth", "crypto", "fields"];
 
 function tok(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || "#888888"; }
 function withAlpha(color, a) {
@@ -49,7 +57,7 @@ export function renderHoldings() {
       h("tbody", hold.rows.map((r) => {
         const pi = priceInfo(r.inst);
         return h("tr",
-          h("th", { scope: "row" }, h("span.hold-name", r.inst.name), h("span.ticker.num", r.inst.id)),
+          h("th", { scope: "row" }, h("span.hold-name", r.inst.name), h("span.ticker.num", tickerOf(r.inst))),
           h("td.num.r", { "data-label": "Quantity" }, fmtQty(r.inst, r.qty)),
           h("td.num.r", { "data-label": "Avg cost" }, r.avgCostUsd != null ? fUsd(r.avgCostUsd, r.avgCostUsd < 10 ? 4 : 2) : "—"),
           h("td.num.r", { "data-label": "Cost" }, fUsd(r.costUsd, 2)),
@@ -67,18 +75,32 @@ export function renderHoldings() {
   return out;
 }
 
-/** Index funds vs growth against the plan's targets (shares of the stock money), the twice-yearly check. */
+/** Index funds vs growth against the targets (shares of the stock money), the twice-yearly check. The targets
+ *  are the plan's, or, with the friend's own mix, worked out from it (app.plan.groups). */
 function splitPanel(hold) {
   const plan = app.plan;
+  if (fieldMonthsOn()) return fieldSplitPanel();
+  const own = mixIsOwn();
   const groups = plan.groups.filter((g) => g.rebalanceTargetPct != null);
   const actual = Object.fromEntries(groups.map((g) => [g.id, hold.rows.filter((r) => r.inst.group === g.id).reduce((a, r) => a + (Number.isFinite(r.valueUsd) ? r.valueUsd : 0), 0)]));
   const total = groups.reduce((a, g) => a + actual[g.id], 0);
   const maint = plan.maintenance.find((m) => /Rebalancing/i.test(m.what));
+  const first = maint ? maint.when.split(",")[0] : "1 Dec 2027";
   // During year one the blocks are off target by design (the plan's own note), so nothing is flagged yet.
   const preview = today() <= plan.orderDates[plan.orderDates.length - 1].date;
+  if (!groups.length) {
+    // A mix with no fund or stock money at all (only coins): there is no split to check.
+    return card(".rebal-card", { "aria-labelledby": "rebal-h" },
+      cardHead(h("span#rebal-h", "Index funds and growth"), "Your targets, from your mix, as shares of the stock and fund money."),
+      h("p.muted.small", "Your mix puts no money into funds or stocks, so there is no split to check."));
+  }
   return card(".rebal-card", { "aria-labelledby": "rebal-h" },
-    cardHead(h("span#rebal-h", "Index funds and growth"), `The plan's targets, as shares of the stock and fund money. Its first check is ${maint ? maint.when.split(",")[0] : "1 Dec 2027"}; until then this is only a preview, and year one is off target by design.`),
-    total ? null : h("p.muted.small", `No priced stock or fund fills yet: the bars show the plan's own split of the ${fM(plan.meta.stockMoneyUsd)} stock and fund money.`),
+    cardHead(h("span#rebal-h", "Index funds and growth"), own
+      ? `Your targets, from your mix, as shares of the stock and fund money. The first check is ${first}; until then this is only a preview.`
+      : `The plan's targets, as shares of the stock and fund money. Its first check is ${first}; until then this is only a preview, and year one is off target by design.`),
+    total ? null : h("p.muted.small", own
+      ? `No priced stock or fund fills yet: the bars show your targets for the ${fM(plan.meta.stockMoneyUsd)} stock and fund money.`
+      : `No priced stock or fund fills yet: the bars show the plan's own split of the ${fM(plan.meta.stockMoneyUsd)} stock and fund money.`),
     h("ul.rebal-list", groups.map((g) => {
       const a = total ? (actual[g.id] / total) * 100 : g.rebalanceTargetPct;
       const diff = a - g.rebalanceTargetPct;
@@ -94,12 +116,26 @@ function splitPanel(hold) {
     maint ? h("p.fine", maint.detail) : null);
 }
 
+/** With field months: the friend's own split in their words and where to change it; no target and nothing to
+ *  steer toward (spec 12.1 rule 6). */
+function fieldSplitPanel() {
+  const words = splitLine(fieldsSpecNow());
+  return card(".rebal-card.ttm-own-split", { "aria-labelledby": "rebal-h", "data-fk": "own-split" },
+    cardHead(h("span#rebal-h", "Your split"), "How much of each month goes to your fields is your own choice."),
+    words ? h("p", { "data-fk": "own-split-words" }, words) : null,
+    h("p", "It is yours to keep or change on ",
+      h("a", { href: "#/split", "data-fk": "own-split-link" }, "My split"), ". Months with records keep the split they had."));
+}
+
 function allocItems(mode, hold) {
   const plan = app.plan;
   const val = (id) => { const r = hold.rows.find((x) => x.id === id); return r && Number.isFinite(r.valueUsd) ? r.valueUsd : 0; };
   if (mode === "instrument") {
     const seen = {};
-    return plan.instruments.map((i) => {
+    // With field months, an example-plan holding with no order and nothing owned is not part of the friend's
+    // year: it is left out rather than listed as "not bought".
+    const theirs = fieldMonthsOn() ? (i) => isFieldInst(i) || i.targetUsd > 0 || val(i.id) > 0 : () => true;
+    return plan.instruments.filter(theirs).map((i) => {
       const n = (seen[i.group] = (seen[i.group] || 0) + 1);
       return { id: i.id, label: i.name, target: i.targetUsd, actual: val(i.id), color: withAlpha(tok(GROUP_TOKEN[i.group] || "--series-3"), Math.max(0.38, 1 - (n - 1) * 0.17)) };
     });
@@ -117,21 +153,42 @@ function allocCard(hold, hasFills) {
   const totT = items.reduce((a, x) => a + x.target, 0) || 1;
   const totA = items.reduce((a, x) => a + x.actual, 0);
   const segs = items.filter((x) => x.target > 0).map((x) => ({ key: x.id, label: x.label, value: x.target, color: x.color }));
-  const dn = ui.donut(segs, { size: 236, thickness: 26, label: `The plan's allocation by ${mode}`, center: [fM(plan.meta.investUsd), "planned"] });
-  const rolled = (plan.scale && plan.scale.rolled) || [];
+  // The friend's own mix or fields in some month they count (the standing mix, or one a month keeps): the year
+  // is theirs.
+  const ownMix = mixIsOwn() || resolvedMonths().some((r) => !r.preJoin && r.mode === "own");
+  const own = ownMix || fieldMonthsOn();
+  const dn = ui.donut(segs, { size: 236, thickness: 26, label: `${own ? "Your" : "The plan's"} allocation by ${mode}`, center: [fM(plan.meta.investUsd), "planned"] });
+  const amounts = / to /.test(amountWords()) ? "your amounts" : "your amount";
+  const year = own ? "Your year at your amounts" : `The plan's year at ${amounts}`;
+  /** Why an instrument has no order, or is left out from some month on (instrument rows only). */
+  const note = (x) => {
+    const why = mode === "instrument" ? notBought(x.id) : null;
+    if (!why) return null;
+    if (!x.target) {
+      switch (why.kind) {
+        case "mix": return "Not in your mix · its share is in VWRA";
+        case "fields": return "Not in your fields";
+        case "waiting": return "Not trading yet · its part goes to your other companies or VWRA";
+        default: return "Not bought at your amount · its share is in VWRA";
+      }
+    }
+    if (why.kind === "mix-from") return `Not in your mix from ${notBoughtMonth(why)}`;
+    return why.kind === "fields-from" ? `Not in your fields from ${notBoughtMonth(why)}` : null;
+  };
   return card(".alloc-card", { "aria-labelledby": "alloc-h" },
-    cardHead(h("span#alloc-h", "The plan's mix"), hasFills ? "The plan's year at your amount, next to what your positions are worth where priced." : "The plan's year at your amount. What you own appears after your first logged fill.",
+    cardHead([h("span#alloc-h", own ? "Your mix" : "The plan's mix"), ownMix ? [" ", pill("Your own mix", "sky", "✓")] : null],
+      hasFills ? `${year}, next to what your positions are worth where priced.` : `${year}. What you own appears after your first logged fill.`,
       h("div.alloc-tools", chipGroup("Group the mix by", [["group", "Group"], ["instrument", "Instrument"]], mode, (v) => { app.ui.allocMode = v; hooks.renderView("holdings"); }, "am"))),
     h("div.alloc-body",
       h("div.donut-wrap", dn.el),
       h("div.table-wrap", h("table.data-table.alloc-table",
-        h("caption.visually-hidden", "The plan's allocation and your positions"),
-        h("thead", h("tr", h("th", { scope: "col" }, mode === "instrument" ? "Instrument" : "Group"), h("th.r", { scope: "col" }, "Plan"), h("th.r", { scope: "col" }, "You own"), h("th", { scope: "col" }, h("span.visually-hidden", "Comparison")))),
+        h("caption.visually-hidden", own ? "Your allocation and your positions" : "The plan's allocation and your positions"),
+        h("thead", h("tr", h("th", { scope: "col" }, mode === "instrument" ? "Instrument" : "Group"), h("th.r", { scope: "col" }, own ? "Your plan" : "Plan"), h("th.r", { scope: "col" }, "You own"), h("th", { scope: "col" }, h("span.visually-hidden", "Comparison")))),
         h("tbody", items.map((x) => {
           const tp = (x.target / totT) * 100, ap = totA ? (x.actual / totA) * 100 : null;
-          const gone = mode === "instrument" && !x.target && rolled.some((r) => r.instrument === x.id);
+          const why = note(x);
           return h("tr",
-            h("th", { scope: "row" }, h("span.swatch", { style: { background: x.color }, "aria-hidden": "true" }), x.label, gone ? h("span.sub", `Not bought at ${fM(plan.funding.monthlyUsd)} a month · its share is in VWRA`) : null),
+            h("th", { scope: "row" }, h("span.swatch", { style: { background: x.color }, "aria-hidden": "true" }), x.label, why ? h("span.sub", why) : null),
             h("td.num.r", h("span", fPct(tp, 1, false)), h("span.sub", fM(x.target))),
             h("td.num.r", ap == null ? h("span.muted", "—") : [h("span", fPct(ap, 1, false)), h("span.sub", fUsd(x.actual, 2))]),
             h("td.cmp-cell", h("div.cmp", { "aria-hidden": "true" }, h("span.cmp-t", { style: { width: Math.min(100, tp * (mode === "instrument" ? 1.4 : 1)).toFixed(1) + "%" } }), ap != null ? h("span.cmp-a", { style: { width: Math.min(100, ap * (mode === "instrument" ? 1.4 : 1)).toFixed(1) + "%", background: x.color } }) : null)));

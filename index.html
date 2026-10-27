@@ -7,65 +7,61 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Tide Table · Monthly</title>
   <meta name="description" content="A tracker for a monthly buying plan, November 2026 to October 2027. Type your monthly amount and tick off each order. Everything stays in your browser.">
-  <meta name="color-scheme" content="dark light">
+  <meta name="color-scheme" content="light dark">
   <meta name="apple-mobile-web-app-title" content="Tide Table">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='15' fill='%230a1120'/%3E%3Ccircle cx='21' cy='11' r='5' fill='%23ecd9a4'/%3E%3Cpath d='M2 21c4-3 7-3 11 0s8 3 12 0 5-2 5-2v13H2z' fill='%233fd5b6' opacity='.85'/%3E%3C/svg%3E">
-  <script src="js/boot-theme.js"></script>
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <script src="js/boot-theme.js?v=2.0.0"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
-  <link rel="stylesheet" href="css/tokens.css">
-  <link rel="stylesheet" href="css/app.css">
-  <link rel="stylesheet" href="css/friends.css">
-  <script type="module" src="js/main.js"></script>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Andika:ital,wght@0,400;0,700;1,400&family=Mali:wght@600;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;700&text=%E0%B8%BF&display=swap">
+  <link rel="stylesheet" href="css/tokens.css?v=2.0.0">
+  <link rel="stylesheet" href="css/book.css?v=2.0.0">
+  <link rel="stylesheet" href="css/app.css?v=2.0.0">
+  <link rel="stylesheet" href="css/friends.css?v=2.0.0">
+  <link rel="stylesheet" href="css/mix.css?v=2.0.0">
+  <script type="module" src="js/main.js?v=2.0.0"></script>
 </head>
 <body>
-  <a class="skip" href="#main">Skip to content</a>
+  <a class="bk-skip skip" href="#main">Skip to the page</a>
 
-  <div class="shell">
-    <aside class="rail" aria-label="Main">
-      <div class="brand">
-        <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="15" class="bm-sea"/><circle cx="21" cy="11" r="5" class="bm-moon"/><path d="M2 21c4-3 7-3 11 0s8 3 12 0 5-2 5-2v13H2z" class="bm-wave"/></svg>
-        <div><div class="brand-name">Tide Table</div><div class="brand-sub" data-brand-sub>Monthly</div></div>
+  <div class="bk-shell">
+    <div data-rail hidden></div>
+    <div class="bk-main-col">
+      <div data-topbar hidden></div>
+      <div class="ttm-strip">
+        <div class="clock" data-clock aria-label="Bangkok time"></div>
+        <div class="fresh" data-fresh></div>
       </div>
-      <nav data-nav="rail" aria-label="Views"></nav>
-      <div class="rail-status" data-status hidden></div>
-    </aside>
-
-    <div class="main-col">
-      <header class="topbar">
-        <div class="topbar-title"><svg class="topbar-mark brand-mark" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="15" class="bm-sea"/><circle cx="21" cy="11" r="5" class="bm-moon"/><path d="M2 21c4-3 7-3 11 0s8 3 12 0 5-2 5-2v13H2z" class="bm-wave"/></svg><span data-view-title>Tide Table · Monthly</span></div>
-        <div class="topbar-right">
-          <div class="clock" data-clock aria-label="Bangkok time"></div>
-          <div class="fresh" data-fresh></div>
-        </div>
-      </header>
-
-      <main id="main" tabindex="-1">
+      <main id="main" class="bk-main" tabindex="-1">
+        <div data-older hidden></div>
         <section data-view="setup" hidden></section>
         <section data-view="today" hidden></section>
+        <section data-view="fields" hidden></section>
+        <section data-view="field" hidden></section>
+        <section data-view="company" hidden></section>
+        <section data-view="split" hidden></section>
         <section data-view="year" hidden></section>
         <section data-view="money" hidden></section>
         <section data-view="holdings" hidden></section>
         <section data-view="rules" hidden></section>
         <section data-view="settings" hidden></section>
+        <section data-view="mix" hidden></section>
         <div class="loading" data-boot role="status">
-          <div class="loading-moon" aria-hidden="true"></div>
-          <p>Reading the tide table…</p>
+          <p>Opening the tide table.</p>
           <noscript><p>This tracker needs JavaScript. Turn it on for this page and reload.</p></noscript>
         </div>
       </main>
-
-      <footer class="foot" data-foot>
-        <p class="foot-disclaimer"><span>A tracker for a written plan, shared as an illustration. It is not personal advice: check that it fits your own money, goals and taxes. Prices and news are information, not advice. A market fall or a rally is never a reason to change a date.</span></p>
+      <footer class="bk-foot" data-foot>
+        <p>Tide Table shows facts from the past and today. It is not personal advice and never says buy, sell or hold. Check that any choice fits your own money, goals and taxes.</p>
       </footer>
     </div>
   </div>
 
-  <nav class="tabbar" data-nav="tabbar" aria-label="Views"></nav>
+  <div data-tabbar hidden></div>
 
-  <div class="toasts" data-toasts aria-live="polite"></div>
+  <div class="toasts" data-toasts></div>
   <div class="sr-live visually-hidden" data-sr-live aria-live="polite"></div>
 </body>
 </html>

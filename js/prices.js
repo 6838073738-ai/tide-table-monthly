@@ -1,9 +1,10 @@
 // Prices for the friends' app. Crypto (bitcoin, ether, solana) comes from CoinGecko every two minutes
-// while the page is visible; the US dollar to Thai baht rate comes from Frankfurter once a day. Stocks
-// and London funds have no live source: the friend types the price their broker's app shows (kept in
-// the store, see core.js priceInfo). Every request URL is fixed apart from the plan's own coin ids, so
-// nothing the friend typed (amounts, holdings) ever leaves the browser. ?prices=off turns the network
-// off (offline QA); the plan's own rate is then used.
+// while the page is visible, and only for a plan that buys coins in a month the friend has joined (spec
+// 8.9: a friend whose months buy no coins, such as one with only field months, never asks CoinGecko); the US
+// dollar to Thai baht rate comes from Frankfurter once a day. Stocks and London funds have no live source:
+// the friend types the price their broker's app shows (kept in the store, see core.js priceInfo). Every
+// request URL is fixed apart from the plan's own coin ids, so nothing the friend typed (amounts, holdings)
+// ever leaves the browser. ?prices=off turns the network off (offline QA); the plan's own rate is then used.
 
 const CG_URL = "https://api.coingecko.com/api/v3/simple/price";
 const FX_URL = "https://api.frankfurter.dev/v1/latest?base=USD&symbols=THB";
@@ -15,7 +16,9 @@ const FX_CACHE = "ttm:fx";
 
 export const SOURCES = {
   crypto: { text: "Crypto prices by CoinGecko", href: "https://www.coingecko.com/" },
-  fx: { text: "Exchange rate: Frankfurter (European Central Bank)", href: "https://frankfurter.dev/" },
+  // Frankfurter rebases the ECB's euro reference rates to give dollars to baht. The ECB's terms ask that a
+  // modified figure says so, and this label sits next to every rate the app shows (footer, Settings, amounts).
+  fx: { text: "Exchange rate: calculated from European Central Bank euro reference rates, via Frankfurter", href: "https://frankfurter.dev/" },
 };
 
 const subs = new Set();
@@ -32,6 +35,19 @@ let coins = {}; // coingeckoId -> instrument id
 let timer = null;
 let failures = 0;
 let started = false;
+let inflight = false;
+
+/** The coins to ask about, coingeckoId -> instrument id: every coin of the plan as soon as it buys any coin on some
+ *  date (an order whose id is not in skip, the months before the friend joined), so the request is the same three
+ *  coins as everyone's and says nothing about the friend's amounts (spec 8.9); none when it buys no coin. */
+function coinMap(plan, skip) {
+  const all = (plan.instruments || []).filter((i) => i.coingeckoId);
+  const ids = new Set(all.map((i) => i.id));
+  const buys = (plan.orders || []).some((o) => ids.has(o.instrument) && !(skip && skip.has(o.id)));
+  return buys ? Object.fromEntries(all.map((i) => [i.coingeckoId, i.id])) : {};
+}
+/** True while the plan buys coins, so their prices are asked for (and the top bar and footer name CoinGecko). */
+export const watchesCoins = () => Object.keys(coins).length > 0;
 
 function emit() {
   for (const fn of subs) { try { fn(data); } catch (e) { console.error(e); } }
@@ -75,8 +91,10 @@ function schedule(seconds) {
 
 /** Fetch the coin prices now (the timer calls this; QA and the freshness chip may too). */
 export async function refreshCrypto() {
-  if (data.off || !Object.keys(coins).length) return;
+  if (data.off || !Object.keys(coins).length || inflight) return;
   clearTimeout(timer);
+  timer = null;
+  inflight = true;
   data.cryptoStatus = data.cryptoAt ? data.cryptoStatus : "loading";
   try {
     const ids = Object.keys(coins).sort().join(",");
@@ -96,6 +114,8 @@ export async function refreshCrypto() {
     for (const q of Object.values(data.crypto)) q.stale = true;
     // Back off exponentially (CoinGecko's free tier asks for it on 429 and errors).
     schedule(Math.min(MAX_WAIT_S, CRYPTO_EVERY_S * 2 ** failures));
+  } finally {
+    inflight = false;
   }
   emit();
 }
@@ -127,7 +147,7 @@ function onVisibility() {
   if (document.hidden) { clearTimeout(timer); timer = null; return; }
   const fxDay = data.fx && data.fx.fetchedAt ? bkkDay(data.fx.fetchedAt) : null;
   if (fxDay !== bkkDay(Date.now()) && data.fxStatus !== "loading") loadFx();
-  if (!started) return;
+  if (!started || !watchesCoins()) return;
   const due = !data.cryptoAt || Date.now() - data.cryptoAt >= CRYPTO_EVERY_S * 1000;
   if (due && failures === 0) refreshCrypto(); else if (!timer) schedule(due ? 5 : CRYPTO_EVERY_S - (Date.now() - data.cryptoAt) / 1000);
 }
@@ -143,11 +163,24 @@ export function init() {
   document.addEventListener("visibilitychange", onVisibility);
 }
 
-/** Start polling for the plan's coins (once a plan is chosen). Safe to call again (same coins). */
-export function start(plan) {
+/**
+ * Start polling for the coins the plan buys (once a plan is chosen); skip is the set of order ids from before the
+ * friend joined. Safe to call again whenever the plan changes: with no coins to buy, nothing is asked for (and
+ * a pending ask is dropped); coins that come back are asked for at once.
+ */
+export function start(plan, skip = null) {
   init();
-  coins = Object.fromEntries((plan.instruments || []).filter((i) => i.coingeckoId).map((i) => [i.coingeckoId, i.id]));
-  if (started || data.off) return;
+  coins = coinMap(plan, skip);
+  if (data.off) return;
+  if (!watchesCoins()) { clearTimeout(timer); timer = null; return; }
+  if (started) {
+    // Already polling: ask now only for a coin with no price yet, or when polling had stopped; after a failure the
+    // back-off stands (CoinGecko's free tier asks for it).
+    if (document.hidden || inflight) return;
+    if (failures > 0) { if (!timer) schedule(Math.min(MAX_WAIT_S, CRYPTO_EVERY_S * 2 ** failures)); return; }
+    if (!timer || Object.values(coins).some((id) => !data.crypto[id])) refreshCrypto();
+    return;
+  }
   started = true;
   const cached = readCache(CRYPTO_CACHE);
   if (cached && Number.isFinite(cached.at) && applyCrypto(cached.json, cached.at, true)) {
@@ -175,6 +208,7 @@ export const prices = {
   subscribe(fn) { subs.add(fn); return () => subs.delete(fn); },
   init,
   start,
+  watchesCoins,
   refreshCrypto,
   loadFx,
   fxRate,

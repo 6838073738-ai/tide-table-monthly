@@ -1,0 +1,85 @@
+/* Tide Table · Monthly: the mix editor (#/mix), the Settings card for it, and the muted getting-ready item a
+   plan without coins does not need. Class names start with mx-. Colours, type and motion come from tokens.css
+   only; sky marks the friend's own mix, and coral appears only with words for a mix that cannot be saved. */
+
+/* ---------------------------------------------------------------- the page's opening lines */
+.mx-intro { display: flex; flex-direction: column; gap: 10px; max-width: 82ch; }
+.mx-every { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 12px; background: var(--sky-soft); color: var(--text); font-size: var(--t-small); line-height: 1.5; }
+.mx-every .ico { width: 18px; height: 18px; color: var(--sky); margin-top: 2px; flex: none; }
+.mx-disc { display: flex; gap: 10px; align-items: flex-start; font-size: var(--t-small); color: var(--text-2); line-height: 1.5; }
+.mx-disc .ico { width: 16px; height: 16px; color: var(--sky); margin-top: 2px; flex: none; }
+.mx-disc p + p { margin-top: 4px; }
+.mx-fixed { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; max-width: 70ch; }
+.mx-fixed p { color: var(--text-2); line-height: 1.55; }
+
+/* ---------------------------------------------------------------- the editor and the year, side by side */
+.mx-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+.mx-edit, .mx-year { display: flex; flex-direction: column; gap: 14px; }
+.mx-edit .card-head, .mx-year .card-head { margin-bottom: 0; }
+.mx-edit > .field { max-width: 380px; }
+.mx-hint { margin-bottom: -6px; }
+
+.mx-table tbody th[scope="row"] { font-weight: 500; }
+.mx-table th[scope="row"] .ticker { margin-left: 6px; }
+.mx-name { font-weight: 600; }
+.mx-group th { padding-top: 18px !important; border-bottom: 1px solid var(--line-strong); }
+.mx-table tbody:first-of-type .mx-group th { padding-top: 10px !important; }
+.mx-table td { vertical-align: middle; }
+.mx-in { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+/* app.css sizes every field to its column (a selector of weight 0,3,1); a share field is narrow */
+.view .mx-table .mx-in input.mx-share { width: 84px; flex: none; padding: 7px 9px; font-size: var(--t-small); text-align: right; }
+.view .mx-table .mx-in input.mx-share::placeholder { color: var(--muted); opacity: 1; }
+.mx-pct { color: var(--text-2); font-size: var(--t-small); }
+.mx-use { padding: 5px 8px; }
+.mx-err { display: block; margin-top: 4px; font-size: var(--t-small); line-height: 1.4; max-width: 34ch; }
+.mx-err:empty { display: none; }
+.mx-rest { font-weight: 600; }
+.mx-note { font-size: var(--t-small); color: var(--text-2); line-height: 1.5; max-width: 76ch; }
+.mx-errs:empty { display: none; }
+.mx-errs .err-list { font-size: var(--t-small); line-height: 1.5; }
+.mx-placed { padding: 10px 12px; border-radius: 10px; background: var(--amber-soft); color: var(--text); font-size: var(--t-small); line-height: 1.5; }
+.mx-placed[hidden], .mx-edit .field-hint[hidden] { display: none; }
+.mx-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+
+/* ---------------------------------------------------------------- your year at your amounts */
+.mx-year-body { display: flex; flex-direction: column; gap: 14px; }
+.mx-bar, .mx-set-bar { display: flex; flex-direction: column; gap: 8px; }
+.mx-month { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--line); font-size: var(--t-small); line-height: 1.5; color: var(--text); }
+.mx-month .eyebrow, .mx-month .muted { color: var(--text-2); }
+.mx-roll { display: flex; gap: 8px; align-items: flex-start; padding: 8px 10px; border-radius: 8px; background: var(--sky-soft); color: var(--text); font-size: var(--t-small); line-height: 1.45; }
+.mx-roll .ico { width: 15px; height: 15px; color: var(--sky); margin-top: 2px; flex: none; }
+.mx-sub { font-family: var(--font-ui); font-size: var(--t-small); font-weight: 600; text-transform: none; color: var(--muted); margin-bottom: -6px !important; }
+.mx-strip { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 6px; }
+.mx-cell { display: flex; flex-direction: column; gap: 1px; padding: 7px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); min-width: 0; }
+.mx-cell.is-own { border-color: color-mix(in srgb, var(--sky) 55%, transparent); background: var(--sky-soft); }
+.mx-cell-m { font-size: var(--t-small); font-weight: 600; text-transform: none; color: var(--text-2); }
+.mx-cell-v { font-size: var(--t-small); font-weight: 600; color: var(--text); overflow-wrap: anywhere; }
+.mx-cell-v.is-words { font-size: var(--t-small); font-weight: 600; line-height: 1.25; padding: 1px 0; }
+.mx-cell-t { font-size: var(--t-small); color: var(--text-2); line-height: 1.25; }
+
+/* ---------------------------------------------------------------- Rules: a getting-ready item the plan does not need */
+.mx-na .check { cursor: default; }
+.mx-na .check:hover { background: none; }
+.mx-na .check-box { color: var(--muted); border-style: dashed; border-color: var(--line-strong); line-height: 1; font-size: var(--t-small); }
+.mx-na .check-text { color: var(--muted); }
+
+/* ---------------------------------------------------------------- narrower screens */
+@media (max-width: 1239px) {
+  .mx-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 719px) {
+  .mx-every { font-size: var(--t-small); }
+  /* the shares as stacked rows: the holding, then the plan's share and your year, then your field */
+  .mx-table thead { display: none; }
+  .mx-table tr { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "name name" "plan year" "mine mine"; gap: 6px 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .mx-table tr.mx-group { display: block; padding: 14px 0 6px; border-bottom: 1px solid var(--line-strong); }
+  .mx-table :is(td, th) { display: block; border: 0 !important; padding: 0 !important; text-align: left; }
+  .mx-table tr.mx-group th { padding: 0 !important; }
+  .mx-table th[scope="row"] { grid-area: name; }
+  .mx-table td:nth-child(2) { grid-area: plan; }
+  .mx-table td:nth-child(3) { grid-area: mine; }
+  .mx-table td:nth-child(4) { grid-area: year; }
+  .mx-table td[data-label]::before { content: attr(data-label); display: block; margin-bottom: 2px; font-family: var(--font-ui); font-size: var(--t-small); font-weight: 600; text-transform: none; color: var(--muted); }
+  .mx-table td.r { text-align: left; }
+  .mx-err { max-width: none; }
+}

@@ -1,22 +1,29 @@
-// Money: the thirteen transfers (S01 to SwissBorg, W01–W12 to Interactive Brokers), when to send each
-// and by when it must arrive, and what the friend actually sent. A different amount sent to Interactive
-// Brokers changes only that month's VWRA order (rule r10); one sent to SwissBorg changes ether and
-// solana (the plan's SwissBorg rule).
+// Money: the transfers (S01 to SwissBorg, W01–W12 to Interactive Brokers, and with an own mix a SwissBorg
+// transfer in each month that buys coins), when to send each and by when it must arrive, and what the
+// friend actually sent. When a recorded amount differs from the plan, the friend can size that month's
+// orders to it (while no other record fixes the month); otherwise a different amount sent to Interactive
+// Brokers changes only that month's VWRA order (rule r10), and one sent to SwissBorg in November changes
+// ether and solana (the plan's SwissBorg rule).
 
 import {
-  app, h, icon, toast, S, L, today, isDone, funding, carry, fxInfo, prices, settings, dateOfId,
+  app, h, clear, icon, toast, S, L, today, isDone, funding, carry, fxInfo, prices, settings, dateOfId,
   fM, fUsd, fThb, fNum, long, short, inDays, monthName, parseNum, plural, pill, pre, joinedBudgetUsd, howOf,
   card, cardHead, viewHead, disclosure, field, commit, modal, confirmDialog, sourceLink,
-} from "../core.js";
-import { moneyWarnings } from "./today.js";
+  M, commitPlanChange, explain, openMonthIds, monthOf, amountWords, resolvedMonths,
+} from "../core.js?v=2.0.0";
+import { ownIdMonth, MIN_MONTHLY_USD, MAX_MONTHLY_USD } from "../scale.js?v=2.0.0";
+import { moneyWarnings } from "./today.js?v=2.0.0";
+import { monthAmountLink, monthWordOf, ordersWords, placedWarning, paidBy, listAnd, fill } from "./amounts.js?v=2.0.0";
 
 const DEST = { SwissBorg: "SwissBorg", IBKR: "Interactive Brokers" };
 const dest = (to) => DEST[to] || to;
 /** "To SwissBorg" already names where it goes; "Month 2" does not. */
 const labelTo = (t) => (/swissborg|interactive/i.test(t.label) ? t.label : `${t.label} to ${dest(t.to)}`);
-/** What a different amount changes, by destination: the plan's rule r10, or its SwissBorg rule. */
+/** What a different amount changes, by destination: the plan's rule r10, or its SwissBorg rule. A month's
+ *  own SwissBorg transfer (an own mix) pays for that month's coins only. */
 function diffRule(t) {
-  if (t.to === "IBKR") return "A different amount sent to Interactive Brokers changes only that month's VWRA order (rule r10).";
+  if (t.to === "IBKR") return "Unless you size that month's orders to it, a different amount sent to Interactive Brokers changes only that month's VWRA order (rule r10).";
+  if (ownIdMonth(t.id)) return `This transfer pays for ${monthWordOf(t.forDate)}'s coins on your mix. A different amount is recorded as sent; the coin orders that month stay as planned.`;
   const sb = (app.plan.differenceRules.find((r) => r.id === "swissborg") || {}).text;
   return sb || "A different amount sent to SwissBorg changes the coins paid from the wallet, not VWRA.";
 }
@@ -49,8 +56,14 @@ export function renderMoney() {
   const showThb = settings().showThb !== false;
   const pj = pre();
   const budget = joinedBudgetUsd();
-  const out = [viewHead("money", `${fM(plan.funding.monthlyUsd)} a month · ${plural(mine.length, "transfer")}`, "Money",
-    `Each month you send money to Interactive Brokers the week before the order date${others.length ? `, plus ${others.map((t) => `${fM(t.planUsd)} to ${dest(t.to)} in ${monthName(dateOfId(t.forDate), false, true)}`).join(" and ")}` : ""}. Record what you actually sent: a different amount sent to Interactive Brokers changes only that month's VWRA order (rule r10)${others.length ? "; one sent to SwissBorg changes only ether and solana (the plan's SwissBorg rule)" : ""}.${pj.dateIds.length ? ` Transfers for the months before you joined are not sent: they show $0.` : ""}`)];
+  // November's SwissBorg transfer (the plan's own), and an own mix's monthly SwissBorg transfers.
+  const s01 = others.find((t) => !ownIdMonth(t.id));
+  const plus = others.length === 1
+    ? `, plus ${fM(others[0].planUsd)} to ${dest(others[0].to)} in ${monthName(dateOfId(others[0].forDate), false, true)}`
+    : others.length ? `, plus money to SwissBorg in ${listAnd(others.map((t) => monthWordOf(t.forDate)))}` : "";
+  const sbRule = s01 ? "; one sent to SwissBorg changes only ether and solana (the plan's SwissBorg rule)" : others.length ? "; one sent to SwissBorg is recorded as it is" : "";
+  const out = [viewHead("money", `${amountWords() || `${fM(plan.funding.monthlyUsd)} a month`} · ${plural(mine.length, "transfer")}`, "Money",
+    `Each month you send money to Interactive Brokers the week before the order date${plus}. Record what you actually sent: a different amount sent to Interactive Brokers changes only that month's VWRA order (rule r10)${sbRule}. When you record it, you can also size that month's orders to what you sent instead.${pj.dateIds.length ? ` Transfers for the months before you joined are not sent: they show $0.` : ""}`)];
 
   out.push(rateLine());
 
@@ -65,14 +78,16 @@ export function renderMoney() {
         h("dt", "Send"), h("dd", next.send ? `${long(next.send)} (${inDays(L.daysBetween(today(), next.send))})` : "—"),
         h("dt", "To"), h("dd", dest(next.to)),
         h("dt", "Pays for"), h("dd", next.pays)) : h("p.muted.small", "Every transfer for the twelve order dates is marked arrived."),
-      next ? h("button.btn.btn-primary.money-cta", { type: "button", "data-fk": "mf-next-" + next.id, on: { click: () => openTransferDialog(next, statusOf(next) === "sent" ? "arrived" : "sent") } }, statusOf(next) === "sent" ? "Mark it arrived" : "I sent it") : null),
+      next ? h("button.btn.btn-primary.money-cta", { type: "button", "data-fk": "mf-next-" + next.id, on: { click: () => openTransferDialog(next, statusOf(next) === "sent" ? "arrived" : "sent") } }, statusOf(next) === "sent" ? "Mark it arrived" : "I sent it") : null,
+      // While no record fixes that month, its amount can still change before the money goes.
+      next && openMonthIds().includes(next.forDate) ? monthAmountLink(next.forDate, "mf-month-" + next.forDate) : null),
     card(".money-card", { "aria-labelledby": "mf-year-h" },
       h("p.eyebrow", `${arrived.length} of ${mine.length} arrived`),
       h("h2.money-title#mf-year-h", "Year one"),
       h("p.money-amt", h("span.num-display", fM(fund.totalUsd)), showThb ? h("span.money-amt-sub", ` ≈ ${fThb(fund.totalThb)}`) : null),
       h("div.meter", { role: "img", "aria-label": `${arrived.length} of ${mine.length} transfers arrived` }, h("span", { style: { width: pct.toFixed(1) + "%" } })),
       h("dl.kv",
-        h("dt", "Plan"), h("dd", h("span.num", fM(budget)), h("span.kv-note", `${fM(plan.funding.monthlyUsd)} a month for ${plural(plan.orderDates.length - pj.dateIds.length, "month")}${pj.dateIds.length ? ", from when you joined" : ""}`)),
+        h("dt", "Plan"), h("dd", h("span.num", fM(budget)), h("span.kv-note", planNote(pj))),
         h("dt", "Sent to Interactive Brokers vs plan"), h(`dd${sentDiff < 0 ? ".is-coral" : ""}`, h("span.num", `${sentDiff > 0 ? "+" : sentDiff < 0 ? "−" : "±"}${fUsd(Math.abs(sentDiff), 2)}`), h("span.kv-note", "a difference changes that month's VWRA order (rule r10)"))))));
 
   // month by month
@@ -97,10 +112,19 @@ export function renderMoney() {
       h("div.rule-card", h("p.eyebrow", "Bank fees"), h("p", plan.funding.feeNote)))));
 
   out.push(card(".tx-card", { "aria-labelledby": "tx-h" },
-    cardHead(h("span#tx-h", "Transfers"), "Mark each one sent, then arrived. A different amount sent to Interactive Brokers changes that month's VWRA order (rule r10); one sent to SwissBorg changes only the coins."),
+    cardHead(h("span#tx-h", "Transfers"), "Mark each one sent, then arrived. When you record a different amount, you can size that month's orders to it. Otherwise a different amount sent to Interactive Brokers changes that month's VWRA order (rule r10), and one sent to SwissBorg changes only the coins."),
     h("div.table-wrap", transfersTable(fund, st, showThb)),
     h("p.fine", `Total at ฿${fNum(fund.fx, 2)}: ${fM(fund.totalUsd)} is about ${fThb(fund.totalThb)}${L.round2(fund.totalUsd) !== budget ? `, against the plan's ${fM(budget)}` : ""}.`)));
   return out;
+}
+
+/** "$500 a month for 12 months", or "12 months, $300 to $500 each" (the months that count for this friend). */
+function planNote(pj) {
+  const joined = resolvedMonths().filter((r) => !r.preJoin).map((r) => Math.round(r.usd * 100));
+  const n = joined.length || app.plan.orderDates.length - pj.dateIds.length;
+  const lo = joined.length ? Math.min(...joined) / 100 : app.plan.funding.monthlyUsd, hi = joined.length ? Math.max(...joined) / 100 : lo;
+  const late = pj.dateIds.length ? ", from when you joined" : "";
+  return lo === hi ? `${fM(lo)} a month for ${plural(n, "month")}${late}` : `${plural(n, "month")}, ${fM(lo)} to ${fM(hi)} each${late}`;
 }
 
 const STATUS_WORDS = [["todo", "To do"], ["sent", "Sent"], ["arrived", "Arrived"]];
@@ -161,7 +185,12 @@ async function setTransferStatus(t, target) {
   if (target === cur && target !== "sent") return;
   if (target === "todo") {
     if (s.sentUsd != null || s.sentThb != null || s.arrivedAt) {
-      const ok = await confirmDialog({ title: `Reset ${t.id}?`, text: "The amounts and dates you recorded for this transfer are cleared, and that month's VWRA order goes back to its planned amount.", ok: "Reset", danger: true });
+      // A month whose amount was set on its own (the transfer dialog's "Size ...", or the Year page) keeps it.
+      const m = monthOf(t.forDate);
+      const text = m && m.own
+        ? `The amounts and dates you recorded for this transfer are cleared. ${monthWordOf(t.forDate)}'s amount stays ${fM(m.usd)}; change it on the Year page if you need to.`
+        : "The amounts and dates you recorded for this transfer are cleared, and that month's VWRA order goes back to its planned amount.";
+      const ok = await confirmDialog({ title: `Reset ${t.id}?`, text, ok: "Reset", danger: true });
       if (!ok) return;
     }
     commit((d) => { d.funding[t.id] = { status: "todo", sentUsd: null, sentThb: null, sentAt: null, arrivedAt: null }; });
@@ -197,7 +226,54 @@ export function openTransferDialog(t, target) {
       : `The plan: ${fM(plan$)}. Type what your bank says was sent.`;
     usdHint.classList.toggle("is-warn", est != null);
   };
-  usdI.addEventListener("input", () => { usdTouched = true; rehint(); });
+  // A different amount from the plan's: size the month's orders to it (the default, when the month can
+  // change and this is its only transfer), or keep them as planned (rule r10). Otherwise one hint says why
+  // the orders stay as planned. Worked out again after a pause in typing.
+  const choice = h("div.am-choice.span-2", { "aria-live": "polite", "data-fk": "tx-choice", hidden: true });
+  const fd = t.forDate;
+  const Month = monthWordOf(fd);
+  let pick = "size";
+  let check = null;
+  const recheck = () => {
+    const usd = parseNum(usdI.value);
+    const x = usd > 0 ? L.round2(usd) : null;
+    const key = x != null && Math.round(x * 100) !== Math.round(plan$ * 100) ? String(x) : "";
+    if (key === choice.dataset.key) return;
+    choice.dataset.key = key;
+    fill(choice);
+    check = null;
+    choice.hidden = !key;
+    if (!key) return;
+    check = { ...M.sizeCheck(app.base, S(), { transferId: t.id, usd: x, plan: app.plan }), usd: x };
+    const diff = L.round2(x - plan$);
+    const by = `${diff < 0 ? "−" : "+"}${fUsd(Math.abs(diff), 2)}`;
+    if (check.ok) {
+      const orders = check.plan.orders.filter((o) => paidBy(o) === fd);
+      const radio = (v, strong, sub) => h("label.radio", h("input", { type: "radio", name: "tx-choice", value: v, checked: pick === v, "data-fk": "tx-" + v, on: { change: () => { pick = v; } } }),
+        h("span", h("strong", strong), h("span.radio-sub", sub)));
+      fill(choice,
+        h("fieldset.radio-set", h("legend", `You typed a different amount from the plan's ${fM(plan$)}.`),
+          radio("size", `Size ${Month}'s orders to ${fM(x)}.`, `${Month}'s amount becomes ${fM(x)}, and each order that month is worked out from it: ${ordersWords(check.plan, orders)}.`),
+          radio("r10", `Keep ${Month}'s orders as planned.`, t.to === "IBKR" ? `Only its VWRA order changes, by ${by} (rule r10).` : "The coin orders that month stay as they are.")),
+        placedWarning(M.placedChanged(S(), app.plan, check.plan)));
+      return;
+    }
+    const coins = app.plan.orders.filter((o) => o.cryptoWait && !isDone(o.id)).map((o) => app.instMap[o.instrument].name.toLowerCase());
+    const keep = t.to === "IBKR" ? " and only its VWRA order changes (rule r10)" : "";
+    const twoTail = t.to === "IBKR" ? " A different amount here changes only the VWRA order (rule r10)."
+      : !ownIdMonth(t.id) ? (coins.length ? ` A different amount here changes only ${listAnd(coins)} (the plan's SwissBorg rule).` : " A different amount here leaves bitcoin's order as it is (the plan's SwissBorg rule).") : "";
+    const words = {
+      records: `${Month} has other records, so its orders stay as planned${keep}.`,
+      two_transfers: `${Month}'s money goes in two transfers. To change ${Month}'s amount, use Change on the Year page before you send either one.${twoTail}`,
+      range: `${fM(x)} is ${x < MIN_MONTHLY_USD ? `under the ${fM(MIN_MONTHLY_USD)}` : `over the ${fM(MAX_MONTHLY_USD)}`} a month the plan works with, so ${Month}'s orders stay as planned${keep}.`,
+      fit: `At ${fM(x)}, your mix leaves less than $1 for ${Month}'s VWRA order, so its orders stay as planned${t.to === "IBKR" ? " (rule r10)" : ""}.`,
+    }[check.reason];
+    if (words) fill(choice, h("p.am-hint", { "data-fk": "tx-hint" }, icon("info"), h("span", words)));
+    else choice.hidden = true;
+  };
+  let tCheck = null;
+  usdI.addEventListener("input", () => { usdTouched = true; rehint(); clearTimeout(tCheck); tCheck = setTimeout(recheck, 250); });
+  usdI.addEventListener("blur", recheck);
   thbI.addEventListener("input", rehint);
   modal({
     title: `${t.id}: mark ${target}`,
@@ -207,6 +283,7 @@ export function openTransferDialog(t, target) {
       field("Baht it cost (optional, for your records)", thbI, `About ${fThb(t.thb)} at ฿${fNum(f.rate, 2)}. The dollars above are what the plan counts.`),
       field("Sent on", sentI),
       target === "arrived" ? field("Arrived on", arrI) : null,
+      choice,
       h("p.field-hint.span-2", `${diffRule(t)} Sent two or three months together? Mark each month's transfer with its own share, so only a real difference changes anything.`),
       err),
     actions: [h("button.btn.btn-ghost", { type: "button", on: { click: (e) => e.target.closest("dialog").close() } }, "Cancel"), h("button.btn.btn-primary", { type: "submit" }, `Mark ${target}`)],
@@ -222,11 +299,31 @@ export function openTransferDialog(t, target) {
       if (est != null) { usdTouched = true; return bad(`The baht you typed come to about ${fUsd(est, 2)}, but the dollars still say the plan's ${fM(plan$)}. Type the dollars that were sent (your bank's confirmation shows them), then save.`, usdI); }
       const sentAt = /^\d{4}-\d{2}-\d{2}$/.test(sentI.value) ? sentI.value : today();
       const arrivedAt = target === "arrived" ? (/^\d{4}-\d{2}-\d{2}$/.test(arrI.value) ? arrI.value : today()) : null;
-      commit((d) => {
-        d.funding[t.id] = { ...(d.funding[t.id] || {}), status: target, sentUsd: L.round2(usd), sentThb: thb == null ? null : L.round2(thb), sentAt, arrivedAt };
-      });
+      const record = { status: target, sentUsd: L.round2(usd), sentThb: thb == null ? null : L.round2(thb), sentAt, arrivedAt };
+      clearTimeout(tCheck);
+      const seen = choice.dataset.key || "";
+      recheck();
+      // The amount changed since the choice was last worked out (saved straight after typing): show the
+      // choice first, so nothing is sized that the friend has not seen.
+      if ((choice.dataset.key || "") !== seen && check && check.ok) { err.textContent = "Choose what happens to this month's orders, then save."; return false; }
+      if (check && check.ok && pick === "size") {
+        // "Size ...": the month's amount becomes what was sent, then the transfer is recorded, in one change.
+        const x = check.usd;
+        try {
+          commitPlanChange((d) => {
+            M.setMonthAmount(d, app.base, { dateId: fd, usd: x, input: { currency: "USD", amount: x }, ignoreTransfer: t.id });
+            d.funding[t.id] = { ...(d.funding[t.id] || {}), ...record };
+          }, { ignoreTransfer: t.id });
+        } catch (e) {
+          return bad(explain(e, { context: "amount" }), usdI);
+        }
+        toast(`${t.id} marked ${target}. ${Month}'s orders now use ${fM(x)}.`, "success");
+        return true;
+      }
+      if (!commit((d) => { d.funding[t.id] = { ...(d.funding[t.id] || {}), ...record }; })) return false;
       toast(`${t.id} marked ${target}`, "success");
       return true;
     },
   });
+  recheck(); // a transfer recorded before at a different amount shows its choice at once
 }

@@ -1,11 +1,20 @@
 // Rules: the plan's getting-ready checklist, its written rules (if this, then that), what it never does,
 // the thesis checks per holding with a check log, the journal, the maintenance calendar and a short
-// list of the words the plan uses.
+// list of the words the plan uses. A getting-ready item the friend's plan does not need (SwissBorg, when
+// their mix has no coins; the thesis checks and the 27 Nov closes, when their fields buy none of those
+// holdings) is shown muted and left out of the count; a holding their mix leaves out, or that is too small
+// at their amounts, says so on its thesis card.
+//
+// With field months (spec 8.3) the example plan's written reasons describe only the holdings the friend's
+// own months still buy: a thesis card is shown only for a holding the plan buys in a month they joined, and
+// the rebalancing targets (the example plan's split) are not shown at all. The friend's own companies get no
+// written reason here: they chose them, and the journal is the place for their own words (spec 12.1, 6 and 8).
 
 import {
   app, h, icon, toast, svg, L, S, now, today, ost, isDone, instById, rule, schedule, fM, long, short, monthName, bkkTime,
-  pill, card, cardHead, viewHead, field, ruleQuote, commit, confirmDialog, plural,
-} from "../core.js";
+  pill, card, cardHead, viewHead, field, ruleQuote, commit, confirmDialog, plural, prepNotNeeded, fieldMonthsOn, joinedPlan, tickerOf,
+} from "../core.js?v=2.0.0";
+import { notBought, notBoughtMonth } from "./mix.js?v=2.0.0";
 
 const WORDS = [
   ["Index fund", "A fund that holds many companies at once by following a market index. VWRA holds thousands of companies around the world; XDEW, EIMI and the quantum fund (QNTM) are narrower ones."],
@@ -32,11 +41,16 @@ const WORDS = [
 export function renderRules() {
   const plan = app.plan, st = S();
   const td = today();
+  // With field months, the thesis cards are only those of the holdings the friend's own months still buy.
+  const withFields = fieldMonthsOn();
+  const bought = new Set(joinedPlan().orders.map((o) => o.instrument));
+  const theses = withFields ? plan.thesis.filter((t) => bought.has(t.instrument)) : plan.thesis;
   const out = [viewHead("rules", "Written in advance", "Rules",
-    "The plan's own rules: getting ready, when to skip, wait or change an order, the thesis checks, and what to do after the last order. These are the only actions Tide Table ever shows.")];
+    `The plan's own rules: getting ready, when to skip, wait or change an order, ${theses.length ? "the thesis checks, " : ""}and what to do after the last order. These are the only actions Tide Table ever shows.`)];
 
-  // getting ready + the rules table
-  const done = plan.prep.filter((p) => st.prep[p.id]).length;
+  // getting ready + the rules table; an item the plan does not need counts for nothing
+  const needed = plan.prep.filter((p) => !prepNotNeeded(p.id));
+  const done = needed.filter((p) => st.prep[p.id]).length;
   const dd = L.daysBetween(td, plan.prepDeadline);
   const ringC = 2 * Math.PI * 22;
   out.push(h("div.rules-top",
@@ -44,14 +58,22 @@ export function renderRules() {
       h("header.card-head",
         h("div.card-head-text", h("p.eyebrow", "Step 1 · October"), h("h2.card-title#prep-h", { tabindex: "-1" }, "Getting ready"), h("p.card-sub", `Finish these by ${long(plan.prepDeadline)}, before any money moves.`)),
         h("div.prep-count",
-          svg("svg.mini-ring", { viewBox: "0 0 56 56", "aria-hidden": "true" }, svg("circle.mr-track", { cx: 28, cy: 28, r: 22 }), svg("circle.mr-arc", { cx: 28, cy: 28, r: 22, transform: "rotate(-90 28 28)", "stroke-dasharray": `${((done / plan.prep.length) * ringC).toFixed(1)} ${ringC.toFixed(1)}` })),
-          h("p.prep-num", h("span.num-display", String(done)), h("span.stat-of", `/${plan.prep.length}`)),
-          h(`p.prep-due${dd < 0 && done < plan.prep.length ? ".is-coral" : ""}`, dd >= 0 ? `${plural(dd, "day")} left` : done === plan.prep.length ? "done" : "date passed"))),
-      h("ul.checklist", plan.prep.map((p) => h(`li${st.prep[p.id] ? ".is-done" : ""}`,
-        h("label.check",
-          h("input", { type: "checkbox", checked: !!st.prep[p.id], "data-fk": "prep-" + p.id, on: { change: (e) => { const v = e.target.checked; commit((d) => { d.prep[p.id] = v; }); } } }),
-          h("span.check-box", { "aria-hidden": "true" }, icon("check")),
-          h("span.check-text", p.text, p.appNote ? h("span.check-note", ` ${p.appNote}`) : null)))))),
+          svg("svg.mini-ring", { viewBox: "0 0 56 56", "aria-hidden": "true" }, svg("circle.mr-track", { cx: 28, cy: 28, r: 22 }), svg("circle.mr-arc", { cx: 28, cy: 28, r: 22, transform: "rotate(-90 28 28)", "stroke-dasharray": `${((needed.length ? done / needed.length : 1) * ringC).toFixed(1)} ${ringC.toFixed(1)}` })),
+          h("p.prep-num", h("span.num-display", String(done)), h("span.stat-of", `/${needed.length}`)),
+          h(`p.prep-due${dd < 0 && done < needed.length ? ".is-coral" : ""}`, dd >= 0 ? `${plural(dd, "day")} left` : done === needed.length ? "done" : "date passed"))),
+      h("ul.checklist", plan.prep.map((p) => {
+        const na = prepNotNeeded(p.id);
+        if (na) {
+          return h("li.mx-na", h("div.check",
+            h("span.check-box", { "aria-hidden": "true" }, "–"),
+            h("span.check-text", p.text, h("span.check-note", { "data-fk": "prep-na-" + p.id }, ` ${na}`))));
+        }
+        return h(`li${st.prep[p.id] ? ".is-done" : ""}`,
+          h("label.check",
+            h("input", { type: "checkbox", checked: !!st.prep[p.id], "data-fk": "prep-" + p.id, on: { change: (e) => { const v = e.target.checked; commit((d) => { d.prep[p.id] = v; }); } } }),
+            h("span.check-box", { "aria-hidden": "true" }, icon("check")),
+            h("span.check-text", p.text, p.appNote ? h("span.check-note", ` ${p.appNote}`) : null)));
+      }))),
     card(".rules-card", { "aria-labelledby": "rt-h" },
       cardHead(h("span#rt-h", "When to skip, wait or change an order"), (rule("r7") || {}).if + ": " + (rule("r7") || {}).then),
       h("div.table-wrap", h("table.data-table.rules-table",
@@ -59,21 +81,40 @@ export function renderRules() {
         h("tbody", plan.rules.filter((r) => r.id !== "r7").map((r) => h("tr", h("th", { scope: "row" }, h("span.rule-id.num", r.id), r.if), h("td", r.then)))))),
       h("div.never", h("p.never-line", icon("alert"), h("span", plan.never)), h("p.never-line", icon("info"), h("span", plan.cryptoRule))))));
 
-  // thesis checks
-  out.push(h("section.thesis-sec", { "aria-labelledby": "th-h" },
-    h("header.sec-head.rise", h("h2.sec-title#th-h", "Thesis checks"), h("p.sec-sub", "Each growth stock, the quantum fund and the two smaller coins are held for one written reason. A failed check, not the price, stops an order or starts a review. Check after every quarterly report.")),
-    h("div.thesis-grid", plan.thesis.map((t) => thesisCard(t)))));
+  // thesis checks: with field months, only for the holdings the friend's own months still buy
+  out.push(h("section.thesis-sec", { "aria-labelledby": "th-h", "data-fk": "thesis-sec" },
+    h("header.sec-head.rise", h("h2.sec-title#th-h", "Thesis checks"), h("p.sec-sub", withFields
+      ? (theses.length
+        ? "These are the example plan's written reasons, for the holdings your months on the example plan buy. A failed check, not the price, stops an order or starts a review. Check after every quarterly report."
+        : "Your field months buy the companies you chose and VWRA. The example plan's written reasons are for holdings your months do not buy, so none is shown here.")
+      : "Each growth stock, the quantum fund and the two smaller coins are held for one written reason. A failed check, not the price, stops an order or starts a review. Check after every quarterly report.")),
+    theses.length ? h("div.thesis-grid", theses.map((t) => thesisCard(t))) : null,
+    withFields ? h("p.fine", { "data-fk": "thesis-own" }, "Tide Table writes no reason for the companies you chose. If you want to keep your own reasons, the journal below is the place for them.") : null));
 
   // journal + words
   out.push(h("div.rules-pair", journalCard(), wordsCard()));
 
-  // maintenance
+  // maintenance: the example plan's rebalancing check is about its own split, so it is left out with field months
+  const maint = plan.maintenance.filter((m) => !(withFields && /Rebalancing/i.test(m.what)));
   out.push(card(".maint-card", { "aria-labelledby": "mt-h" },
-    cardHead(h("span#mt-h", `After ${monthName(plan.orderDates[plan.orderDates.length - 1].date)}: the maintenance calendar`), "One short look a month and two balance checks a year."),
+    cardHead(h("span#mt-h", `After ${monthName(plan.orderDates[plan.orderDates.length - 1].date)}: the maintenance calendar`),
+      withFields ? "One short look a month. Your split is yours to keep or change on My split." : "One short look a month and two balance checks a year."),
     h("div.table-wrap", h("table.data-table.maint-table",
       h("thead", h("tr", h("th", { scope: "col" }, "When"), h("th", { scope: "col" }, "What"), h("th", { scope: "col" }, "Exactly"))),
-      h("tbody", plan.maintenance.map((m) => h("tr", h("td", { "data-label": "When" }, m.when), h("th", { scope: "row", "data-label": "What" }, m.what), h("td", { "data-label": "Exactly" }, m.detail))))))));
+      h("tbody", maint.map((m) => h("tr", h("td", { "data-label": "When" }, m.when), h("th", { scope: "row", "data-label": "What" }, m.what), h("td", { "data-label": "Exactly" }, m.detail))))))));
   return out;
+}
+
+/** The words on a thesis card for a holding with no order, or one left out from some month on (mix.notBought). */
+function notBoughtWords(why) {
+  if (!why) return null;
+  switch (why.kind) {
+    case "mix": return "not in your mix";
+    case "fields": return "not in your fields";
+    case "mix-from": return `not in your mix from ${notBoughtMonth(why)}`;
+    case "fields-from": return `not in your fields from ${notBoughtMonth(why)}`;
+    default: return "not bought at your amounts";
+  }
 }
 
 function thesisCard(t) {
@@ -84,6 +125,10 @@ function thesisCard(t) {
   const slices = schedule().orders.filter((o) => o.instrument === i.id).sort((a, b) => a.at - b.at);
   // Rule r2 stops the next slice; a later one (July's quantum slice) waits for its own check.
   const gatedOpen = slices.filter((o) => o.thesisGate && !isDone(o.id)).slice(0, 1);
+  // No order at all: the friend's mix or fields leave it out, or each order would be too small at their
+  // amounts. Bought earlier but left out of their mix or fields from a month on: that month is named after the
+  // dates.
+  const why = notBought(i.id);
   const sell = h("textarea", { rows: 2, "data-fk": "sell-" + i.id, "data-keep": "", maxlength: 300, placeholder: "One line, written before you buy", text: ts.sellIf || "", "aria-label": `What would make you sell ${i.name}` });
   sell.addEventListener("change", () => { const v = sell.value.trim().slice(0, 300); commit((d) => { d.thesis[i.id] = { checks: [], ...(d.thesis[i.id] || {}), sellIf: v }; }); });
   const dateI = h("input", { type: "date", "data-fk": "chkd-" + i.id, "data-keep": "", value: today(), "aria-label": `${i.name} check date` });
@@ -99,10 +144,11 @@ function thesisCard(t) {
   const failed = latest && !latest.pass;
   return card(`.thesis-card${failed ? ".is-failed" : ""}`, { "aria-labelledby": "th-" + i.id },
     h("header.thesis-head",
-      h("div", h("h3.thesis-name#th-" + i.id, i.name), h("p.pc-meta", h("span.ticker.num", i.id),
+      h("div", h("h3.thesis-name#th-" + i.id, i.name), h("p.pc-meta", h("span.ticker.num", tickerOf(i)),
         slices.length ? slices.map((o) => h(`span.od.is-${ost(o.id).status || "pending"}`, { title: `${long(o.date)}${o.thesisGate ? " · thesis check first" : ""}` }, short(o.date)))
-          : h("span.od", `not bought at ${fM(app.plan.funding.monthlyUsd)} a month`))),
-      latest ? (latest.pass ? pill(`Passed ${short(latest.date)}`, "kelp", "✓") : pill(`Failed ${short(latest.date)}`, "coral", "✕")) : pill("No check yet", "neutral", "○")),
+          : h("span.od", notBoughtWords(why || { kind: "amount" })),
+        slices.length && why && /-from$/.test(why.kind) ? h("span.od", notBoughtWords(why)) : null)),
+      latest ? (latest.pass ? pill(`Passed ${short(latest.date)}`, "kelp", "✓") : pill(`Failed ${short(latest.date)}`, "coral", "✕")) : pill("No check yet", "neutral", "□")),
     h("dl.thesis-dl", h("dt", "Held because"), h("dd", t.heldBecause), h("dt", "Still holds if"), h("dd", t.holdsIf)),
     field("What would make you sell", sell),
     failed && gatedOpen.length ? h("div.r2-box",

@@ -4,15 +4,19 @@
 //
 // Every number comes from the scaled plan or logic-core.js. The only actions shown are the plan's own
 // written rules; prices are information only.
+//
+// A friend's amounts and mix can differ by month (months.js). Every change to them goes through one path,
+// commitPlanChange, which refuses any change that would alter a month the friend's records fix.
 
-import * as ui from "./ui.js";
-import * as L from "./logic-core.js";
-import { fmtMoney, fmtBaht, beforeJoin } from "./scale.js";
-import { store, hasLogged } from "./store.js";
-import { prices } from "./prices.js";
+import * as ui from "./ui.js?v=2.0.0";
+import * as L from "./logic-core.js?v=2.0.0";
+import { fmtMoney, fmtBaht, beforeJoin } from "./scale.js?v=2.0.0";
+import { store, hasLogged, withDefaults } from "./store.js?v=2.0.0";
+import { prices } from "./prices.js?v=2.0.0";
+import * as M from "./months.js?v=2.0.0";
 
 export const { h, clear, icon, pill, toast } = ui;
-export { ui, L, store, prices };
+export { ui, L, store, prices, M };
 export const $ = (sel, root = document) => root.querySelector(sel);
 export const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 export const svg = (tag, props = {}, ...kids) => h(tag, { ...props, svg: true }, ...kids);
@@ -20,9 +24,10 @@ export const svg = (tag, props = {}, ...kids) => h(tag, { ...props, svg: true },
 /** Module-local app state; the friend's records live in store. */
 export const app = {
   base: null, // data/base-plan.json
-  plan: null, // the base plan scaled to the friend's amount (scale.js)
+  plan: null, // the base plan scaled to the friend's amounts and mix (scale.js, through months.js)
   planKey: "",
   planError: null,
+  planInputs: true, // false when app.plan had to be worked out from the dollars alone (an amount as typed did not give them)
   instMap: {},
   active: null,
   cleanup: {},
@@ -36,6 +41,10 @@ export const app = {
   lastDay: null,
   draft: null, // the setup form while it is being filled in
   ui: { allocMode: "group" },
+  // The open data (2.0): the state of data/index.json as datafiles.loadIndex resolved it ({status: "ok" |
+  // "missing" | "failed", ...}), or null before it is known; and the upcoming listings (tt-upcoming/1) or null.
+  data: null,
+  upcoming: null,
 };
 
 /** main.js fills these in (the router and the chrome). */
@@ -44,7 +53,24 @@ export const hooks = {
   renderView: () => {},
   renderFresh: () => {},
   go: (id) => { location.hash = "#/" + id; },
+  /** Where a new friend goes after the setup: Fields when the open data has a list, else Today. */
+  firstRoute: () => "today",
 };
+
+/** True when the open data loaded and has a list of companies (capability universe). */
+export const universeOn = () => !!(app.data && app.data.status === "ok" && app.data.index && app.data.index.capabilities
+  && app.data.index.capabilities.universe === true);
+/** The friend's saved fields record (plan.fields), or null. */
+export const savedFields = () => {
+  const p = store.get().plan;
+  return p && p.fields && typeof p.fields === "object" ? p.fields : null;
+};
+/** True when the friend has fields saved for some month (plan.fields from a month, or a month's own pin). */
+export function hasFieldMonths(planRec = store.get().plan) {
+  if (!planRec || typeof planRec !== "object") return false;
+  if (planRec.fields && planRec.fields.from) return true;
+  return Object.values(planRec.months || {}).some((e) => e && typeof e === "object" && e.fields);
+}
 
 // ---------------------------------------------------------------- clock
 
@@ -85,9 +111,109 @@ export const isPreDate = (dateId) => pre().dateIds.includes(dateId);
 /** Filled, skipped, or from before the friend joined: nothing left to do for it. */
 export const isDone = (id) => ["filled", "skipped"].includes(ost(id).status) || isPreOrder(id);
 export const instById = (id) => app.instMap[id];
+/** The ticker to show for an instrument: a field company's own ticker (its id is a company id), else its id. */
+export const tickerOf = (i) => (i && i.group === "fields" ? i.symbol || "" : (i && i.id) || "");
+/** True for a company a friend's fields buy (not one of the $500 plan's own holdings). */
+export const isFieldInst = (i) => !!i && i.group === "fields";
 export const rule = (id) => app.plan.rules.find((r) => r.id === id);
 export const accountLabel = (id) => (app.plan.accounts.find((a) => a.id === id) || {}).label || id;
-export const locked = () => !!(S().plan && hasLogged(S(), pre()));
+
+// ---------------------------------------------------------------- the friend's months (months.js)
+
+/** What decides the scaled plan: the usual amount and how it was typed, the month entries, the mix and the
+ *  join date. main.js scales the plan again whenever this text changes. "" with no plan record. */
+export const planKeyOf = (p) => (p ? JSON.stringify([p.monthlyUsd, p.input, p.months || {}, p.mix || {}, p.joinedAt || null, p.fields || null]) : "");
+
+let fixedMemo = { s: null, base: null, all: null, joined: null };
+function fixedFor(s) {
+  if (fixedMemo.s !== s || fixedMemo.base !== app.base) {
+    const all = app.base && s.plan ? M.fixedMonths(app.base, s) : new Map();
+    const preIds = app.base && s.plan ? beforeJoin(app.base, s.plan.joinedAt).dateIds : [];
+    fixedMemo = { s, base: app.base, all, joined: new Map([...all].filter(([d]) => !preIds.includes(d))) };
+  }
+  return fixedMemo;
+}
+/**
+ * The joined months the friend's records fix: Map(dateId -> [{kind, id, status}]), in date order (see
+ * months.fixedMonths). A month before the friend joined is left out, even when a record pins it (January's
+ * coins are paid by November's money), so counts like "3 of 12 months fixed" are over the joined months.
+ * Read it only; it is shared until the state changes.
+ */
+export const fixed = () => fixedFor(S()).joined;
+/** The joined months that can still change, in date order (ids). */
+export const openMonthIds = () => (app.base && S().plan ? M.openMonths(app.base, S()) : []);
+/** The joined months, in date order (ids). */
+export const joinedMonthIds = () => (app.base ? app.base.orderDates.map((d) => d.id).filter((d) => !pre().dateIds.includes(d)) : []);
+/** True when every joined month is fixed by the friend's records: no amount or mix can change any more.
+ *  (Before version 2 this meant "any record at all"; plan.lockedAt is still kept, for display only.) */
+export const locked = () => !!(S().plan && app.base) && joinedMonthIds().length > 0 && openMonthIds().length === 0;
+
+let monthsMemo = { p: null, base: null, rows: [] };
+/** Every order date as the friend's plan record resolves it, in date order (months.resolveMonths):
+ *  { dateId, date, usd, input, own, pinned, mix, mixPinned, preJoin, mode }. */
+export function resolvedMonths() {
+  const p = S().plan;
+  if (!p || !app.base) return [];
+  if (monthsMemo.p !== p || monthsMemo.base !== app.base) monthsMemo = { p, base: app.base, rows: M.resolveMonths(app.base, p) };
+  return monthsMemo.rows;
+}
+/** One order date as resolved (see resolvedMonths), or null. */
+export const monthOf = (dateId) => resolvedMonths().find((r) => r.dateId === dateId) || null;
+/** "$500 a month", or "$300 to $500 a month" when the joined months differ ("" with no amount yet). */
+export const amountWords = () => (app.base && S().plan ? M.amountWords(app.base, S().plan) : "");
+/** True when the friend has a mix of their own in force (plan.mix), from plan.mixFrom on. */
+export const mixIsOwn = () => !!(S().plan && S().plan.mix && Object.keys(S().plan.mix).length);
+/** True when some month the friend has joined is a field month. Those months buy the friend's own companies and
+ *  VWRA, so the example plan's written reasons, targets and closing-price checks do not describe them. */
+export const fieldMonthsOn = () => resolvedMonths().some((r) => !r.preJoin && r.mode === "fields");
+/** The friend's split as saved (plan.fields), else the last joined field month's, or null: { chosen, split, lists }. */
+export function fieldsSpecNow() {
+  const f = savedFields();
+  if (f && f.from && Array.isArray(f.chosen) && f.chosen.length && Number.isInteger(f.split)) return f;
+  const rows = resolvedMonths().filter((r) => !r.preJoin && r.mode === "fields" && r.fields);
+  return rows.length ? rows[rows.length - 1].fields : null;
+}
+
+/** One plain sentence for why a change was refused (months.explainFit): a PlanFitError, a MonthChangeError,
+ *  a FixedMonthError or anything else. opts.context "amount" words a VWRA shortfall for an amount screen. */
+export const explain = (e, opts) => M.explainFit(e, app.plan || app.base, opts);
+
+/** True when the plan buys the instrument on some date (it has an order), at the friend's amounts and mix. */
+export const isBoughtInst = (id) => !!app.plan && app.plan.orders.some((o) => o.instrument === id);
+
+/**
+ * The example plan's holdings a getting-ready item is about, or null for an item about something else: the
+ * thesis checks (every holding with a written reason) and the 27 Nov closing prices (every holding whose
+ * ceiling is set by that day's close).
+ */
+function prepHoldings(item) {
+  if (/^Thesis checks\b/.test(item.text)) return (app.plan.thesis || []).map((t) => t.instrument);
+  if (/\bclosing prices\b/.test(item.text)) return (app.plan.instruments || []).filter((i) => i.ceiling && i.ceiling.type === "close_plus").map((i) => i.id);
+  return null;
+}
+
+/**
+ * Why a getting-ready item does not apply to this friend's plan, or null when it does. An item about getting
+ * an account ready ("SwissBorg ready: ...") is not needed when the plan sends no money to that account and
+ * buys nothing there (a mix with no coins). An item about some of the example plan's holdings (the thesis
+ * checks, the 27 Nov closing prices) is not needed when the plan buys none of them: a friend whose fields buy
+ * their own companies instead. Such an item is shown muted and left out of the counts.
+ */
+export function prepNotNeeded(id) {
+  if (!app.plan) return null;
+  const item = (app.plan.prep || []).find((p) => p.id === id);
+  if (!item || typeof item.text !== "string") return null;
+  for (const a of app.plan.accounts || []) {
+    if (!a.label || !item.text.startsWith(a.label + " ")) continue;
+    const used = app.plan.orders.some((o) => o.account === a.id) || app.plan.funding.transfers.some((t) => t.to === a.id);
+    if (used) return null;
+    const held = app.base ? app.base.orders.filter((o) => o.account === a.id).map((o) => (app.base.instruments.find((i) => i.id === o.instrument) || {}).group) : [];
+    return held.length && held.every((g) => g === "crypto") ? "Not needed: there are no coins in your plan." : `Not needed: your plan sends nothing to ${a.label}.`;
+  }
+  const named = prepHoldings(item);
+  if (named && named.length && !named.some((x) => isBoughtInst(x))) return "Not needed: your plan buys none of these.";
+  return null;
+}
 
 let viewMemo = { plan: null, key: null, view: null };
 /** app.plan without the months before the friend joined: what the money maths and progress count. */
@@ -302,7 +428,7 @@ export function howTo(i) {
 export const rolledFor = (instId) => ((app.plan.scale && app.plan.scale.rolled) || []).filter((r) => r.instrument === instId);
 
 export const STATUS_PILL = {
-  pending: ["To do", "neutral", "○"],
+  pending: ["To do", "neutral", "□"],
   placed: ["Placed", "amber", "◐"],
   filled: ["Filled", "kelp", "✓"],
   skipped: ["Skipped", "muted", "↷"],
@@ -375,11 +501,23 @@ export function sourceLink(src) {
 export const saveUi = { state: "idle", at: 0 };
 
 /**
- * Change the friend's records and save them in this browser at once. The amount locks (plan.lockedAt)
- * from the first fill, skip or transfer, and unlocks if every one of them is undone. Entries from before
- * the friend joined never lock it.
+ * Change the friend's records and save them in this browser at once. plan.lockedAt is kept as before (set
+ * from the first fill, skip or transfer, cleared if every one of them is undone; entries from before the
+ * friend joined never set it); it is for display only.
+ *
+ * Amounts and the mix change through commitPlanChange. A mutator that changes the plan record anyway (the
+ * amount, the month entries, the mix or the join date) is checked here too: if it would alter an order or a
+ * transfer of a month the records fix, nothing is saved and a toast says why. The mutator may then run twice,
+ * so, as everywhere, it must change only the draft it is given. Returns true when the change was saved.
  */
-export function commit(mutator) {
+export function commit(mutator, { planChecked = false } = {}) {
+  if (!planChecked) {
+    const refused = planGuard(mutator);
+    if (refused) {
+      toast(explain(refused), "alert", 6000);
+      return false;
+    }
+  }
   store.update((d) => {
     mutator(d);
     if (d.plan) {
@@ -391,8 +529,72 @@ export function commit(mutator) {
   saveUi.state = store.saveError ? "error" : "saved";
   saveUi.at = Date.now();
   hooks.renderFresh();
-  if (store.saveError) toast("Not saved: this browser refused to store it. Download a copy from Settings before you close the page.", "alert", 6000);
+  const se = store.saveError;
+  if (se && (se.name === "NamesMissingError" || se.name === "DamagedStateError")) toast(se.message, "alert", 6000);
+  else if (se) toast("Not saved: this browser refused to store it. Download a copy from Settings before you close the page.", "alert", 6000);
   else askToKeep();
+  return !store.saveError;
+}
+
+/** The mutator applied to a copy of the state, then cleaned as the store saves it (withDefaults), in place. */
+function applyClean(d, mutator) {
+  mutator(d);
+  const c = withDefaults(d);
+  for (const k of Object.keys(d)) delete d[k];
+  return Object.assign(d, c);
+}
+
+/**
+ * For commit: null when the mutator leaves the plan record as it is, or leaves every fixed month's orders
+ * and transfers as they are; otherwise the refusal (a FixedMonthError). A mutator that throws is left to
+ * store.update, which reports it as today.
+ */
+function planGuard(mutator) {
+  const cur = S();
+  if (!app.base || !cur.plan) return null;
+  let draft;
+  try { draft = applyClean(structuredClone(cur), mutator); } catch { return null; }
+  if (planKeyOf(draft.plan) === planKeyOf(cur.plan)) return null;
+  const fixedNow = M.fixedMonths(app.base, cur);
+  if (!fixedNow.size) return null;
+  const before = M.planOrNull(app.base, cur.plan).plan;
+  if (!before) return null; // the saved amounts could not be worked out: there is nothing to keep
+  const after = draft.plan ? M.planOrNull(app.base, draft.plan).plan : null;
+  if (!after) return new M.FixedMonthError();
+  try {
+    M.checkFixedUnchanged(app.base, before, after, fixedNow);
+    M.tidy(structuredClone(draft), after);
+  } catch (e) {
+    return e;
+  }
+  return null;
+}
+
+/**
+ * The one way to change the friend's amounts or mix (setup when changing, the month dialog, the transfer
+ * dialog's "Size ...", the mix editor, "Back to the plan's mix"). mutator(draft) makes the change on a copy,
+ * normally with months.setAmountFrom, setMonthAmount or setMixFrom; it must be deterministic, because it runs
+ * once on the copy and once more to save. The copy is cleaned as the store saves it, its plan is worked out,
+ * and the change is refused if it would alter an order or a transfer of a month the records fix. Records the
+ * new plan has no place for (a to-do or placed entry of an order it no longer buys) are dropped (months.tidy).
+ *
+ * Returns the new plan. Throws, and saves nothing, on a refusal: a PlanFitError (the amounts or mix do not
+ * work out), a MonthChangeError (the month is fixed or before the friend joined) or a FixedMonthError. The
+ * caller shows explain(e), in the field's error line or as a toast.
+ * opts.ignoreTransfer: a transfer being recorded again in the same change (it does not fix its own month).
+ */
+export function commitPlanChange(mutator, { ignoreTransfer = null } = {}) {
+  if (!app.base || !S().plan) throw new M.MonthChangeError("no_plan", "There is no monthly amount yet.");
+  const change = (d) => applyClean(d, mutator);
+  const r = M.planChange(app.base, S(), change, { ignoreTransfer });
+  // Every amount as typed must give its dollars (a baht amount converted to the cent): scaleFor throws a
+  // PlanFitError "input" otherwise. Only a plan that already needed the dollars alone (a hand-edited file,
+  // app.planInputs false) is let through as planChange worked it out.
+  if (app.planInputs !== false) M.scaleFor(app.base, r.state.plan);
+  commit((d) => { change(d); M.tidy(d, r.plan); }, { planChecked: true });
+  // A browser that refuses to store it still has the change in this tab, and commit has said so.
+  if (planKeyOf(S().plan) !== planKeyOf(r.state.plan)) throw new M.MonthChangeError("not_saved", "The change could not be made, so nothing was changed.");
+  return r.plan;
 }
 
 // Browsers may clear a site's storage on their own (Safari after about a week without a visit). Once there

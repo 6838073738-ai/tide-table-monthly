@@ -1081,8 +1081,8 @@
     {
       "kind": "US growth stocks",
       "find": "The US listing",
-      "order": "A $100 cash amount, limit at the ask + 0.5%, never above the ceiling",
-      "count": "Fractional; if the app wants shares, $100 ÷ ask to two decimals",
+      "order": "The order's cash amount (the order desk shows it), limit at the ask + 0.5%, never above the ceiling",
+      "count": "Fractional; if the app wants shares, the cash amount ÷ ask to two decimals",
       "styles": [
         "fractional_usd"
       ],
@@ -1214,7 +1214,7 @@
     {
       "when": "Any month you save more",
       "what": "The extra money",
-      "detail": "It buys VWRA that month."
+      "detail": "Record what you send on the Money page. You can size that month's orders to it, or keep them as planned and let the extra buy VWRA that month (rule r10)."
     }
   ],
   "templates": {
@@ -1222,63 +1222,620 @@
     "/meta/planLabel": "{$month} a month",
     "/meta/sourceDoc": "Buying plan: {$month} a month, November 2026 to October 2027",
     "/fx/USDTHB/note": "Plan assumes {฿fx} per US dollar.",
-    "/orderDates/m01/summary": "Two orders: {$p01} of bitcoin on SwissBorg, then {$p02} of VWRA at Interactive Brokers.",
-    "/orderDates/m02/summary": "Two orders at Interactive Brokers for {$ibkr:m02}: XDEW {$p03} and VWRA {$p04}.",
+    "/orderDates/m01/title": [
+      {
+        "if": [
+          "p01"
+        ],
+        "text": "Month 1: bitcoin + VWRA"
+      },
+      {
+        "if": [
+          "m01-VWRA"
+        ],
+        "text": "Month 1: your mix"
+      },
+      {
+        "if": [],
+        "text": "Month 1: VWRA"
+      }
+    ],
+    "/orderDates/m02/title": [
+      {
+        "if": [
+          "p03"
+        ],
+        "text": "Month 2: equal-weight S&P 500 + VWRA"
+      },
+      {
+        "if": [
+          "m02-VWRA"
+        ],
+        "text": "Month 2: your mix"
+      },
+      {
+        "if": [],
+        "text": "Month 2: VWRA"
+      }
+    ],
     "/orderDates/m03/title": [
       {
         "if": [
           "p05",
-          "p06"
+          "p06",
+          "p07",
+          "p09"
         ],
         "text": "Month 3: coins, quantum fund, Nvidia"
       },
       {
         "if": [
           "p05",
-          "!p06"
+          "!p06",
+          "p07",
+          "p09"
         ],
         "text": "Month 3: ether, quantum fund, Nvidia"
       },
       {
         "if": [
           "!p05",
-          "!p06"
+          "!p06",
+          "p07",
+          "p09"
         ],
         "text": "Month 3: quantum fund, Nvidia"
+      },
+      {
+        "if": [
+          "m03-VWRA"
+        ],
+        "text": "Month 3: your mix"
+      },
+      {
+        "if": [],
+        "text": "Month 3: {#title:m03}"
+      }
+    ],
+    "/orderDates/m04/title": [
+      {
+        "if": [
+          "p10",
+          "p12"
+        ],
+        "text": "Month 4: emerging markets + Eli Lilly"
+      },
+      {
+        "if": [
+          "m04-VWRA"
+        ],
+        "text": "Month 4: your mix"
+      },
+      {
+        "if": [],
+        "text": "Month 4: {#title:m04}"
+      }
+    ],
+    "/orderDates/m05/title": [
+      {
+        "if": [
+          "p14",
+          "p15"
+        ],
+        "text": "Month 5: GE Vernova + Vertiv"
+      },
+      {
+        "if": [
+          "m05-VWRA"
+        ],
+        "text": "Month 5: your mix"
+      },
+      {
+        "if": [],
+        "text": "Month 5: {#title:m05}"
+      }
+    ],
+    "/orderDates/m06/title": [
+      {
+        "if": [
+          "p17",
+          "p18"
+        ],
+        "text": "Month 6: SpaceX + argenx"
+      },
+      {
+        "if": [
+          "m06-VWRA"
+        ],
+        "text": "Month 6: your mix"
+      },
+      {
+        "if": [],
+        "text": "Month 6: {#title:m06}"
+      }
+    ],
+    "/orderDates/m07/title": [
+      {
+        "if": [
+          "p20"
+        ],
+        "text": "Month 7: Insmed"
+      },
+      {
+        "if": [
+          "m07-VWRA"
+        ],
+        "text": "Month 7: your mix"
+      },
+      {
+        "if": [],
+        "text": "Month 7: VWRA"
+      }
+    ],
+    "/orderDates/m08/title": [
+      {
+        "if": [
+          "p21"
+        ],
+        "text": "Month 8: equal-weight S&P 500 + VWRA"
+      },
+      {
+        "if": [
+          "m08-VWRA"
+        ],
+        "text": "Month 8: your mix"
+      },
+      {
+        "if": [],
+        "text": "Month 8: VWRA"
+      }
+    ],
+    "/orderDates/m09/title": [
+      {
+        "if": [
+          "p23"
+        ],
+        "text": "Month 9: quantum fund, second slice"
+      },
+      {
+        "if": [
+          "m09-VWRA"
+        ],
+        "text": "Month 9: your mix"
+      },
+      {
+        "if": [],
+        "text": "Month 9: VWRA"
+      }
+    ],
+    "/orderDates/m10/title": [
+      {
+        "if": [
+          "p25"
+        ],
+        "text": "Month 10: emerging markets + VWRA"
+      },
+      {
+        "if": [
+          "m10-VWRA"
+        ],
+        "text": "Month 10: your mix"
+      },
+      {
+        "if": [],
+        "text": "Month 10: VWRA"
+      }
+    ],
+    "/orderDates/m11/title": [
+      {
+        "if": [
+          "p27"
+        ],
+        "text": "Month 11: VWRA"
+      },
+      {
+        "if": [],
+        "text": "Month 11: your mix"
+      }
+    ],
+    "/orderDates/m12/title": [
+      {
+        "if": [
+          "p28"
+        ],
+        "text": "Month 12: VWRA — year one complete"
+      },
+      {
+        "if": [],
+        "text": "Month 12: your mix — year one complete"
+      }
+    ],
+    "/orderDates/m01/summary": [
+      {
+        "if": [
+          "p01"
+        ],
+        "text": "Two orders: {$p01} of bitcoin on SwissBorg, then {$p02} of VWRA at Interactive Brokers."
+      },
+      {
+        "if": [
+          "p02"
+        ],
+        "text": "One order at Interactive Brokers: VWRA {$p02}."
+      },
+      {
+        "if": [
+          "S-m01",
+          "W01"
+        ],
+        "text": "{#countAll:m01}: {#mixCoins:m01} on SwissBorg for {$S-m01}; then {#names:m01} at Interactive Brokers for {$ibkr:m01}."
+      },
+      {
+        "if": [
+          "S-m01"
+        ],
+        "text": "{#countAll:m01}: {#mixCoins:m01} on SwissBorg for {$S-m01}, and VWRA at Interactive Brokers for any leftover."
+      },
+      {
+        "if": [],
+        "text": "{#count:m01} at Interactive Brokers for {$ibkr:m01}: {#list:m01}."
+      }
+    ],
+    "/orderDates/m02/summary": [
+      {
+        "if": [
+          "p03"
+        ],
+        "text": "Two orders at Interactive Brokers for {$ibkr:m02}: XDEW {$p03} and VWRA {$p04}."
+      },
+      {
+        "if": [
+          "S-m02",
+          "W02"
+        ],
+        "text": "{#countAll:m02}: {#mixCoins:m02} on SwissBorg for {$S-m02}; then {#names:m02} at Interactive Brokers for {$ibkr:m02}."
+      },
+      {
+        "if": [
+          "S-m02"
+        ],
+        "text": "{#countAll:m02}: {#mixCoins:m02} on SwissBorg for {$S-m02}, and VWRA at Interactive Brokers for any leftover."
+      },
+      {
+        "if": [],
+        "text": "{#count:m02} at Interactive Brokers for {$ibkr:m02}: {#list:m02}."
       }
     ],
     "/orderDates/m03/summary": [
       {
         "if": [
           "p05",
-          "p06"
+          "p06",
+          "p07",
+          "p09"
         ],
         "text": "Five orders: ether and solana from the SwissBorg wallet, then the quantum fund, VWRA and Nvidia at Interactive Brokers for {$ibkr:m03}."
       },
       {
         "if": [
           "p05",
-          "!p06"
+          "!p06",
+          "p07",
+          "p09"
         ],
         "text": "Four orders: ether from the SwissBorg wallet, then the quantum fund, VWRA and Nvidia at Interactive Brokers for {$ibkr:m03}."
       },
       {
         "if": [
           "!p05",
-          "!p06"
+          "!p06",
+          "p07",
+          "p09"
         ],
         "text": "Three orders at Interactive Brokers for {$ibkr:m03}: the quantum fund {$p07}, VWRA {$p08} and Nvidia {$p09}."
+      },
+      {
+        "if": [
+          "p05",
+          "S-m03",
+          "W03"
+        ],
+        "text": "{#countAll:m03}: {#coins:m03} from November's money in the SwissBorg wallet; {#mixCoins:m03} from this month's {$S-m03} to SwissBorg; then {#names:m03} at Interactive Brokers for {$ibkr:m03}."
+      },
+      {
+        "if": [
+          "p06",
+          "S-m03",
+          "W03"
+        ],
+        "text": "{#countAll:m03}: {#coins:m03} from November's money in the SwissBorg wallet; {#mixCoins:m03} from this month's {$S-m03} to SwissBorg; then {#names:m03} at Interactive Brokers for {$ibkr:m03}."
+      },
+      {
+        "if": [
+          "p05",
+          "S-m03"
+        ],
+        "text": "{#countAll:m03}: {#coins:m03} from November's money in the SwissBorg wallet; {#mixCoins:m03} from this month's {$S-m03} to SwissBorg; and VWRA at Interactive Brokers for any leftover."
+      },
+      {
+        "if": [
+          "p06",
+          "S-m03"
+        ],
+        "text": "{#countAll:m03}: {#coins:m03} from November's money in the SwissBorg wallet; {#mixCoins:m03} from this month's {$S-m03} to SwissBorg; and VWRA at Interactive Brokers for any leftover."
+      },
+      {
+        "if": [
+          "p05",
+          "m03-VWRA"
+        ],
+        "text": "{#countAll:m03}: {#coins:m03} from November's money in the SwissBorg wallet; then {#names:m03} at Interactive Brokers for {$ibkr:m03}."
+      },
+      {
+        "if": [
+          "p06",
+          "m03-VWRA"
+        ],
+        "text": "{#countAll:m03}: {#coins:m03} from November's money in the SwissBorg wallet; then {#names:m03} at Interactive Brokers for {$ibkr:m03}."
+      },
+      {
+        "if": [
+          "S-m03",
+          "W03"
+        ],
+        "text": "{#countAll:m03}: {#mixCoins:m03} on SwissBorg for {$S-m03}; then {#names:m03} at Interactive Brokers for {$ibkr:m03}."
+      },
+      {
+        "if": [
+          "S-m03"
+        ],
+        "text": "{#countAll:m03}: {#mixCoins:m03} on SwissBorg for {$S-m03}, and VWRA at Interactive Brokers for any leftover."
+      },
+      {
+        "if": [
+          "p05"
+        ],
+        "text": "{#countAll:m03}: {#coins:m03} from the SwissBorg wallet, then {#names:m03} at Interactive Brokers for {$ibkr:m03}."
+      },
+      {
+        "if": [
+          "p06"
+        ],
+        "text": "{#countAll:m03}: {#coins:m03} from the SwissBorg wallet, then {#names:m03} at Interactive Brokers for {$ibkr:m03}."
+      },
+      {
+        "if": [],
+        "text": "{#count:m03} at Interactive Brokers for {$ibkr:m03}: {#list:m03}."
       }
     ],
-    "/orderDates/m04/summary": "Three orders at Interactive Brokers for {$ibkr:m04}: EIMI {$p10}, VWRA {$p11} and Eli Lilly {$p12}.",
-    "/orderDates/m05/summary": "Three orders at Interactive Brokers for {$ibkr:m05}: VWRA {$p13}, GE Vernova {$p14} and Vertiv {$p15}.",
-    "/orderDates/m06/summary": "Three orders at Interactive Brokers for {$ibkr:m06}: VWRA {$p16}, SpaceX {$p17} and argenx {$p18}.",
-    "/orderDates/m07/summary": "Two orders at Interactive Brokers for {$ibkr:m07}: VWRA {$p19} and Insmed {$p20}.",
-    "/orderDates/m08/summary": "Two orders at Interactive Brokers for {$ibkr:m08}: XDEW {$p21} and VWRA {$p22}.",
-    "/orderDates/m09/summary": "Two orders at Interactive Brokers for {$ibkr:m09}: the quantum fund {$p23} and VWRA {$p24}.",
-    "/orderDates/m10/summary": "Two orders at Interactive Brokers for {$ibkr:m10}: EIMI {$p25} and VWRA {$p26}.",
-    "/orderDates/m11/summary": "One order at Interactive Brokers: VWRA {$p27}.",
-    "/orderDates/m12/summary": "One order at Interactive Brokers: VWRA {$p28}. After it, all {$year} is invested apart from whole-share remainders.",
+    "/orderDates/m04/summary": [
+      {
+        "if": [
+          "p10",
+          "p12"
+        ],
+        "text": "Three orders at Interactive Brokers for {$ibkr:m04}: EIMI {$p10}, VWRA {$p11} and Eli Lilly {$p12}."
+      },
+      {
+        "if": [
+          "S-m04",
+          "W04"
+        ],
+        "text": "{#countAll:m04}: {#mixCoins:m04} on SwissBorg for {$S-m04}; then {#names:m04} at Interactive Brokers for {$ibkr:m04}."
+      },
+      {
+        "if": [
+          "S-m04"
+        ],
+        "text": "{#countAll:m04}: {#mixCoins:m04} on SwissBorg for {$S-m04}, and VWRA at Interactive Brokers for any leftover."
+      },
+      {
+        "if": [],
+        "text": "{#count:m04} at Interactive Brokers for {$ibkr:m04}: {#list:m04}."
+      }
+    ],
+    "/orderDates/m05/summary": [
+      {
+        "if": [
+          "p14",
+          "p15"
+        ],
+        "text": "Three orders at Interactive Brokers for {$ibkr:m05}: VWRA {$p13}, GE Vernova {$p14} and Vertiv {$p15}."
+      },
+      {
+        "if": [
+          "S-m05",
+          "W05"
+        ],
+        "text": "{#countAll:m05}: {#mixCoins:m05} on SwissBorg for {$S-m05}; then {#names:m05} at Interactive Brokers for {$ibkr:m05}."
+      },
+      {
+        "if": [
+          "S-m05"
+        ],
+        "text": "{#countAll:m05}: {#mixCoins:m05} on SwissBorg for {$S-m05}, and VWRA at Interactive Brokers for any leftover."
+      },
+      {
+        "if": [],
+        "text": "{#count:m05} at Interactive Brokers for {$ibkr:m05}: {#list:m05}."
+      }
+    ],
+    "/orderDates/m06/summary": [
+      {
+        "if": [
+          "p17",
+          "p18"
+        ],
+        "text": "Three orders at Interactive Brokers for {$ibkr:m06}: VWRA {$p16}, SpaceX {$p17} and argenx {$p18}."
+      },
+      {
+        "if": [
+          "S-m06",
+          "W06"
+        ],
+        "text": "{#countAll:m06}: {#mixCoins:m06} on SwissBorg for {$S-m06}; then {#names:m06} at Interactive Brokers for {$ibkr:m06}."
+      },
+      {
+        "if": [
+          "S-m06"
+        ],
+        "text": "{#countAll:m06}: {#mixCoins:m06} on SwissBorg for {$S-m06}, and VWRA at Interactive Brokers for any leftover."
+      },
+      {
+        "if": [],
+        "text": "{#count:m06} at Interactive Brokers for {$ibkr:m06}: {#list:m06}."
+      }
+    ],
+    "/orderDates/m07/summary": [
+      {
+        "if": [
+          "p20"
+        ],
+        "text": "Two orders at Interactive Brokers for {$ibkr:m07}: VWRA {$p19} and Insmed {$p20}."
+      },
+      {
+        "if": [
+          "S-m07",
+          "W07"
+        ],
+        "text": "{#countAll:m07}: {#mixCoins:m07} on SwissBorg for {$S-m07}; then {#names:m07} at Interactive Brokers for {$ibkr:m07}."
+      },
+      {
+        "if": [
+          "S-m07"
+        ],
+        "text": "{#countAll:m07}: {#mixCoins:m07} on SwissBorg for {$S-m07}, and VWRA at Interactive Brokers for any leftover."
+      },
+      {
+        "if": [],
+        "text": "{#count:m07} at Interactive Brokers for {$ibkr:m07}: {#list:m07}."
+      }
+    ],
+    "/orderDates/m08/summary": [
+      {
+        "if": [
+          "p21"
+        ],
+        "text": "Two orders at Interactive Brokers for {$ibkr:m08}: XDEW {$p21} and VWRA {$p22}."
+      },
+      {
+        "if": [
+          "S-m08",
+          "W08"
+        ],
+        "text": "{#countAll:m08}: {#mixCoins:m08} on SwissBorg for {$S-m08}; then {#names:m08} at Interactive Brokers for {$ibkr:m08}."
+      },
+      {
+        "if": [
+          "S-m08"
+        ],
+        "text": "{#countAll:m08}: {#mixCoins:m08} on SwissBorg for {$S-m08}, and VWRA at Interactive Brokers for any leftover."
+      },
+      {
+        "if": [],
+        "text": "{#count:m08} at Interactive Brokers for {$ibkr:m08}: {#list:m08}."
+      }
+    ],
+    "/orderDates/m09/summary": [
+      {
+        "if": [
+          "p23"
+        ],
+        "text": "Two orders at Interactive Brokers for {$ibkr:m09}: the quantum fund {$p23} and VWRA {$p24}."
+      },
+      {
+        "if": [
+          "S-m09",
+          "W09"
+        ],
+        "text": "{#countAll:m09}: {#mixCoins:m09} on SwissBorg for {$S-m09}; then {#names:m09} at Interactive Brokers for {$ibkr:m09}."
+      },
+      {
+        "if": [
+          "S-m09"
+        ],
+        "text": "{#countAll:m09}: {#mixCoins:m09} on SwissBorg for {$S-m09}, and VWRA at Interactive Brokers for any leftover."
+      },
+      {
+        "if": [],
+        "text": "{#count:m09} at Interactive Brokers for {$ibkr:m09}: {#list:m09}."
+      }
+    ],
+    "/orderDates/m10/summary": [
+      {
+        "if": [
+          "p25"
+        ],
+        "text": "Two orders at Interactive Brokers for {$ibkr:m10}: EIMI {$p25} and VWRA {$p26}."
+      },
+      {
+        "if": [
+          "S-m10",
+          "W10"
+        ],
+        "text": "{#countAll:m10}: {#mixCoins:m10} on SwissBorg for {$S-m10}; then {#names:m10} at Interactive Brokers for {$ibkr:m10}."
+      },
+      {
+        "if": [
+          "S-m10"
+        ],
+        "text": "{#countAll:m10}: {#mixCoins:m10} on SwissBorg for {$S-m10}, and VWRA at Interactive Brokers for any leftover."
+      },
+      {
+        "if": [],
+        "text": "{#count:m10} at Interactive Brokers for {$ibkr:m10}: {#list:m10}."
+      }
+    ],
+    "/orderDates/m11/summary": [
+      {
+        "if": [
+          "p27"
+        ],
+        "text": "One order at Interactive Brokers: VWRA {$p27}."
+      },
+      {
+        "if": [
+          "S-m11",
+          "W11"
+        ],
+        "text": "{#countAll:m11}: {#mixCoins:m11} on SwissBorg for {$S-m11}; then {#names:m11} at Interactive Brokers for {$ibkr:m11}."
+      },
+      {
+        "if": [
+          "S-m11"
+        ],
+        "text": "{#countAll:m11}: {#mixCoins:m11} on SwissBorg for {$S-m11}, and VWRA at Interactive Brokers for any leftover."
+      },
+      {
+        "if": [],
+        "text": "{#count:m11} at Interactive Brokers for {$ibkr:m11}: {#list:m11}."
+      }
+    ],
+    "/orderDates/m12/summary": [
+      {
+        "if": [
+          "p28"
+        ],
+        "text": "One order at Interactive Brokers: VWRA {$p28}. After it, all {$year} is invested apart from whole-share remainders."
+      },
+      {
+        "if": [
+          "S-m12",
+          "W12"
+        ],
+        "text": "{#countAll:m12}: {#mixCoins:m12} on SwissBorg for {$S-m12}; then {#names:m12} at Interactive Brokers for {$ibkr:m12}. After this date, all {$year} is invested apart from whole-share remainders."
+      },
+      {
+        "if": [
+          "S-m12"
+        ],
+        "text": "{#countAll:m12}: {#mixCoins:m12} on SwissBorg for {$S-m12}, and VWRA at Interactive Brokers for any leftover. After this date, all {$year} is invested apart from whole-share remainders."
+      },
+      {
+        "if": [],
+        "text": "{#count:m12} at Interactive Brokers for {$ibkr:m12}: {#list:m12}. After this date, all {$year} is invested apart from whole-share remainders."
+      }
+    ],
     "/orders/p01/then": [
       {
         "if": [
@@ -1288,9 +1845,12 @@
       },
       {
         "if": [
-          "!p05",
-          "!p06"
+          "p06"
         ],
+        "text": "Leave it in the SwissBorg wallet. The other {$coins} waits there as dollars or USDC, not in Earn, until 12 January."
+      },
+      {
+        "if": [],
         "text": "Leave it in the SwissBorg wallet."
       }
     ],
@@ -1303,49 +1863,226 @@
     "/orders/p17/note": "Single {$p17} slice. Buy it only if its thesis check passes. US markets open an hour earlier in Bangkok time from 15 March.",
     "/orders/p18/note": "Single {$p18} slice. Buy it only if its thesis check passes.",
     "/orders/p20/note": "Single {$p20} slice. Buy it only if its thesis check passes.",
-    "/dateNotes/m01/0": "Both November transfers go on Mon 2 Nov: {$S01} to SwissBorg and {$W01} to Interactive Brokers.",
+    "/dateNotes/m01/0": [
+      {
+        "if": [
+          "p01"
+        ],
+        "text": "Both November transfers go on Mon 2 Nov: {$S01} to SwissBorg and {$W01} to Interactive Brokers."
+      },
+      {
+        "if": [
+          "S01"
+        ],
+        "text": "Both November transfers go on Mon 2 Nov: {$S01} to SwissBorg and {$W01} to Interactive Brokers."
+      },
+      {
+        "if": [
+          "S-m01",
+          "W01"
+        ],
+        "text": "Both November transfers go on Mon 2 Nov: {$S-m01} to SwissBorg and {$W01} to Interactive Brokers."
+      },
+      {
+        "if": [
+          "S-m01"
+        ],
+        "text": "The November transfer goes on Mon 2 Nov: {$S-m01} to SwissBorg."
+      },
+      {
+        "if": [],
+        "text": "The November transfer goes on Mon 2 Nov: {$W01} to Interactive Brokers."
+      }
+    ],
     "/dateNotes/m01/1": [
       {
         "if": [
+          "p01",
           "p05"
         ],
         "text": "Leave the other {$coins} in the SwissBorg wallet as dollars or USDC, not in Earn, until 12 January."
       },
       {
         "if": [
-          "!p05",
-          "!p06"
+          "p01",
+          "p06"
         ],
-        "text": "At this amount only bitcoin is bought on SwissBorg: the ether and solana share is in this month's VWRA order."
+        "text": "Leave the other {$coins} in the SwissBorg wallet as dollars or USDC, not in Earn, until 12 January."
+      },
+      {
+        "if": [
+          "p05"
+        ],
+        "text": "Leave the {$coins} in the SwissBorg wallet as dollars or USDC, not in Earn, until 12 January."
+      },
+      {
+        "if": [
+          "p06"
+        ],
+        "text": "Leave the {$coins} in the SwissBorg wallet as dollars or USDC, not in Earn, until 12 January."
+      },
+      {
+        "if": [
+          "p01"
+        ],
+        "text": "Only bitcoin is bought on SwissBorg: the ether and solana share is in this month's VWRA order."
+      },
+      {
+        "if": [],
+        "text": null
+      }
+    ],
+    "/dateNotes/m02/0": [
+      {
+        "if": [
+          "p03"
+        ],
+        "text": "XDEW and VWRA are bought in whole shares. The cash left over joins the next VWRA order."
+      },
+      {
+        "if": [
+          "!W02"
+        ],
+        "text": null
+      },
+      {
+        "if": [],
+        "text": "Funds at Interactive Brokers are bought in whole shares. The cash left over joins the next VWRA order."
       }
     ],
     "/dateNotes/m03/0": [
       {
         "if": [
           "p05",
-          "p06"
+          "p06",
+          "p08"
         ],
         "text": "Ether and solana are paid from the {$coins} waiting in the SwissBorg wallet. No new money goes to SwissBorg."
       },
       {
         "if": [
           "p05",
-          "!p06"
+          "!p06",
+          "p08"
         ],
-        "text": "Ether is paid from the {$coins} waiting in the SwissBorg wallet. Solana is not bought at this amount: its share is in the 10 Nov VWRA order. No new money goes to SwissBorg."
+        "text": "Ether is paid from the {$coins} waiting in the SwissBorg wallet. Solana is not bought: its share is in the 10 Nov VWRA order. No new money goes to SwissBorg."
       },
       {
         "if": [
           "!p05",
-          "!p06"
+          "p06",
+          "p08"
         ],
-        "text": "Ether and solana are not bought at this amount: their share is in the 10 Nov VWRA order. No new money goes to SwissBorg."
+        "text": "Solana is paid from the {$coins} waiting in the SwissBorg wallet. Ether is not bought: its share is in the 10 Nov VWRA order. No new money goes to SwissBorg."
+      },
+      {
+        "if": [
+          "p02",
+          "p08"
+        ],
+        "text": "Ether and solana are not bought: their share is in the 10 Nov VWRA order. No new money goes to SwissBorg."
+      },
+      {
+        "if": [
+          "p05",
+          "p06"
+        ],
+        "text": "Ether and solana from November's money are paid from the {$coins} waiting in the SwissBorg wallet."
+      },
+      {
+        "if": [
+          "p05"
+        ],
+        "text": "Ether from November's money is paid from the {$coins} waiting in the SwissBorg wallet. November's solana share is in the 10 Nov VWRA order."
+      },
+      {
+        "if": [
+          "p06"
+        ],
+        "text": "Solana from November's money is paid from the {$coins} waiting in the SwissBorg wallet. November's ether share is in the 10 Nov VWRA order."
+      },
+      {
+        "if": [
+          "p02"
+        ],
+        "text": "November's ether and solana share is in the 10 Nov VWRA order."
+      },
+      {
+        "if": [],
+        "text": null
       }
     ],
-    "/dateNotes/m12/0": "After this order all {$year} is invested apart from its whole-share remainder, which stays as cash at Interactive Brokers. Year two is not planned yet.",
+    "/dateNotes/m03/1": [
+      {
+        "if": [
+          "p07",
+          "p09"
+        ],
+        "text": "Buy the quantum fund and Nvidia only if their thesis checks still pass."
+      },
+      {
+        "if": [
+          "p07"
+        ],
+        "text": "Buy the quantum fund only if its thesis check still passes."
+      },
+      {
+        "if": [
+          "p09"
+        ],
+        "text": "Buy Nvidia only if its thesis check still passes."
+      },
+      {
+        "if": [],
+        "text": null
+      }
+    ],
+    "/dateNotes/m06/0": [
+      {
+        "if": [
+          "p16"
+        ],
+        "text": "13 April is Songkran, a Thai public holiday, which doesn't matter: only London and US orders are placed."
+      },
+      {
+        "if": [
+          "S-m06"
+        ],
+        "text": "13 April is Songkran, a Thai public holiday, which doesn't matter: London and US markets are open, and coins trade every day."
+      },
+      {
+        "if": [],
+        "text": "13 April is Songkran, a Thai public holiday, which doesn't matter: only London and US orders are placed."
+      }
+    ],
+    "/dateNotes/m09/0": [
+      {
+        "if": [
+          "p23"
+        ],
+        "text": "Second slice of the quantum fund: buy it only if its thesis check still passes."
+      },
+      {
+        "if": [],
+        "text": null
+      }
+    ],
+    "/dateNotes/m12/0": [
+      {
+        "if": [
+          "p28"
+        ],
+        "text": "After this order all {$year} is invested apart from its whole-share remainder, which stays as cash at Interactive Brokers. Year two is not planned yet."
+      },
+      {
+        "if": [],
+        "text": "After this date all {$year} is invested apart from whole-share remainders, which stay as cash at Interactive Brokers. Year two is not planned yet."
+      }
+    ],
     "/funding/transfers/S01/pays": [
       {
         "if": [
+          "p01",
           "p05",
           "p06"
         ],
@@ -1353,6 +2090,7 @@
       },
       {
         "if": [
+          "p01",
           "p05",
           "!p06"
         ],
@@ -1360,15 +2098,293 @@
       },
       {
         "if": [
+          "p01",
           "!p05",
           "!p06"
         ],
         "text": "Bitcoin on 10 Nov ({$p01})"
+      },
+      {
+        "if": [
+          "p01"
+        ],
+        "text": "Bitcoin on 10 Nov ({$p01}), then {#coins:m03} on 12 Jan ({$coins})"
+      },
+      {
+        "if": [],
+        "text": "{#Coins:m03} on 12 Jan ({$coins})"
+      }
+    ],
+    "/funding/transfers/W01/pays": [
+      {
+        "if": [
+          "p02"
+        ],
+        "text": "VWRA on 10 Nov"
+      },
+      {
+        "if": [],
+        "text": "{#Names:m01} on 10 Nov"
+      }
+    ],
+    "/funding/transfers/W02/pays": [
+      {
+        "if": [
+          "p03"
+        ],
+        "text": "XDEW and VWRA on 8 Dec"
+      },
+      {
+        "if": [],
+        "text": "{#Names:m02} on 8 Dec"
+      }
+    ],
+    "/funding/transfers/W03/pays": [
+      {
+        "if": [
+          "p07",
+          "p09"
+        ],
+        "text": "The quantum fund, VWRA and Nvidia on 12 Jan"
+      },
+      {
+        "if": [],
+        "text": "{#Names:m03} on 12 Jan"
+      }
+    ],
+    "/funding/transfers/W04/pays": [
+      {
+        "if": [
+          "p10",
+          "p12"
+        ],
+        "text": "EIMI, VWRA and Eli Lilly on 9 Feb"
+      },
+      {
+        "if": [],
+        "text": "{#Names:m04} on 9 Feb"
+      }
+    ],
+    "/funding/transfers/W05/pays": [
+      {
+        "if": [
+          "p14",
+          "p15"
+        ],
+        "text": "VWRA, GE Vernova and Vertiv on 9 Mar"
+      },
+      {
+        "if": [],
+        "text": "{#Names:m05} on 9 Mar"
+      }
+    ],
+    "/funding/transfers/W06/pays": [
+      {
+        "if": [
+          "p17",
+          "p18"
+        ],
+        "text": "VWRA, SpaceX and argenx on 13 Apr"
+      },
+      {
+        "if": [],
+        "text": "{#Names:m06} on 13 Apr"
+      }
+    ],
+    "/funding/transfers/W07/pays": [
+      {
+        "if": [
+          "p20"
+        ],
+        "text": "VWRA and Insmed on 11 May"
+      },
+      {
+        "if": [],
+        "text": "{#Names:m07} on 11 May"
+      }
+    ],
+    "/funding/transfers/W08/pays": [
+      {
+        "if": [
+          "p21"
+        ],
+        "text": "XDEW and VWRA on 8 Jun"
+      },
+      {
+        "if": [],
+        "text": "{#Names:m08} on 8 Jun"
+      }
+    ],
+    "/funding/transfers/W09/pays": [
+      {
+        "if": [
+          "p23"
+        ],
+        "text": "The quantum fund and VWRA on 13 Jul"
+      },
+      {
+        "if": [],
+        "text": "{#Names:m09} on 13 Jul"
+      }
+    ],
+    "/funding/transfers/W10/pays": [
+      {
+        "if": [
+          "p25"
+        ],
+        "text": "EIMI and VWRA on 10 Aug"
+      },
+      {
+        "if": [],
+        "text": "{#Names:m10} on 10 Aug"
+      }
+    ],
+    "/funding/transfers/W11/pays": [
+      {
+        "if": [
+          "p27"
+        ],
+        "text": "VWRA on 14 Sep"
+      },
+      {
+        "if": [],
+        "text": "{#Names:m11} on 14 Sep"
+      }
+    ],
+    "/funding/transfers/W12/pays": [
+      {
+        "if": [
+          "p28"
+        ],
+        "text": "VWRA on 12 Oct"
+      },
+      {
+        "if": [],
+        "text": "{#Names:m12} on 12 Oct"
       }
     ],
     "/differenceRules/swissborg/text": [
       {
         "if": [
+          "p01",
+          "p05",
+          "p06",
+          "p02",
+          "p04",
+          "p08",
+          "p11",
+          "p13",
+          "p16",
+          "p19",
+          "p22",
+          "p24",
+          "p26",
+          "p27",
+          "p28"
+        ],
+        "text": "Sent more or less than {$S01} to SwissBorg: bitcoin stays at {$p01}, and ether and solana share what is left in proportion, up to their {$p05} and {$p06}. Anything above that stays in the wallet."
+      },
+      {
+        "if": [
+          "p01",
+          "p05",
+          "!p06",
+          "p02",
+          "p04",
+          "p08",
+          "p11",
+          "p13",
+          "p16",
+          "p19",
+          "p22",
+          "p24",
+          "p26",
+          "p27",
+          "p28"
+        ],
+        "text": "Sent more or less than {$S01} to SwissBorg: bitcoin stays at {$p01}, and ether takes what is left, up to its {$p05}. Anything above that stays in the wallet."
+      },
+      {
+        "if": [
+          "p01",
+          "!p05",
+          "p06",
+          "p02",
+          "p04",
+          "p08",
+          "p11",
+          "p13",
+          "p16",
+          "p19",
+          "p22",
+          "p24",
+          "p26",
+          "p27",
+          "p28"
+        ],
+        "text": "Sent more or less than {$S01} to SwissBorg: bitcoin stays at {$p01}, and solana takes what is left, up to its {$p06}. Anything above that stays in the wallet."
+      },
+      {
+        "if": [
+          "p01",
+          "!p05",
+          "!p06",
+          "p02",
+          "p04",
+          "p08",
+          "p11",
+          "p13",
+          "p16",
+          "p19",
+          "p22",
+          "p24",
+          "p26",
+          "p27",
+          "p28"
+        ],
+        "text": "Sent more or less than {$S01} to SwissBorg: bitcoin stays at {$p01}. Anything above that stays in the wallet."
+      },
+      {
+        "if": [
+          "S-m*",
+          "p01",
+          "p05",
+          "p06"
+        ],
+        "text": "Sent more or less than planned to SwissBorg: bitcoin stays at {$p01}, the coins your mix buys each month stay as planned, and ether and solana share what is left in proportion, up to their {$p05} and {$p06}. Anything above that stays in the wallet."
+      },
+      {
+        "if": [
+          "S-m*",
+          "p01",
+          "p05"
+        ],
+        "text": "Sent more or less than planned to SwissBorg: bitcoin stays at {$p01}, the coins your mix buys each month stay as planned, and ether takes what is left, up to its {$p05}. Anything above that stays in the wallet."
+      },
+      {
+        "if": [
+          "S-m*",
+          "p01",
+          "p06"
+        ],
+        "text": "Sent more or less than planned to SwissBorg: bitcoin stays at {$p01}, the coins your mix buys each month stay as planned, and solana takes what is left, up to its {$p06}. Anything above that stays in the wallet."
+      },
+      {
+        "if": [
+          "S-m*",
+          "p01"
+        ],
+        "text": "Sent more or less than planned to SwissBorg: bitcoin stays at {$p01}, and the coins your mix buys each month stay as planned. Anything above that stays in the wallet."
+      },
+      {
+        "if": [
+          "S-m*"
+        ],
+        "text": "Sent more or less than planned to SwissBorg: the coins your mix buys each month stay as planned. Anything above that stays in the wallet."
+      },
+      {
+        "if": [
+          "p01",
           "p05",
           "p06"
         ],
@@ -1376,6 +2392,7 @@
       },
       {
         "if": [
+          "p01",
           "p05",
           "!p06"
         ],
@@ -1383,13 +2400,174 @@
       },
       {
         "if": [
+          "p01",
           "!p05",
-          "!p06"
+          "p06"
+        ],
+        "text": "Sent more or less than {$S01} to SwissBorg: bitcoin stays at {$p01}, and solana takes what is left, up to its {$p06}. Anything above that stays in the wallet."
+      },
+      {
+        "if": [
+          "p01"
         ],
         "text": "Sent more or less than {$S01} to SwissBorg: bitcoin stays at {$p01}. Anything above that stays in the wallet."
+      },
+      {
+        "if": [
+          "p05",
+          "p06"
+        ],
+        "text": "Sent more or less than {$S01} to SwissBorg: ether and solana share it in proportion, up to their {$p05} and {$p06}. Anything above that stays in the wallet."
+      },
+      {
+        "if": [
+          "p05"
+        ],
+        "text": "Sent more or less than {$S01} to SwissBorg: ether takes it, up to its {$p05}. Anything above that stays in the wallet."
+      },
+      {
+        "if": [
+          "p06"
+        ],
+        "text": "Sent more or less than {$S01} to SwissBorg: solana takes it, up to its {$p06}. Anything above that stays in the wallet."
+      },
+      {
+        "if": [],
+        "text": null
       }
     ],
-    "/orderHowTo/1/order": "A {$p09} cash amount, limit at the ask + 0.5%, never above the ceiling",
-    "/orderHowTo/1/count": "Fractional; if the app wants shares, {$p09} ÷ ask to two decimals"
+    "/rules/r8/if": [
+      {
+        "if": [
+          "p02",
+          "p04",
+          "p08",
+          "p11",
+          "p13",
+          "p16",
+          "p19",
+          "p22",
+          "p24",
+          "p26",
+          "p27",
+          "p28"
+        ],
+        "text": "Ether or solana rose more than 30% in the 30 days before 12 January"
+      },
+      {
+        "if": [
+          "p05",
+          "!S-m*"
+        ],
+        "text": "Ether or solana rose more than 30% in the 30 days before 12 January"
+      },
+      {
+        "if": [
+          "p06",
+          "!S-m*"
+        ],
+        "text": "Ether or solana rose more than 30% in the 30 days before 12 January"
+      },
+      {
+        "if": [
+          "p05"
+        ],
+        "text": "Ether or solana on 12 January, or a coin your mix buys, rose more than 30% in the 30 days before its order date"
+      },
+      {
+        "if": [
+          "p06"
+        ],
+        "text": "Ether or solana on 12 January, or a coin your mix buys, rose more than 30% in the 30 days before its order date"
+      },
+      {
+        "if": [],
+        "text": "A coin your mix buys rose more than 30% in the 30 days before its order date"
+      }
+    ],
+    "/rules/r8/then": [
+      {
+        "if": [
+          "p02",
+          "p04",
+          "p08",
+          "p11",
+          "p13",
+          "p16",
+          "p19",
+          "p22",
+          "p24",
+          "p26",
+          "p27",
+          "p28"
+        ],
+        "text": "Buy it on 9 February instead. If it has jumped more than 30% again by then, that money buys bitcoin."
+      },
+      {
+        "if": [
+          "!p01",
+          "!m*-BTC"
+        ],
+        "text": "Buy it on the next order date instead. If it has jumped more than 30% again by then, that money joins that day's VWRA order. On 12 October, the last date, it cannot wait: its money joins VWRA that day."
+      },
+      {
+        "if": [],
+        "text": "Buy it on the next order date instead. If it has jumped more than 30% again by then, that money buys bitcoin that day, or joins that day's VWRA order if that month's mix has no bitcoin. On 12 October, the last date, it cannot wait: its money buys bitcoin that day, or joins VWRA if October's mix has no bitcoin."
+      }
+    ],
+    "/maintenance/1/detail": [
+      {
+        "if": [
+          "p02",
+          "p04",
+          "p08",
+          "p11",
+          "p13",
+          "p16",
+          "p19",
+          "p22",
+          "p24",
+          "p26",
+          "p27",
+          "p28"
+        ],
+        "text": "Targets as shares of the stock money: index funds 85.2%, growth stocks and the quantum fund 14.8%. Act only on a block more than 5 points off, by pointing the next months' money at the block that is under target. During year one the blocks are off target by design, because growth stocks are bought early and VWRA through to October."
+      },
+      {
+        "if": [
+          "%g:index"
+        ],
+        "text": "Targets as shares of the stock money: index funds {%g:index}, growth stocks and the quantum fund {%g:growth}. Act only on a block more than 5 points off, by pointing the next months' money at the block that is under target."
+      },
+      {
+        "if": [],
+        "text": null
+      }
+    ],
+    "/prep/p6/text": [
+      {
+        "if": [
+          "p01"
+        ],
+        "text": "All twelve order dates and the twelve transfer days (both November transfers go on 2 Nov) in your phone calendar."
+      },
+      {
+        "if": [
+          "S01"
+        ],
+        "text": "All twelve order dates and the twelve transfer days (both November transfers go on 2 Nov) in your phone calendar."
+      },
+      {
+        "if": [
+          "S-m01",
+          "W01"
+        ],
+        "text": "All twelve order dates and the twelve transfer days (both November transfers go on 2 Nov) in your phone calendar."
+      },
+      {
+        "if": [],
+        "text": "All twelve order dates and the twelve transfer days in your phone calendar."
+      }
+    ]
   }
 }

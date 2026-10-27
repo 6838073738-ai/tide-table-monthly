@@ -1,13 +1,49 @@
 // Year: the twelve order dates at a glance, each with what is bought, the money that pays for it
-// (send by / arrive by) and how far the friend has got.
+// (send by / arrive by), that month's amount (with "Change" while no record fixes it) and how far the
+// friend has got.
 
 import {
-  app, h, S, L, today, ost, isDone, instById, schedule, funding, carry, autoDeskDate, fM, fUsd, long, short, dayShort,
+  app, h, S, L, today, ost, isDone, instById, schedule, funding, carry, autoDeskDate, fM, fB, fUsd, long, short, dayShort,
   inDays, plural, statusPill, pill, viewHead, card, progressNow, pre, isPreDate, skippedUsd, monthName, joinedBudgetUsd, dateNotesFor,
-} from "../core.js";
-import { openDesk } from "./today.js";
+  monthOf, fixed, amountWords, mixIsOwn, tickerOf,
+} from "../core.js?v=2.0.0";
+import { openDesk, chapterPages } from "./today.js?v=2.0.0";
+import { waitingWhy } from "../split.js?v=2.0.0";
+import { fieldName } from "../fields-catalog.js?v=2.0.0";
+import { openMonthDialog, monthWordOf, recordWords, listAnd } from "./amounts.js?v=2.0.0";
+import { upcomingChecked } from "./fields.js?v=2.0.0";
 
-const TX_PILL = { todo: ["To send", "neutral", "○"], sent: ["Sent", "sky", "↗"], arrived: ["Arrived", "kelp", "✓"] };
+const TX_PILL = { todo: ["To send", "neutral", "□"], sent: ["Sent", "sky", "↗"], arrived: ["Arrived", "kelp", "✓"] };
+const ROLL_WORDS = { below_min: "Not bought at your amount", not_in_mix: "Not in your mix" };
+
+/** A joined month's amount: "This month: $500" with "Change" while it can change, or "$500 · fixed by your
+ *  records" once a record fixes it. A month set on its own says so; one typed in baht shows the baht. */
+function amountLine(d) {
+  const r = monthOf(d.id);
+  if (!r || r.preJoin) return null;
+  if (fixed().has(d.id)) return h("p.am-line.is-fixed", { "data-fk": "year-fixed-" + d.id, title: `Records: ${recordWords(fixed().get(d.id))}` }, `${fM(r.usd)} · fixed by your records`);
+  const typed = (r.own || r.pinned) && r.input && r.input.currency === "THB" ? ` · you typed ${fB(r.input.amount)}` : "";
+  return h("div.am-line",
+    h("span.am-line-text", "This month: ", h("strong.num", fM(r.usd)), typed ? h("span.muted", typed) : null),
+    r.own ? pill("Set on its own", "sky", "•") : null,
+    h("button.btn.btn-small.btn-ghost", { type: "button", "data-fk": "year-amt-" + d.id, "aria-label": `Change ${monthWordOf(d.id)}'s amount`, on: { click: () => openMonthDialog(d.id) } }, "Change"));
+}
+
+/** For a field month: one line for each ticked company that is not trading yet (upcoming-api.md 6), with the
+ *  date the open data last checked it (upcoming-api.md 4). */
+function waitingLines(dateId) {
+  const f = app.plan.scale && app.plan.scale.fields ? app.plan.scale.fields[dateId] : null;
+  if (!f || !Array.isArray(f.W)) return [];
+  return f.W.map((id) => {
+    const w = waitingWhy(app.plan, dateId, id, fieldName);
+    const checked = w ? upcomingChecked(id) : "";
+    return w ? (checked ? `${w} ${checked}` : w) : null;
+  }).filter(Boolean)
+    .map((w, k) => h("p.mc-note", { "data-fk": `year-waiting-${dateId}-${k}` }, w));
+}
+
+/** A list of names as the end of a sentence: one full stop, and none added after a name that ends in one ("Apple Inc."). */
+const sentenceEnd = (s) => (/[.!?]$/.test(s) ? s : s + ".");
 
 export function renderYear() {
   const plan = app.plan;
@@ -22,8 +58,17 @@ export function renderYear() {
   const joinNote = pj.dateIds.length
     ? ` You started on ${long(pj.joinedAt)}: ${pj.dateIds.map((id) => monthName(sch.dates.find((d) => d.id === id).effective, false, true)).join(", ")} ${pj.dateIds.length > 1 ? "are" : "is"} before you joined, so nothing is bought or sent for ${pj.dateIds.length > 1 ? "them" : "it"}.`
     : "";
-  const out = [viewHead("year", plan.meta.subtitle, "Your year",
-    `Twelve order dates, on the second Tuesday of each month. Each month's money is sent the week before and must arrive by the Friday before the order date.${joinNote} ${pr.done + pr.skipped} of ${pr.total} orders done so far.`)];
+  const mixFrom = S().plan && S().plan.mixFrom;
+  const mixNote = mixIsOwn() && mixFrom ? ` Your orders follow your own mix from ${monthWordOf(mixFrom)}.` : "";
+  const out = [viewHead("year", plan.meta.subtitle, "My year",
+    `Twelve order dates, on the second Tuesday of each month. Each month's money is sent the week before and must arrive by the Friday before the order date.${joinNote}${mixNote} ${pr.done + pr.skipped} of ${pr.total} orders done so far.`)];
+  // The year as twelve larger chapter pages (brief 4.8.5); each opens its order date on Today's desk.
+  out.push(h("div.bk-section.ttm-chapters", chapterPages({ large: true })));
+  const more = h("p.bk-note.ttm-more-links", "Also: ",
+    h("a", { href: "#/money", "data-fk": "year-money" }, "Money"), ", ",
+    h("a", { href: "#/holdings", "data-fk": "year-holdings" }, "Holdings"), " and ",
+    h("a", { href: "#/rules", "data-fk": "year-rules" }, "Rules"), ".");
+  out.push(more);
 
   out.push(h("ol.year-grid", { "aria-label": "The twelve order dates" }, sch.dates.map((d, k) => {
     const os = sch.orders.filter((o) => o.dateId === d.id).sort((a, b) => a.at - b.at);
@@ -48,9 +93,10 @@ export function renderYear() {
         // A skipped order shows the money it actually held (after carries and short transfers), not the plan's.
         const skipped = !before && s.status === "skipped" ? skippedUsd(o, cr) : null;
         return h("li.mc-order",
-          h("span.mc-name", i.name, h("span.ticker.num", i.id)),
+          h("span.mc-name", i.name, h("span.ticker.num", tickerOf(i))),
           before ? h("span.mc-amt.num", "—", h("span.mc-sub", " not bought"))
-            : h("span.mc-amt.num", s.status === "filled" ? fUsd(s.costUsd, 2) : skipped != null ? fUsd(skipped, 2) : adj != null ? fUsd(adj, 2) : fM(o.usd),
+            // A $0 VWRA order (an own mix that leaves it nothing) is there for leftovers and the rules' carries.
+            : h("span.mc-amt.num", s.status === "filled" ? fUsd(s.costUsd, 2) : skipped != null ? fUsd(skipped, 2) : adj != null ? fUsd(adj, 2) : o.carryTarget && !(o.usd > 0) ? "takes any leftover" : fM(o.usd),
               adj != null ? h("span.mc-sub", ` plan ${fM(o.usd)}`) : s.status === "filled" ? h("span.mc-sub", " paid") : skipped != null ? h("span.mc-sub", " not bought") : null),
           before ? pill("Before you joined", "muted", "–") : statusPill(s.status || "pending"));
       })),
@@ -63,8 +109,14 @@ export function renderYear() {
             h("span.mc-tx-when", t.preJoin ? "before you joined" : `send ${dayShort(t.send)} · arrive by ${dayShort(t.arriveBy)}`),
             h(`span.pill.pill-${kind}`, h("span.pill-ico", { "aria-hidden": "true" }, glyph), label));
         })) : h("div.mc-money", h("p.mc-tx.muted", "Paid from the money already in the SwissBorg wallet.")),
-      rolled.length ? h("p.mc-note", `Not bought at your amount: ${rolled.map((r) => instById(r.instrument).name).join(", ")}. The share is in a VWRA order.`) : null,
+      Object.entries(ROLL_WORDS).map(([reason, words]) => {
+        const rs = rolled.filter((r) => (r.reason || "below_min") === reason);
+        return rs.length ? h("p.mc-note", `${words}: ${sentenceEnd(listAnd([...new Set(rs.map((r) => instById(r.instrument).name))]))} The share is in a VWRA order.`) : null;
+      }),
+      // An upcoming listing the friend ticked that does not trade yet: where its part goes this month.
+      ...waitingLines(d.id),
       notes.length && !before ? h("details.disc.mc-notes", h("summary", { "data-fk": "year-notes-" + d.id }, plural(notes.length, "note") + " from the plan"), h("ul.disc-body", notes.map((n) => h("li", n)))) : null,
+      amountLine(d),
       h("div.mc-foot",
         h("span.mc-rel", before ? "Before you joined" : done ? "All done" : `${inDays(L.daysBetween(td, d.effective))}`),
         h("button.btn.btn-small", { type: "button", "data-fk": "year-" + d.id, on: { click: () => openDesk(d.id) } }, "Open on the desk")));
@@ -72,7 +124,7 @@ export function renderYear() {
 
   out.push(card(".year-total", { "aria-label": "The year in numbers" },
     h("div.pv-stats",
-      h("div.pv-stat", h("span.stat-label", "Each month"), h("span.pv-big.num-display", fM(plan.funding.monthlyUsd))),
+      h("div.pv-stat", h("span.stat-label", "Each month"), h("span.pv-big.num-display", amountWords().replace(/ a month$/, "") || fM(plan.funding.monthlyUsd))),
       pj.dateIds.length
         ? h("div.pv-stat", h("span.stat-label", "From when you joined"), h("span.pv-big.num-display", fM(joinedBudgetUsd())))
         : h("div.pv-stat", h("span.stat-label", "Over the year"), h("span.pv-big.num-display", fM(plan.meta.budgetUsd))),
