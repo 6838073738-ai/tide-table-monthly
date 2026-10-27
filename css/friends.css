@@ -182,6 +182,21 @@ main [data-view] :is(h1, h2)[tabindex="-1"]:focus { outline: none; }
 @media (max-width: 719px) {
   .desk-row.is-filled .dr-name::before { content: ""; float: right; width: 92px; height: 1px; }
 }
+/* The desk's six columns (app.css) need about 980 px, but beside the contents column this app's page is never that
+   wide, so the actions spilled past the card at every width, and the page scrolled sideways from 1240 to 1365 px.
+   The desk keeps app.css's four-column layout (used there up to 1239 px) at every width. */
+@media (min-width: 1240px) {
+  .desk-cols { display: none; }
+  .desk-row {
+    grid-template-columns: 92px minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas: "time order order act" "venue price ceil act" "venue size size act" "how how how how";
+    row-gap: 12px;
+  }
+  .desk-row .cell-label { display: block; }
+}
+/* In that layout the market's first column is 92 px wide, so "London closed" may wrap rather than run under the
+   price beside it. */
+.desk-row .venue-inline { white-space: normal; }
 /* each meta item stays whole, so a line breaks only between items ("about" never parts from its amount);
    the date's title may still wrap inside itself */
 .desk-sub, .hero-when { display: flex; flex-wrap: wrap; align-items: baseline; }
@@ -424,3 +439,88 @@ main [data-view] :is(h1, h2)[tabindex="-1"]:focus { outline: none; }
    instead of reaching past the card ("No check yet" is a nowrap pill). */
 .thesis-head { flex-wrap: wrap; }
 .thesis-head > div { flex: 1 1 14rem; min-width: 0; }
+
+/* ---------------------------------------------------------------- 2.1: ticker and full name (addendum C) */
+/* "NVDA · NVIDIA Corporation": the ticker with its dot never breaks, the full name wraps (the same parts as the
+   shared pages' names). The screen-reader words are in the visually hidden span. */
+/* book.css (2.1) keeps the ticker and its dot on one line and lets the name wrap; here the names inside the
+   friends' own rows stay inline with their row's text. */
+.bk-tn { min-width: 0; }
+.dr-name .bk-tn, .mc-name .bk-tn, .hold-name .bk-tn, .ceil-name .bk-tn, .thesis-name .bk-tn { display: inline; }
+
+/* ---------------------------------------------------------------- 2.1: the locked 10% (addendum B.6, G) */
+/* The same quiet lines as every other holding's: no colour, size or place of its own. */
+.dr-why.ttm-lock-why { font-weight: 400; color: var(--ink); }
+.ttm-lock-facts { margin: 8px 0 0; font-size: var(--t-small); line-height: 1.45; color: var(--ink); }
+.ttm-lock-facts .eyebrow { margin: 0 0 4px; }
+.ttm-lock-fact-list { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; }
+.ttm-lock-src { white-space: normal; }
+.ttm-lock-line { display: grid; gap: 6px; margin: 0 0 22px; max-width: var(--measure); }
+.ttm-lock-line > p { margin: 0; }
+.ttm-lock-chips { display: inline-flex; flex-wrap: wrap; gap: 6px; font-weight: 400; }
+
+/* ---------------------------------------------------------------- 2.1: Stocks (addendum D) */
+.st-section { margin-top: 32px; }
+.st-list { display: grid; gap: 18px; margin: 16px 0 0; padding: 0; list-style: none; }
+.st-item {
+  display: grid; gap: 10px; min-width: 0; padding: 18px 18px 16px; border-radius: var(--r-tile);
+  background: var(--paper-raised); box-shadow: var(--shadow-lift);
+  /* a card off screen is not laid out until it nears the view (review finding UI-1: focusing the page's heading laid
+     out every card of a 13,500 px page); the browser remembers each card's height once it has drawn it */
+  content-visibility: auto; contain-intrinsic-size: auto 640px;
+}
+@media (min-width: 760px) { .st-item { padding: 22px 26px 20px; } }
+.st-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.st-name { margin: 0; font-family: var(--font-display); font-size: 1.25rem; line-height: 1.3; min-width: 0; }
+.st-meta { margin: 0; color: var(--ink-soft); }
+.st-facts { display: grid; grid-template-columns: minmax(8rem, max-content) minmax(0, 1fr); gap: 6px 16px; margin: 0; }
+.st-facts dt { font-weight: 700; color: var(--ink); }
+.st-facts dd { margin: 0; min-width: 0; overflow-wrap: anywhere; color: var(--ink); }
+@media (max-width: 559px) {
+  .st-facts { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .st-facts dd { margin-bottom: 8px; }
+}
+.st-item > .bk-note { margin: 0; }
+.st-figs { display: grid; gap: 10px; min-width: 0; padding-top: 10px; border-top: 1.5px solid var(--rule); }
+.st-figs > .bk-note, .st-figs > p { margin: 0; }
+.st-figs .eyebrow { margin: 0; }
+.st-listed { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0; font-weight: 700; }
+.st-years { max-width: 46rem; }
+.st-years .num { white-space: nowrap; }
+.st-debt { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+.st-debt-label { font-weight: 700; }
+.st-concept { color: var(--ink-soft); overflow-wrap: anywhere; }
+.st-sources .bk-links { margin-top: 4px; }
+.st-link { margin: 0; }
+.st-link .link-arrow { display: inline-flex; align-items: center; min-height: var(--tap); }
+
+/* ---------------------------------------------------------------- 2.1: a tab bar of six (addendum D.1) */
+/* Every tab labelled, nothing under "More" (brief G10): on a phone a bar of six uses the short words (Split, Year)
+   and a narrower picture, so each word stays on one line from 320 px up. */
+@media (max-width: 759px) {
+  :root[data-tabs="6"] .bk-tabbar { gap: 0; padding-left: 2px; padding-right: 2px; }
+  :root[data-tabs="6"] .bk-tab { padding-left: 0; padding-right: 0; }
+  :root[data-tabs="6"] .bk-tab-icon { width: 40px; }
+  :root[data-tabs="6"] .bk-tab-long.has-short {
+    position: absolute !important; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0);
+    clip-path: inset(50%); white-space: nowrap;
+  }
+  :root[data-tabs="6"] .bk-tab-short { display: block; }
+}
+/* Under 360 px a bar of six keeps its first four tabs and a "More" button (main.js moreTab): the brief's pattern
+   for a full bar, so no word is ever cut. Today is always first. */
+.bk-tab.ttm-tab-more { display: none; }
+@media (max-width: 359px) {
+  .bk-tabbar .bk-tab.ttm-tab-fold { display: none; }
+  .bk-tabbar .bk-tab.ttm-tab-more {
+    /* the font of the page but .bk-tab's own 20 px line, so the bar keeps its 76 px (review finding UI-5) */
+    display: flex; margin: 0; border: 0; background: none; font-family: inherit; font-size: var(--t-small); line-height: 20px; color: var(--ink);
+    cursor: pointer; -webkit-appearance: none; appearance: none;
+  }
+  .bk-tab.ttm-tab-more.is-current { font-weight: 700; }
+  .bk-tab.ttm-tab-more.is-current .bk-tab-icon::before {
+    content: ""; position: absolute; inset: 0; z-index: -1; border-radius: var(--r-wash); background: var(--w-sky); opacity: .6;
+  }
+}
+.ttm-more .ttm-more-pages a { gap: 10px; font-weight: 700; }
+.ttm-more .ttm-more-pages a[aria-current="page"] { text-decoration: underline; text-underline-offset: 4px; }

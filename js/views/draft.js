@@ -3,22 +3,35 @@
 // sessionStorage ("ttm:fields-draft") until Save my split commits them through core.commitPlanChange
 // (months.setFieldsFrom). Nothing here leaves the browser, and none of it goes into a URL.
 
-import { app, S, M, commitPlanChange, today, savedFields } from "../core.js?v=2.0.0";
-import { nameSnapshot, fieldOrder, fieldsProblem, explainFieldsProblem, MAX_FIELD_COMPANIES, MAX_COMPANIES } from "../split.js?v=2.0.0";
-import { fieldName } from "../fields-catalog.js?v=2.0.0";
+import { app, S, M, commitPlanChange, today, savedFields } from "../core.js?v=2.1.0";
+import { nameSnapshot, fieldOrder, fieldsProblem, explainFieldsProblem, MAX_FIELD_COMPANIES, MAX_COMPANIES } from "../split.js?v=2.1.0";
+import { fieldName } from "../fields-catalog.js?v=2.1.0";
+import { isLockedListing, lockedInPlanWords } from "./naming.js?v=2.1.0";
 
 const KEY = "ttm:fields-draft";
 const isObj = (v) => !!v && typeof v === "object" && !Array.isArray(v);
 const listeners = new Set();
 let cur = null;
 
-/** The saved fields as a draft starts from them: { chosen, split, lists, names }. */
-function fromSaved() {
+/**
+ * The locked listing (addendum B.1) is in every plan at 10% of each month, so it is never a field pick: a draft never
+ * holds it. A saved record that still lists it (a state made before 2.1's lock) shows "Not saved yet", and the next
+ * Save my split leaves it out (review finding reg-lock-tickable-in-field).
+ */
+const lockedIn = (id, names) => isLockedListing(id) || isLockedListing(isObj(names) ? names[id] : null);
+const dropLocked = (ids, names) => (Array.isArray(ids) ? ids.filter((id) => typeof id === "string" && !lockedIn(id, names)) : []);
+
+/** The saved fields as a draft starts from them: { chosen, split, lists, names } (raw: the saved lists as they are,
+ *  for "Not saved yet"; else without the locked listing). */
+function fromSaved({ raw = false } = {}) {
   const f = savedFields();
   const names = f && isObj(f.names) ? structuredClone(f.names) : {};
   if (!f || !f.from || !Array.isArray(f.chosen) || !f.chosen.length) return { chosen: [], split: null, lists: {}, names };
   const lists = {};
-  for (const x of f.chosen) lists[x] = Array.isArray(f.lists && f.lists[x]) ? [...f.lists[x]] : [];
+  for (const x of f.chosen) {
+    const ids = Array.isArray(f.lists && f.lists[x]) ? [...f.lists[x]] : [];
+    lists[x] = raw ? ids : dropLocked(ids, names);
+  }
   return { chosen: fieldOrder(f.chosen), split: Number.isInteger(f.split) ? f.split : null, lists, names };
 }
 
@@ -38,7 +51,8 @@ function readStored() {
     const d = JSON.parse(raw);
     if (!isObj(d) || d.sig !== savedSig() || !Array.isArray(d.chosen) || !isObj(d.lists) || !isObj(d.names)) return null;
     if (d.split != null && !(Number.isInteger(d.split) && d.split >= 0 && d.split <= 1000)) return null;
-    return { chosen: d.chosen.filter((x) => typeof x === "string"), split: d.split ?? null, lists: d.lists, names: d.names };
+    const lists = Object.fromEntries(Object.entries(d.lists).map(([f, ids]) => [f, dropLocked(ids, d.names)]));
+    return { chosen: d.chosen.filter((x) => typeof x === "string"), split: d.split ?? null, lists, names: d.names };
   } catch {
     return null;
   }
@@ -46,7 +60,7 @@ function readStored() {
 
 function write() {
   try {
-    if (core(cur) === core(fromSaved())) sessionStorage.removeItem(KEY);
+    if (core(cur) === core(fromSaved({ raw: true }))) sessionStorage.removeItem(KEY);
     else sessionStorage.setItem(KEY, JSON.stringify({ sig: savedSig(), ...cur }));
   } catch { /* storage blocked: the draft lives in this page only */ }
 }
@@ -73,7 +87,7 @@ export function resetDraft() {
 export function onDraft(fn) { listeners.add(fn); return () => listeners.delete(fn); }
 
 /** True while the draft differs from what is saved: the dock says "Not saved yet". */
-export const isDirty = () => core(draft()) !== core(fromSaved());
+export const isDirty = () => core(draft()) !== core(fromSaved({ raw: true }));
 /** True once the friend has saved a split with fields. */
 export const hasSaved = () => fromSaved().chosen.length > 0;
 
@@ -112,6 +126,7 @@ export function setCompany(info, on) {
     return { ok: true };
   }
   if (list.includes(info.id)) return { ok: true };
+  if (lockedIn(info.id, d.names) || isLockedListing(info)) return { ok: false, refused: lockedInPlanWords() };
   if (list.length >= MAX_FIELD_COMPANIES) return { ok: false, refused: explainFieldsProblem({ code: "field_cap", field: f }, fieldName) };
   const total = new Set(Object.entries(d.lists).filter(([x]) => d.chosen.includes(x) || x === f).flatMap(([, ids]) => ids));
   if (!total.has(info.id) && total.size >= MAX_COMPANIES) return { ok: false, refused: explainFieldsProblem({ code: "total_cap" }, fieldName) };

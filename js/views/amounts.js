@@ -9,8 +9,8 @@
 import {
   app, h, clear, icon, S, prices, toast, modal, M, commitPlanChange, explain, openMonthIds, monthOf, fixed, today,
   fM, fB, fUsd, fThb, fNum, long, short, dayShort, monthName, parseNum, sourceLink, plural,
-} from "../core.js?v=2.0.0";
-import { thbToUsd, usdToThb, isMonthlyUsdInRange, MIN_MONTHLY_USD, MAX_MONTHLY_USD } from "../scale.js?v=2.0.0";
+} from "../core.js?v=2.1.0";
+import { thbToUsd, usdToThb, isMonthlyUsdInRange, MIN_MONTHLY_USD, MAX_MONTHLY_USD } from "../scale.js?v=2.1.0";
 
 const DEST = { SwissBorg: "SwissBorg", IBKR: "Interactive Brokers" };
 /** "Interactive Brokers" for IBKR; other accounts by their own name. */

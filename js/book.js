@@ -6,7 +6,7 @@
 // animation frames, and the only timer is the split strip's settle debounce. Nothing here ranks, scores, sorts or
 // colours a number. Importing this file touches no document or window.
 
-import { h, clear } from "./ui.js?v=2.0.0";
+import { h, clear } from "./ui.js?v=2.1.0";
 
 // ------------------------------------------------------------------------------------------- fixed copy
 

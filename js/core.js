@@ -8,12 +8,12 @@
 // A friend's amounts and mix can differ by month (months.js). Every change to them goes through one path,
 // commitPlanChange, which refuses any change that would alter a month the friend's records fix.
 
-import * as ui from "./ui.js?v=2.0.0";
-import * as L from "./logic-core.js?v=2.0.0";
-import { fmtMoney, fmtBaht, beforeJoin } from "./scale.js?v=2.0.0";
-import { store, hasLogged, withDefaults } from "./store.js?v=2.0.0";
-import { prices } from "./prices.js?v=2.0.0";
-import * as M from "./months.js?v=2.0.0";
+import * as ui from "./ui.js?v=2.1.0";
+import * as L from "./logic-core.js?v=2.1.0";
+import { fmtMoney, fmtBaht, beforeJoin } from "./scale.js?v=2.1.0";
+import { store, hasLogged, withDefaults } from "./store.js?v=2.1.0";
+import { prices } from "./prices.js?v=2.1.0";
+import * as M from "./months.js?v=2.1.0";
 
 export const { h, clear, icon, pill, toast } = ui;
 export { ui, L, store, prices, M };
@@ -509,8 +509,9 @@ export const saveUi = { state: "idle", at: 0 };
  * amount, the month entries, the mix or the join date) is checked here too: if it would alter an order or a
  * transfer of a month the records fix, nothing is saved and a toast says why. The mutator may then run twice,
  * so, as everywhere, it must change only the draft it is given. Returns true when the change was saved.
+ * opts.auto: a change the app makes on its own (the locked 10%), passed to store.update (see there).
  */
-export function commit(mutator, { planChecked = false } = {}) {
+export function commit(mutator, { planChecked = false, auto = false } = {}) {
   if (!planChecked) {
     const refused = planGuard(mutator);
     if (refused) {
@@ -525,7 +526,7 @@ export function commit(mutator, { planChecked = false } = {}) {
       if (logged && !d.plan.lockedAt) d.plan.lockedAt = new Date().toISOString();
       else if (!logged && d.plan.lockedAt) d.plan.lockedAt = null;
     }
-  });
+  }, { auto });
   saveUi.state = store.saveError ? "error" : "saved";
   saveUi.at = Date.now();
   hooks.renderFresh();
@@ -582,8 +583,9 @@ function planGuard(mutator) {
  * work out), a MonthChangeError (the month is fixed or before the friend joined) or a FixedMonthError. The
  * caller shows explain(e), in the field's error line or as a toast.
  * opts.ignoreTransfer: a transfer being recorded again in the same change (it does not fix its own month).
+ * opts.auto: a change the app makes on its own (the locked 10%), passed to commit.
  */
-export function commitPlanChange(mutator, { ignoreTransfer = null } = {}) {
+export function commitPlanChange(mutator, { ignoreTransfer = null, auto = false } = {}) {
   if (!app.base || !S().plan) throw new M.MonthChangeError("no_plan", "There is no monthly amount yet.");
   const change = (d) => applyClean(d, mutator);
   const r = M.planChange(app.base, S(), change, { ignoreTransfer });
@@ -591,7 +593,7 @@ export function commitPlanChange(mutator, { ignoreTransfer = null } = {}) {
   // PlanFitError "input" otherwise. Only a plan that already needed the dollars alone (a hand-edited file,
   // app.planInputs false) is let through as planChange worked it out.
   if (app.planInputs !== false) M.scaleFor(app.base, r.state.plan);
-  commit((d) => { change(d); M.tidy(d, r.plan); }, { planChecked: true });
+  commit((d) => { change(d); M.tidy(d, r.plan); }, { planChecked: true, auto });
   // A browser that refuses to store it still has the change in this tab, and commit has said so.
   if (planKeyOf(S().plan) !== planKeyOf(r.state.plan)) throw new M.MonthChangeError("not_saved", "The change could not be made, so nothing was changed.");
   return r.plan;

@@ -12,13 +12,20 @@
 // Nothing runs at import: no DOM, no storage, no network. The pure helpers (routes, orders, filters, letters,
 // counts, words) are exported for the tests; the page builders return an element at once and fill it when the
 // fact files have loaded (root.ready is a promise, and root gets data-ready="true" when it is filled).
+//
+// Tide Table 2.1 (docs/tt2/ADDENDUM-2026-10-27b.md C and E): every company these pages name shows its ticker and
+// full name ("NVDA · NVIDIA CORP", names.js), and a company's page has its figures year by year, its debt, and its
+// share-price change where the set has prices (docs/tt2/build/data-records.md). The figures are drawn from the
+// record as the data holds it: nothing is estimated, re-picked or ranked.
 
-import * as book from "./book.js?v=2.0.0";
-import * as ui from "./ui.js?v=2.0.0";
-import * as data from "./datafiles.js?v=2.0.0";
+import * as book from "./book.js?v=2.1.0";
+import * as ui from "./ui.js?v=2.1.0";
+import * as data from "./datafiles.js?v=2.1.0";
+import * as names from "./names.js?v=2.1.0";
+import { money, CUR_NAME } from "./facts.js?v=2.1.0";
 import {
   SECTORS, CLOSEUPS, INSIDE, fieldById, fieldName, alsoWords, isFieldId, matchFields, foldText, joinAnd,
-} from "./fields-catalog.js?v=2.0.0";
+} from "./fields-catalog.js?v=2.1.0";
 
 // ---------------------------------------------------------------- configuration
 
@@ -605,6 +612,11 @@ export function venueWords(venue, ticker) {
   return venue === "OTC" ? "over the counter" : venue;
 }
 
+/** A company page's meta line: its place, then its exchange as venueWords says it ("United States · NASDAQ"). */
+export function whereWords(place, venue, ticker) {
+  return [place, venueWords(venue, ticker)].filter(Boolean).join(" · ");
+}
+
 /** What the host's company action is told about a company. */
 export function companyInfo(src, fieldId = null) {
   const main = Array.isArray(src.listings) ? src.listings.find((l) => l && l.main) || src.listings[0] : null;
@@ -775,6 +787,260 @@ export function fieldToggleWords(name) {
   return { off: w(p.off), on: w(p.on), hintOff: w(p.hintOff), hintOn: w(p.hintOn) };
 }
 
+// ---------------------------------------------------------------- ticker and full name (addendum C, names.js)
+
+/** The upcoming listing a source stands for: an upcoming entry itself, or a row or an info that carries one as
+ *  `upcoming` (upcomingRows, upcomingInfo); null for any other company (a record, a field or search row). */
+function upcomingOf(src) {
+  if (src.upcoming && typeof src.upcoming === "object") return src.upcoming;
+  return typeof src.key === "string" && typeof src.status === "string" && !Array.isArray(src.listings) ? src : null;
+}
+
+/** Whether an upcoming listing trades yet: a first trading day as upcomingFirstTrade reads it from the entry, or
+ *  the one upcomingInfo has already read (its `upcoming.firstTrade`). */
+function upcomingTrades(u) {
+  return !!(upcomingFirstTrade(u) || (u.dates === undefined && typeof u.firstTrade === "string" && u.firstTrade));
+}
+
+/**
+ * What a company is named by: { ticker, name } from a field row, a search row, a company record (its main
+ * listing) or an upcoming entry. The ticker is the one a reader sees at a broker; names.js drops any exchange
+ * suffix and never shows Tide Table's own ids. The name is the record's own, never re-cased. An upcoming listing
+ * has no ticker until it trades (addendum C.3: the name and its chips only), the same rule the friends' own views
+ * follow for it; its exchange stays in the meta line.
+ */
+export function nameSource(src) {
+  if (!src || typeof src !== "object") return { ticker: null, name: null };
+  const up = upcomingOf(src);
+  const main = Array.isArray(src.listings) ? src.listings.find((l) => l && l.main) || src.listings[0] : null;
+  const tickers = Array.isArray(src.tickers) ? src.tickers.filter((t) => typeof t === "string" && t) : [];
+  const ticker = up && !upcomingTrades(up) ? null : main ? main.ticker ?? null : src.ticker ?? tickers[0] ?? null;
+  return { ticker, name: src.name ?? null, longName: src.longName ?? null };
+}
+
+/** names.tickerName of a company: { text: "NVDA · NVIDIA CORP", sr: "NVIDIA CORP, ticker NVDA", ticker, name }. */
+export function nameWords(src) {
+  return names.tickerName(nameSource(src));
+}
+
+// ---------------------------------------------------------------- a company's figures (addendum E, data-records.md)
+
+/** The copy of the figures both apps share. "Not reported" is the page's words for a value the reports do not give. */
+export const FIGURES_COPY = Object.freeze({
+  years: "Year by year",
+  debt: "Debt",
+  price: "Share price",
+  fold: "Year by year, debt and share price",
+  notReported: "Not reported",
+  noYearsYet: "This set of facts has no year-by-year figures for this company yet.",
+  noYears: "The reports Tide Table reads give no yearly figures for this company.",
+  noDebtYet: "This set of facts has no debt figures for this company yet.",
+  noDebt: "The reports Tide Table reads give neither its long-term debt nor its total liabilities.",
+  notEstimated: "Not reported means the reports give no value for that date. Tide Table never estimates one.",
+  twoDates: "Each figure is from the latest balance sheet that reports it, so the two dates differ.",
+  noPrices: "Share prices are not part of the open data this site uses.",
+  noPriceChange: "There are fewer than 5 years of share prices for this company, so there is no 5-year change.",
+  noPriceFact: "This set of facts has no 5-year share-price change for this company.",
+});
+
+/** The plain words for each concept a debt value can be read from (data-records.md 3), by the name the data gives. */
+export const CONCEPT_WORDS = Object.freeze({
+  "us-gaap:LongTermDebtNoncurrent": "long-term debt, not counting the part due within a year",
+  "us-gaap:LongTermDebt": "long-term debt, counting the part due within a year",
+  "us-gaap:LongTermDebtAndCapitalLeaseObligations": "long-term debt and finance leases, not counting the part due within a year",
+  "us-gaap:LongTermDebtAndCapitalLeaseObligationsIncludingCurrentMaturities": "long-term debt and finance leases, counting the part due within a year",
+  "us-gaap:LongTermNotesPayable": "long-term notes payable",
+  // A narrower name, shown only when it is the filer's one long-term debt name on that date (data-records.md 3).
+  "us-gaap:SeniorLongTermNotes": "senior notes, long-term",
+  "us-gaap:SeniorNotes": "senior notes",
+  "us-gaap:LongTermLineOfCredit": "the amount drawn on a long-term credit line",
+  "us-gaap:LongTermLoansPayable": "long-term loans",
+  "us-gaap:SecuredLongTermDebt": "secured long-term debt",
+  "us-gaap:UnsecuredLongTermDebt": "unsecured long-term debt",
+  "ifrs-full:NoncurrentPortionOfNoncurrentBorrowings": "long-term borrowings, not counting the part due within a year",
+  "ifrs-full:LongtermBorrowings": "long-term borrowings",
+  "ifrs-full:NoncurrentBorrowings": "borrowings due after more than a year",
+  "us-gaap:Liabilities": "total liabilities, as reported",
+  "ifrs-full:Liabilities": "total liabilities, as reported",
+  "us-gaap:LiabilitiesCurrent+us-gaap:LiabilitiesNoncurrent": "liabilities due within a year and after it, added together",
+  "ifrs-full:CurrentLiabilities+ifrs-full:NoncurrentLiabilities": "liabilities due within a year and after it, added together",
+  LongTermDebt: "long-term debt",
+  LongTermDebtAndCapitalLeaseObligation: "long-term debt and finance leases",
+  TotalLiabilitiesNetMinorityInterest: "total liabilities, not counting minority interest",
+});
+
+/** A concept's plain words, or null for a concept this list does not know (the page then shows its name alone). */
+export function conceptWords(concept) {
+  return typeof concept === "string" && Object.prototype.hasOwnProperty.call(CONCEPT_WORDS, concept) ? CONCEPT_WORDS[concept] : null;
+}
+
+const CUR_RE = /^[A-Z]{3}$/;
+
+/** "US dollars (USD)", "euros (EUR)", "GBP (sterling)"; a code with no name here is shown as the code ("DKK"). */
+export function currencyWords(cur) {
+  if (!CUR_RE.test(String(cur ?? ""))) return null;
+  const n = CUR_NAME[cur];
+  if (!n) return cur;
+  return n.includes(cur) ? n : `${n} (${cur})`;
+}
+
+/** An amount in its reporting currency, as facts.js words money ("$215.9 billion", "€512.6 million"); a missing
+ *  value reads "Not reported". */
+export function amountWords(x, cur) {
+  if (typeof x !== "number" || !Number.isFinite(x)) return FIGURES_COPY.notReported;
+  return CUR_RE.test(String(cur ?? "")) ? money(x, cur) : intWords(x);
+}
+
+/** A year row's period: "The year to Jan 2026", or "The 12 months to Jun 2026" for the latest-12-months row. */
+export function periodWords(row) {
+  const m = monthWords(row && row.end);
+  return row && row.ttm === true ? `The 12 months to ${m}` : `The year to ${m}`;
+}
+
+const isYearRow = (y) => !!y && typeof y === "object" && typeof y.end === "string" && /^\d{4}-\d{2}-\d{2}$/.test(y.end);
+
+/**
+ * Where a record's yearly figures come from: the yearly-reports source of its fact lines (the label, date and link its
+ * report chip shows), else its rule's source and the day the rule checked it. { label, date, url } or null.
+ */
+export function figuresSource(rec) {
+  const rule = (rec && rec.rule) || {};
+  const all = rec && rec.lines && Array.isArray(rec.lines.all) ? rec.lines.all : [];
+  for (const l of all) {
+    for (const s of l && Array.isArray(l.sources) ? l.sources : []) {
+      if (s && typeof s.label === "string" && /^Yearly reports\b/.test(s.label)) {
+        return { label: s.label, date: s.date || rule.checkedOn || null, url: s.url || null };
+      }
+    }
+  }
+  return typeof rule.source === "string" && rule.source ? { label: rule.source, date: rule.checkedOn || null, url: null } : null;
+}
+
+/** "Source: Yearly reports via SEC EDGAR, checked on Sat 24 Oct 2026." as plain words (the page links the label). */
+export function sourceWords(src) {
+  if (!src) return null;
+  return src.date ? `Source: ${src.label}, checked on ${dayWords(src.date)}.` : `Source: ${src.label}.`;
+}
+
+/** "Reported sales as us-gaap:Revenues and profit as us-gaap:NetIncomeLoss." from { sales, profit } concept names
+ *  (either may be null); null when both are. parts: [words, concept, words, concept, …] for a host that draws the
+ *  concept names apart (a concept name is one long word). */
+export function conceptLine({ sales = null, profit = null } = {}) {
+  const parts = ["Reported "];
+  if (sales) parts.push("sales as ", { concept: sales });
+  if (sales && profit) parts.push(" and ");
+  if (profit) parts.push("profit as ", { concept: profit });
+  if (!sales && !profit) return null;
+  parts.push(".");
+  return { text: parts.map((p) => (typeof p === "string" ? p : p.concept)).join(""), parts };
+}
+
+/**
+ * The year-by-year table of a company record (data-records.md 1), oldest first as the data holds it; null when the
+ * record has no `years` (a set from before 2.1). Rows: { end, ttm, period, ended, sales, profit, currency }.
+ * columns: the four headings, with the reporting currency's code on the two amounts. ttmNote: the line under the
+ * table when a row is the latest 12 months; concepts: { sales, profit } concept names and conceptLine(concepts);
+ * source: figuresSource(rec).
+ */
+export function yearTable(rec) {
+  if (!rec || !Array.isArray(rec.years)) return null;
+  const rows = rec.years.filter(isYearRow).map((y) => ({
+    end: y.end, ttm: y.ttm === true, period: periodWords(y), ended: dayWords(y.end),
+    sales: amountWords(y.sales, y.currency), profit: amountWords(y.profit, y.currency),
+    currency: CUR_RE.test(String(y.currency ?? "")) ? y.currency : null,
+  }));
+  const currency = (rows.find((r) => r.currency) || {}).currency || (rec.rule && CUR_RE.test(String(rec.rule.unit ?? "")) ? rec.rule.unit : null);
+  const code = currency ? ` (${currency})` : "";
+  let ttmNote = null;
+  const ttm = rows.find((r) => r.ttm);
+  if (ttm) {
+    const sameEnd = rows.some((r) => !r.ttm && r.end === ttm.end);
+    ttmNote = sameEnd
+      ? `${ttm.period} are the same months as the fiscal year to ${monthWords(ttm.end)}: the reports give no quarter after that year.`
+      : `${ttm.period} are the latest 12 months the reports give, not a fiscal year.`;
+  }
+  const concepts = rows.length ? {
+    sales: rec.sales && typeof rec.sales.concept === "string" && rows.some((r) => r.sales !== FIGURES_COPY.notReported) ? rec.sales.concept : null,
+    profit: rec.rule && typeof rec.rule.concept === "string" ? rec.rule.concept : null,
+  } : { sales: null, profit: null };
+  return {
+    rows, currency, columns: ["Period", "Ended", `Sales${code}`, `Profit${code}`], ttmNote, concepts,
+    conceptLine: conceptLine(concepts), currencyWords: currencyWords(currency), source: figuresSource(rec),
+  };
+}
+
+/** The latest row in one line ("The year to Jan 2026: sales $215.9 billion, profit $120.1 billion."), or null. */
+export function latestYearWords(rec) {
+  const t = yearTable(rec);
+  const r = t && t.rows.length ? t.rows[t.rows.length - 1] : null;
+  if (!r) return null;
+  const low = (s) => (s === FIGURES_COPY.notReported ? "not reported" : s);
+  return `${r.period}: sales ${low(r.sales)}, profit ${low(r.profit)}.`;
+}
+
+/**
+ * The latest long-term debt and total liabilities of a record (data-records.md 2): { missing, notYet, currency, date,
+ * days, rows, columns, notes }. Each row: { id: "longTerm" | "liabilities", label, value, date, day, concept, words,
+ * source }. Each value has its own balance-sheet date (day, YYYY-MM-DD; date, its words): `debt.dates[id]`, else
+ * `debt.date` for a record built before the dates were split (28 Oct 2026). days: the distinct dates of the values
+ * shown, oldest first; with two, a note says why they differ. date: the record's own `debt.date` (the newer). A
+ * value the reports do not give (null, or the whole record {"missing": "reports"}) reads "Not reported", with no date
+ * or concept of its own. A record with no `debt` key at all comes from a set built before 2.1 (service.check_set
+ * accepts it): that says nothing about the reports, so it has no rows, notYet is true and the one note is
+ * FIGURES_COPY.noDebtYet, as yearTable gives null and the page says noYearsYet for its years.
+ */
+export function debtTable(rec) {
+  const notYet = !!rec && typeof rec === "object" && !("debt" in rec);
+  const d = rec && rec.debt && typeof rec.debt === "object" && !rec.debt.missing ? rec.debt : null;
+  const unit = rec && rec.rule && CUR_RE.test(String(rec.rule.unit ?? "")) ? rec.rule.unit : null;
+  const currency = d && CUR_RE.test(String(d.currency ?? "")) ? d.currency : unit;
+  const date = d && typeof d.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d.date) ? d.date : null;
+  const source = rec && rec.rule && typeof rec.rule.source === "string" ? rec.rule.source : null;
+  const concepts = (d && d.concepts && typeof d.concepts === "object") ? d.concepts : {};
+  const own = (d && d.dates && typeof d.dates === "object") ? d.dates : {};
+  const isDay = (x) => typeof x === "string" && /^\d{4}-\d{2}-\d{2}$/.test(x);
+  const row = (id, label) => {
+    const v = d ? d[id] : null;
+    const has = typeof v === "number" && Number.isFinite(v);
+    const concept = has && typeof concepts[id] === "string" ? concepts[id] : null;
+    // a value's own date, else the record's one date (data-records.md 2: dates[value] ?? date)
+    const day = has ? (isDay(own[id]) ? own[id] : date) : null;
+    return {
+      id, label, value: has ? amountWords(v, currency) : FIGURES_COPY.notReported, date: day ? dayWords(day) : "—", day,
+      concept, words: conceptWords(concept), source: has ? source : null,
+    };
+  };
+  const rows = notYet ? [] : [row("longTerm", "Long-term debt"), row("liabilities", "Total liabilities")];
+  const days = [...new Set(rows.map((r) => r.day).filter(Boolean))].sort();
+  const notes = [];
+  if (notYet) notes.push(FIGURES_COPY.noDebtYet);
+  else if (!d || rows.every((r) => r.value === FIGURES_COPY.notReported)) notes.push(FIGURES_COPY.noDebt);
+  else if (rows.some((r) => r.value === FIGURES_COPY.notReported)) notes.push(FIGURES_COPY.notEstimated);
+  if (days.length > 1) notes.push(FIGURES_COPY.twoDates);
+  return {
+    missing: !d, notYet, currency, date, days, rows, notes,
+    columns: ["Figure", `Amount${currency ? ` (${currency})` : ""}`, "On", "Reported as"],
+    currencyWords: currencyWords(currency),
+  };
+}
+
+/**
+ * The share-price lines of a record: with prices (the owner's personal set), its 5-year change (numbers.C04) and the same
+ * with dividends added back (C05), with their date and source; without prices (the open data), the one line that
+ * says share prices are not part of it. A plain fact either way: no colour, no judging word.
+ */
+export function sharePriceLines(rec, { prices = false } = {}) {
+  if (!prices) return [FIGURES_COPY.noPrices];
+  const n = (rec && rec.numbers) || {};
+  const c4 = n.C04, c5 = n.C05;
+  const ok = (x) => !!x && typeof x === "object" && typeof x.value === "number" && Number.isFinite(x.value);
+  if (!ok(c4)) return [c4 && c4.missing === "prices" ? FIGURES_COPY.noPriceChange : FIGURES_COPY.noPriceFact];
+  const lines = [`Share price change over the 5 years to ${dayWords(c4.date)}: ${pctWords(c4.value, true)}.`];
+  if (ok(c5)) lines.push(`With dividends added back: ${pctWords(c5.value, true)}.`);
+  if (typeof c4.source === "string" && c4.source) lines.push(`Source: ${c4.source}.`);
+  return lines;
+}
+
 // ---------------------------------------------------------------- remembered order (per viewer)
 
 function readOrder() {
@@ -915,19 +1181,40 @@ function companyAction(info, { fieldWords = false } = {}) {
     return t ? B("note", t) : null;
   }
   const keep = kind === "keep";
-  return B("toggleWords", {
+  // the accessible name says which company, and on a company page which field's list
+  const name = fieldWords && info.fieldId ? `${info.name}, ${fieldName(info.fieldId)}` : info.name;
+  return maskToggleName(B("toggleWords", {
     pressed: keep || isOnList(info),
     // kept on a list it can no longer join: once it is taken off, the not-addable line says why it cannot go back
     off: w(a.off), on: w(a.on), hintOff: keep ? w(a.notAddable) : w(a.hintOff), hintOn: w(a.hintOn), iconOff: "plus",
-    // the accessible name says which company, and on a company page which field's list
-    name: fieldWords && info.fieldId ? `${info.name}, ${fieldName(info.fieldId)}` : info.name,
+    name,
     onChange: (on, el) => {
       if (keep && on) return false;
       const r = typeof a.onChange === "function" ? a.onChange(info, on, el) : undefined;
       if (keep && r !== false && el && el.bk && typeof el.bk.setDisabled === "function") el.bk.setDisabled(true);
       return r;
     },
-  });
+  }), name);
+}
+
+/**
+ * A company's name in a toggle's hidden words is a name like any other (spec 12.3): book.toggleWords puts it in a
+ * span.visually-hidden inside its button, and this marks that span data-mask, so the fact-surface scan reads it as a
+ * name (a company's name can hold a word the scan bans in sentences). The toggle draws its words again on every press
+ * and every set (through its button's bk.set), so the mark is put back each time. Only the span whose words are
+ * the name is marked: the toggle's own words stay checked. Returns el (exported for the tests).
+ */
+export function maskToggleName(el, name) {
+  const btn = el && typeof el.querySelector === "function" ? el.querySelector("button") : null;
+  const want = typeof name === "string" ? name.trim() : "";
+  if (!btn || !want) return el;
+  const mark = () => {
+    for (const s of btn.querySelectorAll(".visually-hidden")) if (s.textContent.trim() === want) s.setAttribute("data-mask", "");
+  };
+  mark();
+  const set = btn.bk && typeof btn.bk.set === "function" ? btn.bk.set : null;
+  if (set) btn.bk.set = (p) => { set(p); mark(); };
+  return el;
 }
 
 /**
@@ -1087,22 +1374,23 @@ function upcomingChipEls(entry) {
   return upcomingChips(entry).map((c) => B("labelChip", c.id, { text: c.text }));
 }
 
+/** A search row's link names the company by ticker and full name (addendum C); its meta line says the place and the
+ *  fields, the same for an upcoming listing as for every other row (search.json has no exchange). */
 function searchRow(r) {
   if (r.upcoming) {
     const fields = (r.fields || []).filter(isFieldId);
     const parts = [];
-    [r.ticker ? mask(r.ticker) : null, placeWords(r.place), fields.length ? joinAnd(fields.map(fieldName)) : null]
+    [placeWords(r.place), fields.length ? joinAnd(fields.map(fieldName)) : null]
       .filter(Boolean).forEach((m, i) => { if (i) parts.push(" · "); parts.push(m); });
     return h("li.bk-stack", { "data-id": r.id, "data-upcoming": r.upcoming.key },
-      h("a", { href: companyHref(r.id) }, mask(r.name)), h("p.bk-soft", parts), h("div.bk-cluster", upcomingChipEls(r.upcoming)));
+      h("a", { href: companyHref(r.id) }, nameEl(r, { control: true })), h("p.bk-soft", parts), h("div.bk-cluster", upcomingChipEls(r.upcoming)));
   }
   const fields = (r.fields || []).filter(isFieldId);
-  const meta = [r.tickers && r.tickers[0] ? mask(r.tickers[0]) : null, placeWords(r.place),
-    fields.length ? joinAnd(fields.map(fieldName)) : "not sorted into a field"].filter(Boolean);
+  const meta = [placeWords(r.place), fields.length ? joinAnd(fields.map(fieldName)) : "not sorted into a field"].filter(Boolean);
   const parts = [];
   meta.forEach((m, i) => { if (i) parts.push(" · "); parts.push(m); });
   return h("li.bk-stack", { "data-id": r.id },
-    h("a", { href: companyHref(r.id) }, mask(r.name)),
+    h("a", { href: companyHref(r.id) }, nameEl(r, { control: true })),
     h("p.bk-soft", parts),
     B("labelChip", r.label, {}),
     r.left ? B("note", leftWords(r.left)) : null);
@@ -1262,8 +1550,9 @@ function drawList(body, f, file, idx, openId, withTitle) {
   const letters = B("letterStrip", { letters: lettersOf(items), onJump: (letter) => jump(letter) });
 
   const action = (r) => companyAction(companyInfo({ ...r, fields: undefined }, f.id));
+  // the name button says "<TICKER> · <Full name>" (addendum C); the meta line keeps the exchange
   const row = (r) => (r.upcoming ? upcomingRow(r, f.id, { open: r.id === openId, facts: rowFacts(r, st.order) }) : B("companyRow", {
-    id: r.id, name: r.name, place: placeWords(r.place), ticker: r.ticker ?? null,
+    id: r.id, name: nameEl(r, { control: true }), place: placeWords(r.place), ticker: null,
     venue: venueWords(r.venue, r.ticker), label: r.label, facts: rowFacts(r, st.order), action: action(r),
     open: r.id === openId, more: () => companyDetail(r.id, { fieldId: f.id, compact: true }),
     onToggle: (isOpen) => { if (typeof conf.actions.open === "function") conf.actions.open(f.id, isOpen ? r.id : null); },
@@ -1399,7 +1688,7 @@ function drawList(body, f, file, idx, openId, withTitle) {
 function upcomingRow(r, fieldId, { open = false, facts = [] } = {}) {
   const e = r.upcoming;
   const el = B("companyRow", {
-    id: r.id, name: r.name, place: placeWords(r.place), ticker: r.ticker ?? null, venue: venueWords(r.venue, r.ticker),
+    id: r.id, name: nameEl(r, { control: true }), place: placeWords(r.place), ticker: null, venue: venueWords(r.venue, r.ticker),
     label: "na", facts, action: companyAction(upcomingInfo(e, fieldId)), note: upcomingNoteWords(e), open,
     more: () => upcomingDetail(e, { compact: true }),
     onToggle: (isOpen) => { if (typeof conf.actions.open === "function") conf.actions.open(fieldId, isOpen ? r.id : null); },
@@ -1444,7 +1733,7 @@ function drawUpcomingPage(body, e, headingId, root) {
   const info = upcomingInfo(e);
   const fields = (e.fields || []).filter(isFieldId);
   body.append(B("openingHead", {
-    title: mask(e.name), scale: "page", level: 1, id: headingId, lines: [placeWords(e.place || "US")],
+    title: nameEl(e), scale: "page", level: 1, id: headingId, lines: [whereWords(placeWords(e.place || "US"), e.exchange, e.ticker)],
     after: h("div.bk-stack", h("div.bk-cluster", upcomingChipEls(e)), companyPageAction(info, fields)),
   }));
   focusIfIdle(root, headingId);
@@ -1482,7 +1771,7 @@ function drawDetail(body, rec, { fieldId, compact, standalone }) {
   const headLevel = compact ? 3 : 2; // section headings (sectionHead draws h2 or h3)
   const masks = [rec.name];
   if (standalone) {
-    body.append(B("sectionHead", { title: mask(rec.name), level: 3 }), B("labelChip", rec.rule ? rec.rule.label : "y5", {}));
+    body.append(B("sectionHead", { title: nameEl(rec), level: 3 }), B("labelChip", rec.rule ? rec.rule.label : "y5", {}));
     const act = companyAction(companyInfo(rec, fieldId));
     if (act) body.append(act);
   }
@@ -1516,6 +1805,10 @@ function drawDetail(body, rec, { fieldId, compact, standalone }) {
   if (Array.isArray(rec.drs) && rec.drs.length && conf.notes.drsLine) {
     body.append(B("note", fill(conf.notes.drsLine, { list: rec.drs.map((d) => d.dr).filter(Boolean).join(", ") })));
   }
+  // the figures (addendum E): open on the company's own page, folded inside an opened row of a list
+  const prices = !!data.capabilities().prices;
+  if (compact) body.append(B("fold", { summary: FIGURES_COPY.fold, children: [figuresBlock(rec, { level: headLevel, prices, compact: true })] }));
+  else body.append(figuresBlock(rec, { level: headLevel, prices }));
   body.append(newsSection(rec.headlines, rec.headlinesCheckedAt,
     ["Headlines from the last 30 days that name ", mask(rec.name), ", newest first. Tide Table does not sort them into either side."], headLevel));
   const filings = (rec.filings || []).filter((x) => x && x.form && x.url).slice(0, 3);
@@ -1523,6 +1816,158 @@ function drawDetail(body, rec, { fieldId, compact, standalone }) {
     body.append(section(B("sectionHead", { title: COPY.filings, level: headLevel }),
       B("linkList", { label: COPY.filings, items: filings.map((x) => ({ text: `${x.form} filed with the SEC`, meta: dayWords(x.date), url: x.url })) })));
   }
+}
+
+// ---------------------------------------------------------------- names and figures, drawn
+
+/**
+ * A company or holding named "<TICKER> · <Full name>" (addendum C): span.bk-tn[data-mask][data-ticker] holding
+ * span.bk-tn-shown (aria-hidden: span.bk-tn-ticker "NVDA ·", which never breaks, then span.bk-tn-name, which wraps)
+ * and span.visually-hidden.bk-tn-sr ("NVIDIA CORP, ticker NVDA"). With no ticker it holds the name alone. src: what
+ * nameSource reads (a field or search row, a company record, an upcoming entry, or {ticker, name}).
+ * control: true for a name that is a link's or a button's own words. Its accessible name must hold the label a
+ * reader sees, in the same order (WCAG 2.5.3), so the shown parts are not hidden and there is no screen-reader copy:
+ * span.bk-tn holds span.bk-tn-ticker, a space and span.bk-tn-name, and it reads "NVDA · NVIDIA CORP".
+ */
+export function nameEl(src, { control = false } = {}) {
+  const n = nameWords(src);
+  const root = h("span.bk-tn", { "data-mask": "", "data-ticker": n.ticker || null });
+  if (n.ticker && n.name) {
+    const shown = [h("span.bk-tn-ticker", `${n.ticker}${names.SEP.trimEnd()}`), " ", h("span.bk-tn-name", n.name)];
+    if (control) root.append(...shown);
+    else root.append(h("span.bk-tn-shown", { "aria-hidden": "true" }, shown), h("span.visually-hidden.bk-tn-sr", n.sr));
+  } else root.append(h(n.ticker ? "span.bk-tn-ticker" : "span.bk-tn-name", n.text));
+  return root;
+}
+
+/** An external link inside a sentence: a new tab, no referrer, and the hidden words that say so (as book.js does). */
+function linkOut(text, url) {
+  const fixed = (book.FIXED && book.FIXED.newTab) || "(opens in a new tab)";
+  return h("a", { href: url, rel: "noopener noreferrer", referrerpolicy: "no-referrer", target: "_blank" }, text,
+    h("span.visually-hidden", ` ${fixed}`));
+}
+
+const concept = (name) => h("span.bk-concept", name);
+
+/** A heading and its blocks: a page section (56 px above) or, compact, a stack inside a row, a fold or a list. */
+function part(compact, key, kids) {
+  const el = compact ? h("div.bk-stack", kids) : section(...kids);
+  el.dataset.fu = key;
+  return el;
+}
+
+function yearsPart(rec, { level, compact }) {
+  const t = yearTable(rec);
+  const kids = [B("sectionHead", { title: FIGURES_COPY.years, level })];
+  if (!t) kids.push(B("note", FIGURES_COPY.noYearsYet));
+  else if (!t.rows.length) kids.push(B("note", FIGURES_COPY.noYears));
+  else {
+    const [, ended, sales, profit] = t.columns;
+    kids.push(h("table.bk-table.bk-years", { "data-fu": "years-table" },
+      h("caption", "Sales and profit of ", mask(rec.name), ", oldest year first"),
+      h("thead", h("tr", t.columns.map((c) => h("th", { scope: "col" }, c)))),
+      h("tbody", t.rows.map((r) => h("tr", { "data-end": r.end, "data-ttm": r.ttm ? "true" : null },
+        h("th", { scope: "row" }, r.period),
+        h("td", { "data-label": ended }, r.ended),
+        h("td", { "data-label": sales }, h("span.num", r.sales)),
+        h("td", { "data-label": profit }, h("span.num", r.profit)))))));
+    if (t.currencyWords) kids.push(B("note", `Amounts in ${t.currencyWords}, the currency of the company's reports.`));
+    if (t.ttmNote) kids.push(B("note", t.ttmNote));
+    if (t.conceptLine) kids.push(B("note", t.conceptLine.parts.map((p) => (typeof p === "string" ? p : concept(p.concept)))));
+  }
+  const src = t && t.rows.length ? t.source : null;
+  if (src) kids.push(B("note", ["Source: ", src.url ? linkOut(src.label, src.url) : src.label, src.date ? `, checked on ${dayWords(src.date)}.` : "."]));
+  return part(compact, "years", kids);
+}
+
+function debtPart(rec, { level, compact }) {
+  const t = debtTable(rec);
+  // a set from before 2.1 has no debt key: one line says so, and there is no table (as yearsPart does)
+  if (t.notYet) return part(compact, "debt", [B("sectionHead", { title: FIGURES_COPY.debt, level }), ...t.notes.map((n) => B("note", n))]);
+  const reported = (r) => (r.concept
+    ? [r.words ? h("span.bk-concept-words", r.words.slice(0, 1).toUpperCase() + r.words.slice(1)) : null,
+      concept(r.source ? `${r.concept}, from ${r.source}` : r.concept)]
+    : "—");
+  const table = B("factTable", {
+    // one balance sheet, or (each value on its own latest date) two, oldest first
+    caption: ["Debt of ", mask(rec.name), t.days.length === 1 ? `, from its balance sheet of ${dayWords(t.days[0])}`
+      : t.days.length > 1 ? `, from its balance sheets of ${t.days.map(dayWords).join(" and ")}` : ""],
+    columns: t.columns,
+    rows: t.rows.map((r) => ({ label: r.label, value: h("span.num", r.value), date: r.date, source: reported(r) })),
+  });
+  if (table && table.classList) { table.classList.add("bk-debt"); table.dataset.fu = "debt-table"; }
+  const kids = [B("sectionHead", { title: FIGURES_COPY.debt, level }), table];
+  if (t.currencyWords && !t.missing) {
+    kids.push(B("note", `Amounts in ${t.currencyWords}, ${t.days.length > 1 ? "as the balance sheets report them" : "as the balance sheet reports them"}.`));
+  }
+  for (const n of t.notes) kids.push(B("note", n));
+  return part(compact, "debt", kids);
+}
+
+function pricePart(rec, { level, compact, prices }) {
+  return part(compact, "price", [B("sectionHead", { title: FIGURES_COPY.price, level }),
+    ...sharePriceLines(rec, { prices }).map((l) => B("note", l))]);
+}
+
+const FIGURE_PARTS = Object.freeze({ years: yearsPart, debt: debtPart, price: pricePart });
+
+/**
+ * A company's figures (addendum E): "Year by year" (the table, its currency, the 12-month line, the concepts and the
+ * source line), "Debt" (long-term debt and total liabilities with their date and concepts) and "Share price" (the
+ * 5-year change where the set has prices, else the open-data line), each under a heading of `level` (2 or 3).
+ * Returns div.bk-stack.bk-figures[data-fu="figures"][data-fact-surface]; each part carries data-fu "years", "debt" or
+ * "price". rec: a company record (datafiles.loadCompany). prices: whether the set has share prices (default: the
+ * loaded index's capability). compact: parts without the 56 px section gaps (inside a row, a fold or a list).
+ * parts: which of "years", "debt" and "price" to draw, in that order.
+ */
+export function figuresBlock(rec, { level = 2, prices, compact = false, parts = ["years", "debt", "price"] } = {}) {
+  const withPrices = typeof prices === "boolean" ? prices : !!data.capabilities().prices;
+  const lv = level === 3 ? 3 : 2;
+  const root = h("div.bk-stack.bk-figures", { "data-fu": "figures", "data-fact-surface": "" });
+  if (!rec || typeof rec !== "object") return root;
+  for (const k of ["years", "debt", "price"]) {
+    if (!parts.includes(k)) continue;
+    try { root.append(FIGURE_PARTS[k](rec, { level: lv, compact, prices: withPrices })); } catch (e) { warnOnce(`the ${k} figures did not draw`, e); }
+  }
+  return root;
+}
+
+/**
+ * The figures of one company by its id, for a page or a list that has no record in hand (the friends' Stocks page):
+ * an element at once, filled when its shard has loaded (root.ready; data-ready="true"). opts as figuresBlock's. A
+ * company the set does not have gets the no-facts line; a load that fails gets the did-not-load line.
+ */
+export function companyFigures(companyId, opts = {}) {
+  const { root, done } = readyRoot("div.bk-stack", { "data-fu": "company-figures", "data-id": String(companyId ?? "") });
+  const body = h("div.bk-stack", B("note", COPY.loading));
+  root.append(body);
+  (async () => {
+    const st = await data.loadIndex();
+    ui.clear(body);
+    if (st.status !== "ok") { body.append(...statusBanners(st)); return; }
+    const rec = await data.loadCompany(companyId);
+    if (!rec) { body.append(B("note", COPY.noCompany)); return; }
+    body.append(figuresBlock({ id: companyId, ...rec }, opts));
+  })().catch((e) => { warnOnce("a company's figures did not load", e); ui.clear(body); body.append(B("banner", { state: "problem", content: COPY.failed })); })
+    .finally(done);
+  return root;
+}
+
+/**
+ * The company a ticker names in this set's search list, for a host that knows a holding by its ticker (the friends'
+ * Stocks page): the first row, A to Z, whose tickers hold it exactly, a US one first. Resolves to the search row
+ * ({id, name, tickers, fields, place, label, left}) or null; never rejects.
+ */
+export async function findCompanyByTicker(ticker) {
+  const t = typeof ticker === "string" ? ticker.trim() : "";
+  if (!t) return null;
+  try {
+    const st = await data.loadIndex();
+    if (st.status !== "ok") return null;
+    const s = await data.loadSearch();
+    const hits = (s.items || []).filter((r) => Array.isArray(r.tickers) && r.tickers.includes(t) && !r.left);
+    return hits.find((r) => r.place === "US") || hits[0] || null;
+  } catch (e) { warnOnce("search.json did not load", e); return null; }
 }
 
 // ---------------------------------------------------------------- a company's own page
@@ -1558,9 +2003,9 @@ export function companyPage(companyId, { headingId } = {}) {
     if (!rec) { body.append(B("note", COPY.noCompany)); return; }
     const info = companyInfo({ id: companyId, ...rec });
     const fields = (rec.fields || []).filter(isFieldId);
-    const place = rec.country || placeWords(rec.place);
+    const place = whereWords(rec.country || placeWords(rec.place), info.venue, info.ticker);
     body.append(B("openingHead", {
-      title: mask(rec.name), scale: "page", level: 1, id: headingId,
+      title: nameEl({ id: companyId, ...rec }), scale: "page", level: 1, id: headingId,
       lines: [place, fields.length ? null : COPY.notSortedOne].filter(Boolean),
       after: h("div.bk-stack", B("labelChip", rec.rule ? rec.rule.label : "y5", {}), companyPageAction(info, fields)),
     }));

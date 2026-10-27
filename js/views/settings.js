@@ -7,11 +7,12 @@ import {
   fM, fB, fNum, fThb, fPrice, long, short, countWord, plural, ago, parseNum,
   pill, card, cardHead, viewHead, field, disclosure, sourceLink, commit, modal, confirmDialog, exportState,
   M, fixed, joinedMonthIds, openMonthIds, amountWords, mixIsOwn, joinedBudgetUsd, resolvedMonths, isBoughtInst, pre,
-} from "../core.js?v=2.0.0";
-import { DEFAULT_STATE, MAX_IMPORT_BYTES, MAX_DEPTH, STILL_KEY, depthOf, cleanPlan, validateImport, withoutUnbought } from "../store.js?v=2.0.0";
-import * as book from "../book.js?v=2.0.0";
-import { openMonthDialog, monthWordOf, typedWords } from "./amounts.js?v=2.0.0";
-import { mixCard } from "./mix.js?v=2.0.0";
+} from "../core.js?v=2.1.0";
+import { nameEl, nameText } from "./naming.js?v=2.1.0";
+import { DEFAULT_STATE, MAX_IMPORT_BYTES, MAX_DEPTH, STILL_KEY, depthOf, cleanPlan, validateImport, withoutUnbought } from "../store.js?v=2.1.0";
+import * as book from "../book.js?v=2.1.0";
+import { openMonthDialog, monthWordOf, typedWords } from "./amounts.js?v=2.1.0";
+import { mixCard } from "./mix.js?v=2.1.0";
 
 function setSetting(key, value) { commit((d) => { d.settings[key] = value; }); }
 
@@ -80,7 +81,7 @@ function closePlusSummary() {
   const cp = closePlusRows();
   if (!cp.length) return "";
   const byPct = {};
-  for (const i of cp) (byPct[i.ceiling.pct] ||= []).push(i.group === "index" || i.id === "QNTM" ? i.id : i.name);
+  for (const i of cp) (byPct[i.ceiling.pct] ||= []).push(nameText(i));
   const list = (xs) => (xs.length > 1 ? `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}` : xs[0]);
   const parts = Object.keys(byPct).map(Number).sort((a, b) => a - b).map((pct) => `+ ${pct}% for ${list(byPct[pct])}`);
   return `${countWord(cp.length)} ceiling${cp.length === 1 ? " is" : "s are"} set by the ${short(cp[0].ceiling.date)} closing price: ${parts.join("; ")}.`;
@@ -137,23 +138,23 @@ export function renderSettings() {
         const got = (set.closes || {})[i.id];
         const c = ceilingOf(i);
         return h("div.ceil-row",
-          h("p.ceil-name", i.name, h("span.ticker.num", i.id)),
+          h("p.ceil-name", nameEl(i)),
           h("p.ceil-auto.small", `Ceiling: close + ${i.ceiling.pct}%`),
           field("27 Nov close (US$)", numInput("close-" + i.id, got ? got.close : null, (v) => commit((d) => {
             if (v == null) delete d.settings.closes[i.id];
             else d.settings.closes[i.id] = { date: i.ceiling.date, close: L.round2(v) };
-          }), { placeholder: "after 27 Nov", label: `${i.name} closing price on 27 Nov 2026, US dollars` })),
+          }), { placeholder: "after 27 Nov", label: `${nameText(i)} closing price on 27 Nov 2026, US dollars` })),
           h("p.ceil-result", "Ceiling ", h("strong.num", c.value != null ? fPrice(c.value, i.quoteCurrency) : "set on 27 Nov"), h("span.muted", c.kind === "manual" ? " · your override" : c.kind === "close_plus" ? " · from your close" : "")));
       })),
       disclosure("fixed-ceil", "Change a fixed ceiling (this changes the plan's own number)",
         h("div.ceil-rows", plan.instruments.filter((i) => i.ceiling && i.ceiling.type === "fixed" && isBoughtInst(i.id)).map((i) => {
           const ov = set.ceilingOverrides[i.id];
           return h("div.ceil-row.is-fixed",
-            h("p.ceil-name", i.name, h("span.ticker.num", i.id)),
+            h("p.ceil-name", nameEl(i)),
             h("p.ceil-auto.small", `Plan: ${fPrice(i.ceiling.value, i.quoteCurrency)}`),
             field("Ceiling (US$)", numInput("ovf-" + i.id, ov, (v) => commit((d) => {
               if (v == null) delete d.settings.ceilingOverrides[i.id]; else d.settings.ceilingOverrides[i.id] = v;
-            }), { placeholder: String(i.ceiling.value), label: `${i.name} ceiling, US dollars` })));
+            }), { placeholder: String(i.ceiling.value), label: `${nameText(i)} ceiling, US dollars` })));
         })))),
 
     card(".set-card", { "aria-labelledby": "s-data" },
@@ -167,8 +168,9 @@ export function renderSettings() {
       h("p.fine", "Loading a copy replaces what is here after you confirm. Start over deletes everything in this browser and asks for your amount again.")),
 
     card(".set-card", { "aria-labelledby": "s-pages" },
-      cardHead(h("span#s-pages", "More pages"), "The money you send, what you own, and the plan's own rules."),
+      cardHead(h("span#s-pages", "More pages"), "Every holding by name, the money you send, what you own, and the plan's own rules."),
       h("ul.bk-list.ttm-more-pages",
+        h("li", h("a", { href: "#/stocks", "data-fk": "set-stocks" }, "Stocks: every holding, by ticker and full name")),
         h("li", h("a", { href: "#/money", "data-fk": "set-money" }, "Money: what to send and when")),
         h("li", h("a", { href: "#/holdings", "data-fk": "set-holdings" }, "Holdings: what you own")),
         h("li", h("a", { href: "#/rules", "data-fk": "set-rules" }, "Rules: the plan's rules and checks")))),

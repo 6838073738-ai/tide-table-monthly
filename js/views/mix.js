@@ -12,8 +12,8 @@
 import {
   app, h, clear, icon, pill, toast, S, hooks, card, cardHead, viewHead, field, today, M, fM, short, monthName,
   plural, confirmDialog, commitPlanChange, explain, mixIsOwn, openMonthIds, resolvedMonths, fixed, onCleanup,
-} from "../core.js?v=2.0.0";
-import { planShares, beforeJoin, MIX_TENTHS_MAX } from "../scale.js?v=2.0.0";
+} from "../core.js?v=2.1.0";
+import { planShares, beforeJoin, MIX_TENTHS_MAX } from "../scale.js?v=2.1.0";
 
 const GROUP_TOKEN = { index: "--series-1", growth: "--series-7", crypto: "--series-5" };
 const GROUP_WORDS = { index: "index funds", growth: "growth stocks and the quantum fund", crypto: "crypto" };

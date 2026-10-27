@@ -10,10 +10,13 @@ import {
   fM, fUsd, fThb, fNum, long, short, inDays, monthName, parseNum, plural, pill, pre, joinedBudgetUsd, howOf,
   card, cardHead, viewHead, disclosure, field, commit, modal, confirmDialog, sourceLink,
   M, commitPlanChange, explain, openMonthIds, monthOf, amountWords, resolvedMonths,
-} from "../core.js?v=2.0.0";
-import { ownIdMonth, MIN_MONTHLY_USD, MAX_MONTHLY_USD } from "../scale.js?v=2.0.0";
-import { moneyWarnings } from "./today.js?v=2.0.0";
-import { monthAmountLink, monthWordOf, ordersWords, placedWarning, paidBy, listAnd, fill } from "./amounts.js?v=2.0.0";
+} from "../core.js?v=2.1.0";
+import { ownIdMonth, MIN_MONTHLY_USD, MAX_MONTHLY_USD } from "../scale.js?v=2.1.0";
+import { moneyWarnings } from "./today.js?v=2.1.0";
+import { monthAmountLink, monthWordOf, ordersWords, placedWarning, paidBy, listAnd, fill } from "./amounts.js?v=2.1.0";
+import * as book from "../book.js?v=2.1.0";
+import * as LK from "../lock.js?v=2.1.0";
+import { lockNow, lockDateLine, lockMonthWords, lockShareWords } from "./naming.js?v=2.1.0";
 
 const DEST = { SwissBorg: "SwissBorg", IBKR: "Interactive Brokers" };
 const dest = (to) => DEST[to] || to;
@@ -101,6 +104,9 @@ export function renderMoney() {
         h("span.visually-hidden", ` ${words}`));
     }))));
 
+  // the locked 10%: plain lines where the plan's own money rules sit, after the months and before the timing checks
+  out.push(lockBlock(mine));
+
   // timing checks + the plan's money rules
   const LV = { alert: "alert", warn: "alert", info: "info" };
   out.push(card(".fund-rules", { "aria-labelledby": "fr-h" },
@@ -116,6 +122,29 @@ export function renderMoney() {
     h("div.table-wrap", transfersTable(fund, st, showThb)),
     h("p.fine", `Total at ฿${fNum(fund.fx, 2)}: ${fM(fund.totalUsd)} is about ${fThb(fund.totalThb)}${L.round2(fund.totalUsd) !== budget ? `, against the plan's ${fM(budget)}` : ""}.`)));
   return out;
+}
+
+/**
+ * The locked 10% on Money (addendum B.6, G, lock-api.md 6): plain lines with no heading or chips of its own, placed
+ * with the plan's money rules (after the month-by-month squares): paid by the month's own transfer to Interactive
+ * Brokers, where the 10% of the next month still to arrive goes (its date line while it does not trade), and the
+ * "as written" line. Nothing of its own to send.
+ */
+function lockBlock(mine) {
+  const plan = app.plan;
+  const L = lockNow(plan);
+  if (!L) return null;
+  const fs = S().funding || {};
+  const t = mine.filter((x) => x.to === "IBKR" && ((fs[x.id] || {}).status || "todo") !== "arrived" && LK.lockMonth(plan, x.forDate))
+    .sort((a, b) => (a.forDate < b.forDate ? -1 : a.forDate > b.forDate ? 1 : 0))[0] || null;
+  const w = t ? lockMonthWords(plan, t.forDate) : null;
+  const words = !w ? null
+    : w.trading && w.m.orderCents ? `In ${monthWordOf(t.forDate)}: ${fM(w.m.orderCents / 100)} of ${t.id}. ${w.text}`
+      : `In ${monthWordOf(t.forDate)}: ${w.text} ${lockDateLine()}`;
+  return h("div.ttm-lock-line", { "data-fk": "money-lock" },
+    h("p", `${lockShareWords(plan)} It is paid by the same transfer to Interactive Brokers as the rest of the month.`),
+    words ? h("p", { "data-fk": "money-lock-next" }, words) : null,
+    book.note(LK.LOCK_COPY.asWritten));
 }
 
 /** "$500 a month for 12 months", or "12 months, $300 to $500 each" (the months that count for this friend). */

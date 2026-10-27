@@ -11,16 +11,18 @@ import {
   pre, isPreOrder, isPreTransfer, isPreDate, joinedPlan, joinedBudgetUsd, progressNow, coinQty, leftoverText, coinMinUsd, skippedUsd,
   copyDue, exportState, howOf, dateNotesFor, openMonthIds, isBoughtInst, prepNotNeeded,
   tickerOf, isFieldInst, universeOn, hasFieldMonths, fixed, monthOf,
-} from "../core.js?v=2.0.0";
-import { ownIdMonth } from "../scale.js?v=2.0.0";
-import { orderWhy, waitingWhy } from "../split.js?v=2.0.0";
-import * as book from "../book.js?v=2.0.0";
-import * as FU from "../fieldsui.js?v=2.0.0";
-import * as D from "../datafiles.js?v=2.0.0";
-import { fieldName } from "../fields-catalog.js?v=2.0.0";
-import { monthAmountLink } from "./amounts.js?v=2.0.0";
-import { splitLine } from "./split.js?v=2.0.0";
-import { upcomingChecked } from "./fields.js?v=2.0.0";
+} from "../core.js?v=2.1.0";
+import { ownIdMonth } from "../scale.js?v=2.1.0";
+import { orderWhy, waitingWhy } from "../split.js?v=2.1.0";
+import * as book from "../book.js?v=2.1.0";
+import * as FU from "../fieldsui.js?v=2.1.0";
+import * as D from "../datafiles.js?v=2.1.0";
+import { fieldName } from "../fields-catalog.js?v=2.1.0";
+import { monthAmountLink } from "./amounts.js?v=2.1.0";
+import { splitLine } from "./split.js?v=2.1.0";
+import { upcomingChecked } from "./fields.js?v=2.1.0";
+import * as LK from "../lock.js?v=2.1.0";
+import { nameEl, nameText, whatNamed, lockWhyLine, lockFacts } from "./naming.js?v=2.1.0";
 
 /** The one-time panel for a friend with records, on their first 2.0 visit (spec 8.2), is remembered here. */
 const INTRO_KEY = "ttm:fields-intro";
@@ -30,8 +32,9 @@ const CHAPTER_WORDS = ["one", "two", "three", "four", "five", "six", "seven", "e
 /** A VWRA order of $0 (an own mix that leaves it nothing) with nothing carried into it: it is there to take
  *  leftovers and the rules' carries, and reads "VWRA: takes any leftover". */
 const takesLeftover = (o, cr) => !!o.carryTarget && !(o.usd > 0) && !isDone(o.id) && !(cr && cr.byOrder[o.id] && cr.byOrder[o.id].usd > 0);
-/** What to buy, in words (core.orderWhat), with a $0 VWRA order as "VWRA: takes any leftover". */
-const whatOf = (o, cr) => (takesLeftover(o, cr) ? `${instById(o.instrument).id}: takes any leftover` : orderWhat(o, cr));
+/** What to buy, in words (naming.whatNamed: core.orderWhat with the holding by ticker, or by ticker and full name
+ *  where no name line is above it), with a $0 VWRA order as "VWRA: takes any leftover". */
+const whatOf = (o, cr, full = false) => (takesLeftover(o, cr) ? `${instById(o.instrument).id}: takes any leftover` : whatNamed(o, cr, { full }));
 
 /** The getting-ready items that apply to this friend's plan (a SwissBorg item is not needed without coins; the
  *  thesis checks and the 27 Nov closes are not needed when the plan buys none of those holdings). */
@@ -289,7 +292,7 @@ function heroTodo(next, fund, st, money) {
     const os = ordersOn(next.id).filter((o) => !isDone(o.id));
     const shown = os.slice(0, 4);
     return h("div.hero-todo",
-      h("ul.todo-list", shown.map((o) => h("li", h("span.todo-time.num", timeLabel(o)), h("span.todo-acct", o.account), h("span.todo-what", whatOf(o, cr))))),
+      h("ul.todo-list", shown.map((o) => h("li", h("span.todo-time.num", timeLabel(o)), h("span.todo-acct", o.account), h("span.todo-what", whatOf(o, cr, true))))),
       os.length > shown.length ? h("p.muted.small", `+ ${os.length - shown.length} more on the order desk below`) : null,
       mainButton("Open the order desk", "#desk", "hero-desk", (e) => { e.preventDefault(); openDesk(next.id); }));
   }
@@ -453,7 +456,7 @@ function renderProgress(st) {
   const planned = joinedBudgetUsd(); // the money of the months that count (coins with an empty wallet buy nothing)
   // An own mix buys every holding every month (over a hundred orders): small ticks that wrap on a phone.
   const ticks = h(`div.ticks${orders.length > 40 ? ".am-many" : ""}`, { role: "img", "aria-label": progressLabel(pr) },
-    orders.slice().sort((a, b) => a.at - b.at).map((o) => h(`span.tick.is-${ost(o.id).status || "pending"}`, { title: `${short(o.date)} · ${instById(o.instrument).name} · ${(STATUS_PILL[ost(o.id).status || "pending"] || [])[0]}` })));
+    orders.slice().sort((a, b) => a.at - b.at).map((o) => h(`span.tick.is-${ost(o.id).status || "pending"}`, { title: `${short(o.date)} · ${nameText(instById(o.instrument))} · ${(STATUS_PILL[ost(o.id).status || "pending"] || [])[0]}` })));
   return card(".progress", { "aria-label": "Plan progress" },
     h("div.stats",
       h("div.stat", h("span.stat-label", "Orders done"), h("span.stat-val", cu("orders-done", pr.done + pr.skipped, (x) => String(Math.round(x)), ".num-display"), h("span.stat-of", ` / ${pr.total}`)), h("span.stat-sub", pr.done + pr.skipped + pr.placed ? [`${pr.done} filled`, pr.skipped ? `${pr.skipped} skipped` : "", pr.placed ? `${pr.placed} placed` : ""].filter(Boolean).join(" · ") : `${plural(dates.length, "order date")}`)),
@@ -512,7 +515,7 @@ function buildAlerts() {
     const i = instById(o.instrument), c = ceilingOf(i), p = priceInfo(i);
     if (L.ceilingStatus(p.price, c) !== "over") continue;
     seenR1.add(o.instrument);
-    out.push({ level: "alert", key: "r1-" + o.id, title: `${i.name} is above its ceiling`,
+    out.push({ level: "alert", key: "r1-" + o.id, title: `${nameText(i)} is above its ceiling`,
       body: `${fPrice(p.price, i.quoteCurrency)} (${priceSource(p)}) against a ceiling of ${fPrice(c.value, i.quoteCurrency)}. ${d >= 0 ? `Its order is ${inDays(d)} (${long(o.date)}).` : `Its ${short(o.date)} order is still open.`}`,
       rule: rule("r1"), href: "#desk" });
   }
@@ -522,7 +525,7 @@ function buildAlerts() {
     const d = L.daysBetween(td, o.date);
     if (d < 0 || d > 14) continue;
     const i = instById(o.instrument), last = lastCheck(i.id);
-    out.push({ level: "warn", key: "r2-" + o.id, title: `Thesis check due: ${i.name}`,
+    out.push({ level: "warn", key: "r2-" + o.id, title: `Thesis check due: ${nameText(i)}`,
       body: `${(o.note || "").split(".")[0]} on ${long(o.date)}, ${inDays(d)}. ${last ? `Last check logged ${short(last.date)}: ${last.pass ? "passed" : "failed"}.` : "No check logged yet: log it on the Rules page."}`,
       rule: rule("r2"), href: "#/rules" });
   }
@@ -557,7 +560,7 @@ function buildAlerts() {
   const m = (plan.milestones || []).find((x) => x.id === "m-ceil");
   if (m) {
     const dd = L.daysBetween(td, m.date);
-    const pending = ceilingPending().map((i) => i.name);
+    const pending = ceilingPending().map((i) => nameText(i));
     const p7 = plan.prep.find((p) => p.appNote) || {};
     if (dd >= 0 && dd <= 14 && pending.length) {
       out.push({ level: dd <= 1 ? "warn" : "info", key: "ceil-day", title: `Ceiling day ${inDays(dd)}: ${long(m.date)}`, body: `${m.text}${p7.appNote ? " " + p7.appNote : ""}`,
@@ -655,10 +658,11 @@ function renderDesk() {
     hasCoins ? h("p.fine.desk-src", icon("info"), h("span", sourceLink(prices.SOURCES.crypto), prices.data.cryptoAt ? `, updated ${ui.relTime(prices.data.cryptoAt / 1000)}` : "", ". Stock and fund prices are the ones you type.")) : null);
 }
 
-/** Why a field month's order has its amount (brief G5): "Half of Retail", "60% of the month, plus …". */
+/** Why a field month's order has its amount (brief G5): "Half of Retail", "60% of the month, plus …"; and the
+ *  locked 10% (lock-api.md 6): where this month's 10% went, with its date line and the "as written" line. */
 function whyLine(o) {
   const w = orderWhy(app.plan, o.id, fieldName);
-  return w ? h("p.dr-why", { "data-fk": "why-" + o.id }, w) : null;
+  return [w ? h("p.dr-why", { "data-fk": "why-" + o.id }, w) : null, lockWhyLine(o.id, "lock-why-" + o.id)];
 }
 
 /**
@@ -670,7 +674,7 @@ function fieldMonthLines(dateId) {
   if (!f) return [];
   const out = [];
   const spec = (monthOf(dateId) || {}).fields || { chosen: f.F, split: f.s };
-  const words = splitLine(spec);
+  const words = splitLine(spec, { ninety: !!f.ninety });
   if (words) {
     out.push(h("p.desk-split", { "data-fk": "desk-split" }, words, " ",
       fixed().has(dateId) ? "This month has records, so its split stays as it is." : [h("a", { href: "#/split" }, "Change it on My split"), "."]));
@@ -714,9 +718,9 @@ function markOne(o, known) {
     const cell = document.querySelector(`[data-row="${CSS.escape(o.id)}"] .dr-order`);
     if (!cell || cell.querySelector(".dr-delisted")) return;
     cell.append(rec.delisted
-      ? h("p.dr-delisted", { "data-fk": "delisted-" + o.id }, `SEC's list shows no listing for ${i.name} since ${FU.dayWords(rec.delisted)}. Your order stays as you set it.`)
-      : otc ? h("p.dr-delisted", { "data-fk": "otc-" + o.id }, `SEC's list now shows ${i.name} over the counter. Your order stays as you set it.`)
-        : h("p.dr-delisted", { "data-fk": "txse-" + o.id }, `SEC's list now shows ${i.name} on the Texas Stock Exchange. Your order stays as you set it.`));
+      ? h("p.dr-delisted", { "data-fk": "delisted-" + o.id }, `SEC's list shows no listing for ${nameText(i)} since ${FU.dayWords(rec.delisted)}. Your order stays as you set it.`)
+      : otc ? h("p.dr-delisted", { "data-fk": "otc-" + o.id }, `SEC's list now shows ${nameText(i)} over the counter. Your order stays as you set it.`)
+        : h("p.dr-delisted", { "data-fk": "txse-" + o.id }, `SEC's list now shows ${nameText(i)} on the Texas Stock Exchange. Your order stays as you set it.`));
   }).catch(() => { /* the facts did not load: the order stays as it is */ });
 }
 
@@ -736,7 +740,7 @@ function priceCell(o, i, pi) {
     on: { change: (e) => savePrice(i, e.target) },
   });
   return h("div.dr-price.is-input",
-    h("label.cell-label.is-shown", { for: "in-" + id }, `Price in your app`, h("span.visually-hidden", ` for ${i.name}, in US dollars`)),
+    h("label.cell-label.is-shown", { for: "in-" + id }, `Price in your app`, h("span.visually-hidden", ` for ${nameText(i)}, in US dollars`)),
     input,
     h("span.price-src#src-" + id, pi.price == null ? "Type it to size the order" : priceSource(pi)));
 }
@@ -755,7 +759,7 @@ function savePrice(i, el) {
     el.setAttribute("aria-invalid", "true");
     const src = document.getElementById("src-price-" + i.id);
     if (src) { src.textContent = msg; src.classList.add("is-error"); }
-    ui.announce(`${i.name}: ${msg}`);
+    ui.announce(`${nameText(i)}: ${msg}`);
     return;
   }
   el.removeAttribute("aria-invalid");
@@ -790,7 +794,7 @@ function preRow(o) {
   const i = instById(o.instrument);
   return h("li.desk-row.is-pre", { "data-row": o.id },
     h("div.dr-time", h("span.num", timeLabel(o)), o.time !== "any" ? h("span.dr-tz", "Bangkok") : null),
-    h("div.dr-order", h("p.dr-name", i.name, h("span.ticker.num", tickerOf(i))), h("p.dr-what", h("span.acct-chip", o.account), " ", orderWhat(o))),
+    h("div.dr-order", h("p.dr-name", nameEl(i, { masked: isFieldInst(i) })), h("p.dr-what", h("span.acct-chip", o.account), " ", whatNamed(o))),
     h("div.dr-act", pill("Before you joined", "muted", "–")));
 }
 
@@ -896,9 +900,11 @@ function deskRow(o, ctx) {
   return h(`li.desk-row.is-${status}${o.thesisGate ? ".is-gated" : ""}${skipFirst ? ".is-zero" : ""}`, { "data-row": o.id },
     h("div.dr-time", h("span.num", timeLabel(o)), o.time !== "any" ? h("span.dr-tz", "Bangkok") : null),
     h("div.dr-order",
-      h("p.dr-name", i.name, h("span.ticker.num", tickerOf(i))),
+      h("p.dr-name", nameEl(i, { masked: isFieldInst(i) })),
       h("p.dr-what", h("span.acct-chip", o.account), " ", whatOf(o, ctx.carry)),
       whyLine(o),
+      // The locked listing's order once it trades: two sourced facts about a first day's order (lock-api.md 6).
+      LK.isLockOrder(o) && !isDone(o.id) ? lockFacts("lock-facts-" + o.id) : null,
       o.thesisGate ? h("p.dr-gate", icon("rules"), "Thesis check first (rule r2)") : null),
     priceCell(o, i, pi),
     h("div.dr-ceil", h("span.cell-label", "Ceiling"), c.kind === "none" ? null : h("span.num.dr-ceil-val", fmtCeil(c, i)), ceilPill(cs), hr != null ? h("span.dr-head.num", hr >= 0 ? `${fNum(hr, 1)}% below it` : `${fNum(-hr, 1)}% over`) : null),
@@ -918,13 +924,13 @@ function wordsFor(o, i) {
 
 function markPlaced(o) {
   commit((d) => { d.orders[o.id] = { ...(d.orders[o.id] || {}), status: "placed" }; });
-  toast(`Marked placed: ${instById(o.instrument).name}`, "info");
+  toast(`Marked placed: ${nameText(instById(o.instrument))}`, "info");
 }
 
 export async function undoOrder(o) {
   const s = ost(o.id);
   if (s.status === "filled") {
-    const ok = await confirmDialog({ title: "Undo this fill?", text: `The fill for ${instById(o.instrument).name} on ${short(o.date)} goes back to to-do. The logged numbers are cleared.`, ok: "Undo fill", danger: true });
+    const ok = await confirmDialog({ title: "Undo this fill?", text: `The fill for ${nameText(instById(o.instrument))} on ${short(o.date)} goes back to to-do. The logged numbers are cleared.`, ok: "Undo fill", danger: true });
     if (!ok) return;
   }
   commit((d) => { d.orders[o.id] = { status: "pending", qty: null, price: null, fees: null, costUsd: null, filledAt: null, note: "", redirect: null }; });
@@ -987,7 +993,7 @@ export function openFillDialog(o) {
   recalc();
 
   modal({
-    title: `${Number.isFinite(s.costUsd) ? "Edit fill" : "Log fill"}: ${i.name}`,
+    title: `${Number.isFinite(s.costUsd) ? "Edit fill" : "Log fill"}: ${nameText(i)}`,
     lede: `${long(o.date)} · ${o.account} · ${whatOf(o, cr)}`,
     body: [
       h("p.modal-help", "Copy these from the order confirmation in your broker's app."),
@@ -1027,7 +1033,7 @@ export function openFillDialog(o) {
         if (!i.coingeckoId && (!cur || !(Date.parse(cur.at) > Date.parse(at)))) d.prices[i.id] = { price, at, src: "fill" };
       });
       if (first) celebrate(o.id);
-      toast(`${first ? "Filled" : "Fill updated"}: ${i.name} · ${fmtQty(i, qty)} @ ${fPrice(price, i.quoteCurrency)} · ${fUsd(cost, 2)}`, "success");
+      toast(`${first ? "Filled" : "Fill updated"}: ${nameText(i)} · ${fmtQty(i, qty)} @ ${fPrice(price, i.quoteCurrency)} · ${fUsd(cost, 2)}`, "success");
       return true;
     },
   });
@@ -1061,7 +1067,7 @@ export function openSkipDialog(o) {
   const reason = h("textarea", { name: "reason", rows: 3, maxlength: 200, placeholder: zero ? "e.g. One share costs more than this month's amount" : coinNote ? "e.g. Too little in the wallet for this order" : "e.g. Still above the ceiling after four Tuesdays; thesis check failed" });
   const leftover = { then: leftoverText() };
   modal({
-    title: `Skip: ${i.name}`,
+    title: `Skip: ${nameText(i)}`,
     lede: `${long(o.date)} · ${whatOf(o, cr)}`,
     body: [
       zero ? h("p.skip-zero", icon("info"), h("span", ct
@@ -1078,7 +1084,7 @@ export function openSkipDialog(o) {
       if (app.active === "today" && !app.deskDate) app.deskDate = o.dateId;
       const note = reason.value.trim().slice(0, 200);
       commit((d) => { d.orders[o.id] = { ...(d.orders[o.id] || {}), status: "skipped", redirect: v, note }; });
-      toast(`Skipped: ${i.name} → ${v === "VWRA" ? "VWRA" : wallet ? "stays in the wallet" : "cash"}`, "info");
+      toast(`Skipped: ${nameText(i)} → ${v === "VWRA" ? "VWRA" : wallet ? "stays in the wallet" : "cash"}`, "info");
       return true;
     },
   });

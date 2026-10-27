@@ -5,13 +5,15 @@
 // each are listed under it, and Save my split commits them (views/draft.js).
 
 import {
-  h, ui, toast, hooks, explain, monthOf, monthName, dateOfId, fM, fB, plural, onCleanup,
-} from "../core.js?v=2.0.0";
-import * as book from "../book.js?v=2.0.0";
-import * as FU from "../fieldsui.js?v=2.0.0";
-import { fieldName } from "../fields-catalog.js?v=2.0.0";
-import * as draft from "./draft.js?v=2.0.0";
-import { WORDS } from "./fields.js?v=2.0.0";
+  app, h, ui, toast, hooks, explain, monthOf, monthName, dateOfId, fM, fB, plural, onCleanup,
+} from "../core.js?v=2.1.0";
+import * as book from "../book.js?v=2.1.0";
+import * as FU from "../fieldsui.js?v=2.1.0";
+import { fieldName } from "../fields-catalog.js?v=2.1.0";
+import * as draft from "./draft.js?v=2.1.0";
+import { WORDS } from "./fields.js?v=2.1.0";
+import * as LK from "../lock.js?v=2.1.0";
+import { nameEl, nameText, lockNow, lockSubject, lockMonthWords, lockDateLine } from "./naming.js?v=2.1.0";
 
 const TEXT = Object.freeze({
   lede: ["Choose how much of each month goes to your fields. The rest goes to the all-world fund, VWRA.",
@@ -25,18 +27,48 @@ const TEXT = Object.freeze({
 
 const pctOf = (v) => { const p = v / 10; return Number.isInteger(p) ? p : Math.round(p * 10) / 10; };
 
-/** "In December that is $120 to your fields ($40 each) and $180 to the all-world fund." (the typed currency). */
+/**
+ * "In December that is $120 to your fields ($40 each) and $180 to the all-world fund." (the typed currency). In a
+ * month with the locked 10% (lock-api.md 1), the split is of the other 90% (P = floor(9 × A × s / 10^4)), and the
+ * words say where the 10% goes: with the all-world fund until it trades, or its own order once it does.
+ */
 export function moneyWords(fromId, s, nFields) {
   const r = fromId ? monthOf(fromId) : null;
   if (!r || s == null || !nFields) return "";
   const month = monthName(dateOfId(fromId), false, true);
   const thb = r.input && r.input.currency === "THB" && Number.isFinite(r.input.amount);
   const A = thb ? Math.round(r.input.amount * 100) : Math.round(r.usd * 100);
-  const P = Math.floor((A * s) / 1000);
+  const lm = app.plan ? LK.lockMonth(app.plan, fromId) : null;
+  const P = lm ? Math.floor((9 * A * s) / 10000) : Math.floor((A * s) / 1000);
   const each = Math.floor(P / nFields);
   const fmt = (c) => (thb ? `about ${fB(Math.round(c / 100))}` : fM(c / 100));
   const fieldsPart = nFields > 1 ? `${fmt(P)} to your fields (${fmt(each)} each)` : `${fmt(P)} to your field`;
+  const name = (lockNow() && lockNow().name) || LK.LOCK_NAME;
+  if (lm && lm.to === "order" && lm.orderCents) {
+    // The order is in US cents; a friend who typed baht reads it at the month's own typed rate (review finding M3).
+    // (Its baht amount and its US dollars give the rate when the record has none of its own.)
+    const typed = thb ? Number(r.input.rate) : 1;
+    const rate = Number.isFinite(typed) && typed > 0 ? typed : r.usd > 0 ? r.input.amount / r.usd : NaN;
+    const order = thb ? Math.round(lm.orderCents * rate) : lm.orderCents;
+    if (Number.isFinite(order)) return `In ${month} that is ${fieldsPart}, ${fmt(order)} to ${name}, its locked 10%, and ${fmt(A - P - order)} to the all-world fund.`;
+    return `In ${month} that is ${fieldsPart}, ${name}'s locked 10% as an order of its own, and the rest to the all-world fund.`;
+  }
+  if (lm) return `In ${month} that is ${fieldsPart} and ${fmt(A - P)} to the all-world fund, which holds ${name}'s locked 10% this month.`;
   return `In ${month} that is ${fieldsPart} and ${fmt(A - P)} to the all-world fund.`;
+}
+
+/** The locked 10% on My split (addendum B.6, G): plain notes like the card's others, with no heading or chips of its
+ *  own: the split is of the other 90%; where the first month's 10% goes, with its date line while it does not
+ *  trade; the "as written" line. */
+function lockNote(fromId) {
+  const L = lockNow();
+  if (!L) return null;
+  const w = fromId ? lockMonthWords(app.plan, fromId) : null;
+  const month = fromId ? monthName(dateOfId(fromId), false, true) : null;
+  return h("div.bk-stack.ttm-lock-line", { "data-fk": "split-lock" },
+    book.note(`${LK.LOCK_COPY.share} is locked in this plan for ${nameText(lockSubject())}, so your split is of the other 90%.`),
+    w ? book.note(w.trading ? `In ${month}: ${w.text}` : `In ${month}: ${w.text} ${lockDateLine()}`) : null,
+    book.note(LK.LOCK_COPY.asWritten));
 }
 
 /**
@@ -65,7 +97,7 @@ function companyLine(f, id) {
   take.setAttribute("data-fk", `off-${f}-${id}`);
   take.setAttribute("aria-label", `Take ${n.n} off your list in ${fieldName(f)}`);
   return h("li.ttm-split-co", { "data-id": id },
-    h("span.ttm-split-co-name", h("span", { "data-mask": "" }, n.n), n.t ? h("span.bk-soft", " · ", h("span", { "data-mask": "" }, n.t)) : null),
+    h("span.ttm-split-co-name", nameEl({ ticker: n.t || null, name: n.n }, { masked: true }), n.v ? h("span.bk-soft", ` · ${n.v}`) : null),
     waiting ? book.note(WORDS.tickHint) : null,
     take);
 }
@@ -127,7 +159,8 @@ export function renderSplit() {
   out.push(book.openingHead({ title: "My split", scale: "page", level: 1, id: "h-split", lines: TEXT.lede }));
   out.push(h("section.ttm-split-card.bk-section", { "data-fact-surface": "", "aria-label": "Your split" },
     pics, strip, money, book.note(TEXT.openData),
-    fromId ? book.note(`Your orders follow this split from ${monthName(dateOfId(fromId), false, true)}. Months with records stay as they are.`) : null));
+    fromId ? book.note(`Your orders follow this split from ${monthName(dateOfId(fromId), false, true)}. Months with records stay as they are.`) : null,
+    lockNote(fromId)));
 
   const list = h("div.bk-section.bk-stack", { "data-fu": "split-fields" },
     book.sectionHead({ title: "Your fields", level: 2, intro: chosen.length ? null : TEXT.noField }),
@@ -158,11 +191,12 @@ export function renderSplit() {
   return out;
 }
 
-/** "Your split: 40% to your 3 fields, 60% to the all-world fund." for a month's spec (Today), or "". */
-export function splitLine(spec) {
+/** "Your split: 40% to your 3 fields, 60% to the all-world fund." for a month's spec (Today), or "". With the
+ *  locked 10% (opts.ninety) it says the split is of the other 90%. */
+export function splitLine(spec, { ninety = false } = {}) {
   if (!spec || !Number.isInteger(spec.split) || !Array.isArray(spec.chosen) || !spec.chosen.length) return "";
   const n = spec.chosen.length;
   const p = pctOf(spec.split);
   const fields = n === 1 ? `your field, ${fieldName(spec.chosen[0])}` : `your ${n} fields`;
-  return `Your split: ${p}% to ${fields}, ${pctOf(1000 - spec.split)}% to the all-world fund.`;
+  return `Your split${ninety ? " of the other 90%" : ""}: ${p}% to ${fields}, ${pctOf(1000 - spec.split)}% to the all-world fund.`;
 }

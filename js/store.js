@@ -11,12 +11,18 @@
 // Cleaning never changes a month that has records: its fields are kept exactly (written as a pin first
 // when they come from plan.fields), and a damaged copy of them sets the whole saved text aside instead
 // (UNREAD_KEY), so nothing is thrown away.
+//
+// Tide Table 2.1 keeps the state at version 2: the locked 10% (lock.js) is one more optional key of the plan
+// record, plan.lock ({ k, from, f, s } and the listing's snapshot once it trades; lock.readLock cleans it). A state
+// without it (1.x, 2.0, or a new plan) loads exactly as before, and months.adoptLock adds it from the first month
+// the friend has not started, through the usual plan change, so the months before it keep what they had.
 
-import { isMonthlyUsdInRange, MIX_TENTHS_MAX } from "./scale.js?v=2.0.0";
-import { explainFit, monthWord, monthOfOrder } from "./months.js?v=2.0.0";
+import { isMonthlyUsdInRange, MIX_TENTHS_MAX } from "./scale.js?v=2.1.0";
+import { explainFit, monthWord, monthOfOrder } from "./months.js?v=2.1.0";
+import { readLock } from "./lock.js?v=2.1.0";
 import {
   FIELD_IDS, FIELD_ID, COMPANY_ID, SPLIT_MAX, MAX_FIELD_COMPANIES, MAX_COMPANIES, fieldOrder, nameSnapshot, isAddableVenue,
-} from "./split.js?v=2.0.0";
+} from "./split.js?v=2.1.0";
 
 export const PLAN_ID = "monthly-2026-27";
 export const STATE_VERSION = 2;
@@ -54,7 +60,8 @@ export const DEFAULT_STATE = () => ({
   profile: {},
   // { monthlyUsd, input: {currency, amount, rate, rateSource, rateDate, usd}, lockedAt, joinedAt,
   //   months: { mNN: {usd?, input?, own?, mix?, fields?} }, mix: { instrumentId: tenths of a percent }, mixFrom,
-  //   fields?: { from, chosen, split, lists, names } } (fields is left out when no month follows any)
+  //   lock?: { k, from, f, s, id?, n?, l?, t?, v? }, fields?: { from, chosen, split, lists, names } }
+  //   (lock is left out until months.adoptLock adds it; fields is left out when no month follows any)
   plan: null,
   // settings.still (Still pictures) is kept only when true.
   settings: { theme: "auto", ceilingOverrides: {}, closes: {}, showThb: true, lastExportAt: null },
@@ -314,6 +321,9 @@ export function cleanPlan(p, records = null) {
     // The "Starting with" month of the standing mix (display only: earlier months keep their mix as pins).
     mixFrom: Object.keys(mix).length && typeof p.mixFrom === "string" && DATE_ID.test(p.mixFrom) ? p.mixFrom : null,
   };
+  // The locked 10% (lock.js): kept only as a readable record; a missing or unreadable one is left out.
+  const lock = readLock(p.lock);
+  if (lock) out.lock = lock;
   const fields = cleanFieldsInto(p, out.months, records instanceof Set ? records : new Set(Array.isArray(records) ? records : []));
   if (fields) out.fields = fields;
   return out;
@@ -541,8 +551,11 @@ export const store = {
   },
   /** Change the state with a function on a copy, then save at once. False (and saveError) when the change
    *  could not be made; the state is then left as it was. A change that lists a company with no saved name
-   *  is refused (NamesMissingError), and so is one that damages a month with records (DamagedStateError). */
-  update(mutator) {
+   *  is refused (NamesMissingError), and so is one that damages a month with records (DamagedStateError).
+   *  opts.auto: a change the app makes on its own, not the friend (the locked 10% added on load, its first
+   *  trading day saved): it is saved the same way, but it does not count as this version having saved
+   *  something, so an older tab's later version 1 save is still migrated again without asking (checkLegacy). */
+  update(mutator, { auto = false } = {}) {
     let next;
     try {
       const draft = structuredClone(state);
@@ -556,7 +569,7 @@ export const store = {
       return false;
     }
     state = next;
-    if (store.save()) markTouched();
+    if (store.save() && !auto) markTouched();
     emit();
     return !store.saveError;
   },
@@ -670,6 +683,9 @@ function planRecordProblems(p, ref) {
   }
   if (p.mix != null) checkMix(p.mix);
   if (p.mixFrom != null && !isMonth(p.mixFrom)) errs.push("The month the file's mix starts from must be one of the plan's months.");
+  // The locked 10% (lock.js): a file that has a lock record must have a readable one, or its months with records
+  // could change once it is added again.
+  if (p.lock != null && !readLock(p.lock)) { errs.push("The file's record of the locked 10% cannot be read."); bad = true; }
   if (p.fields != null) {
     const f = p.fields;
     if (!isObj(f)) fieldErr("The file's fields cannot be read.");

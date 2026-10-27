@@ -13,8 +13,9 @@
 import {
   app, h, icon, toast, svg, L, S, now, today, ost, isDone, instById, rule, schedule, fM, long, short, monthName, bkkTime,
   pill, card, cardHead, viewHead, field, ruleQuote, commit, confirmDialog, plural, prepNotNeeded, fieldMonthsOn, joinedPlan, tickerOf,
-} from "../core.js?v=2.0.0";
-import { notBought, notBoughtMonth } from "./mix.js?v=2.0.0";
+} from "../core.js?v=2.1.0";
+import { nameEl, nameText } from "./naming.js?v=2.1.0";
+import { notBought, notBoughtMonth } from "./mix.js?v=2.1.0";
 
 const WORDS = [
   ["Index fund", "A fund that holds many companies at once by following a market index. VWRA holds thousands of companies around the world; XDEW, EIMI and the quantum fund (QNTM) are narrower ones."],
@@ -129,22 +130,22 @@ function thesisCard(t) {
   // amounts. Bought earlier but left out of their mix or fields from a month on: that month is named after the
   // dates.
   const why = notBought(i.id);
-  const sell = h("textarea", { rows: 2, "data-fk": "sell-" + i.id, "data-keep": "", maxlength: 300, placeholder: "One line, written before you buy", text: ts.sellIf || "", "aria-label": `What would make you sell ${i.name}` });
+  const sell = h("textarea", { rows: 2, "data-fk": "sell-" + i.id, "data-keep": "", maxlength: 300, placeholder: "One line, written before you buy", text: ts.sellIf || "", "aria-label": `What would make you sell ${nameText(i)}` });
   sell.addEventListener("change", () => { const v = sell.value.trim().slice(0, 300); commit((d) => { d.thesis[i.id] = { checks: [], ...(d.thesis[i.id] || {}), sellIf: v }; }); });
-  const dateI = h("input", { type: "date", "data-fk": "chkd-" + i.id, "data-keep": "", value: today(), "aria-label": `${i.name} check date` });
-  const passI = h("select", { "data-fk": "chkp-" + i.id, "data-keep": "", "aria-label": `${i.name} check result` }, h("option", { value: "pass" }, "Passes"), h("option", { value: "fail" }, "Fails"));
-  const noteI = h("input", { "data-fk": "chkn-" + i.id, "data-keep": "", maxlength: 200, placeholder: "e.g. Q3 report: revenue up 40% on last year", "aria-label": `${i.name} check note` });
+  const dateI = h("input", { type: "date", "data-fk": "chkd-" + i.id, "data-keep": "", value: today(), "aria-label": `${nameText(i)} check date` });
+  const passI = h("select", { "data-fk": "chkp-" + i.id, "data-keep": "", "aria-label": `${nameText(i)} check result` }, h("option", { value: "pass" }, "Passes"), h("option", { value: "fail" }, "Fails"));
+  const noteI = h("input", { "data-fk": "chkn-" + i.id, "data-keep": "", maxlength: 200, placeholder: "e.g. Q3 report: revenue up 40% on last year", "aria-label": `${nameText(i)} check note` });
   const addCheck = () => {
     if (!dateI.value) { toast("Pick a date for the check", "alert"); return; }
     const entry = { date: dateI.value, pass: passI.value === "pass", note: noteI.value.trim().slice(0, 200) };
     noteI.value = "";
     commit((d) => { const cur = d.thesis[i.id] || { sellIf: "", checks: [] }; d.thesis[i.id] = { ...cur, checks: [...(cur.checks || []), entry] }; });
-    toast(`Logged: ${i.name} thesis check ${entry.pass ? "passes" : "fails"}`, entry.pass ? "success" : "info");
+    toast(`Logged: ${nameText(i)} thesis check ${entry.pass ? "passes" : "fails"}`, entry.pass ? "success" : "info");
   };
   const failed = latest && !latest.pass;
   return card(`.thesis-card${failed ? ".is-failed" : ""}`, { "aria-labelledby": "th-" + i.id },
     h("header.thesis-head",
-      h("div", h("h3.thesis-name#th-" + i.id, i.name), h("p.pc-meta", h("span.ticker.num", tickerOf(i)),
+      h("div", h("h3.thesis-name#th-" + i.id, nameEl(i)), h("p.pc-meta",
         slices.length ? slices.map((o) => h(`span.od.is-${ost(o.id).status || "pending"}`, { title: `${long(o.date)}${o.thesisGate ? " · thesis check first" : ""}` }, short(o.date)))
           : h("span.od", notBoughtWords(why || { kind: "amount" })),
         slices.length && why && /-from$/.test(why.kind) ? h("span.od", notBoughtWords(why)) : null)),
@@ -155,7 +156,7 @@ function thesisCard(t) {
       ruleQuote(rule("r2"), "Plan rule 2"),
       h("p.small", `The next slice this applies to: ${gatedOpen.map((o) => `${short(o.date)} (${fM(o.usd)})`).join(", ")}.`),
       h("button.btn.btn-small", { type: "button", "data-fk": "r2-" + i.id, on: { click: async () => {
-        const ok = await confirmDialog({ title: `Skip the ${short(gatedOpen[0].date)} slice of ${i.name}?`, text: `Rule r2: the slice is marked skipped and its money goes into the next VWRA order. You can undo this on the order desk.`, ok: "Mark skipped → VWRA" });
+        const ok = await confirmDialog({ title: `Skip the ${short(gatedOpen[0].date)} slice of ${nameText(i)}?`, text: `Rule r2: the slice is marked skipped and its money goes into the next VWRA order. You can undo this on the order desk.`, ok: "Mark skipped → VWRA" });
         if (!ok) return;
         commit((d) => { for (const o of gatedOpen) d.orders[o.id] = { ...(d.orders[o.id] || {}), status: "skipped", redirect: "VWRA", note: `Thesis check failed ${latest.date}${latest.note ? ": " + latest.note : ""}`.slice(0, 200) }; });
         toast("Slice marked skipped → VWRA", "info");

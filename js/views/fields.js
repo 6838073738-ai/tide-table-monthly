@@ -3,12 +3,13 @@
 // the field and company pages (views/field.js, views/company.js): the Choose toggle, Add to my list / On my
 // list (into this tab's draft, views/draft.js), the not-addable line, and the notes of spec Appendix C.
 
-import { app, h, ui, toast, onCleanup, hooks, universeOn } from "../core.js?v=2.0.0";
-import * as book from "../book.js?v=2.0.0";
-import * as FU from "../fieldsui.js?v=2.0.0";
-import * as D from "../datafiles.js?v=2.0.0";
-import { fieldName } from "../fields-catalog.js?v=2.0.0";
-import * as draft from "./draft.js?v=2.0.0";
+import { app, h, ui, toast, onCleanup, hooks, universeOn } from "../core.js?v=2.1.0";
+import * as book from "../book.js?v=2.1.0";
+import * as FU from "../fieldsui.js?v=2.1.0";
+import * as D from "../datafiles.js?v=2.1.0";
+import { fieldName } from "../fields-catalog.js?v=2.1.0";
+import * as draft from "./draft.js?v=2.1.0";
+import { isLockedListing, lockedInPlanWords } from "./naming.js?v=2.1.0";
 
 /** Appendix C and upcoming-api.md 9: the friends' own fixed copy. */
 export const WORDS = Object.freeze({
@@ -115,13 +116,17 @@ export function configureFieldsUi() {
         hintOff: (info) => (pending(info) ? WORDS.tickHint : null),
         hintOn: (info) => (pending(info) ? WORDS.tickHint : null),
         isOn: (id, info) => draft.isListed(info && info.fieldId, id),
-        canAdd: (info) => !!info && info.addable === true && (!!info.fieldId || (Array.isArray(info.fields) && info.fields.length > 0)),
+        // The locked listing (addendum B.1) is in every plan at 10% of each month already, so it never goes on a
+        // field list: a second share of it would make its order larger than the locked 10% (review finding
+        // reg-lock-tickable-in-field).
+        canAdd: (info) => !!info && info.addable === true && !isLockedListing(info) && (!!info.fieldId || (Array.isArray(info.fields) && info.fields.length > 0)),
         // An upcoming listing that withdrew its filing: its row and page already say so ("It withdrew its filing
         // with the US SEC on …", upcoming-api.md 9), and that is why it cannot go on a list, so no other reason is
         // given. A company already on the list keeps "On my list" (fieldsui's "keep"), and this line is its hint
         // once it is taken off.
-        notAddable: (info) => (info && info.upcoming && info.upcoming.status === "withdrawn" ? null
-          : info && info.addable === true ? WORDS.notSorted : info && info.venue === "TXSE" ? WORDS.notAddableTxse : WORDS.notAddable),
+        notAddable: (info) => (isLockedListing(info) ? lockedInPlanWords()
+          : info && info.upcoming && info.upcoming.status === "withdrawn" ? null
+            : info && info.addable === true ? WORDS.notSorted : info && info.venue === "TXSE" ? WORDS.notAddableTxse : WORDS.notAddable),
         perField: true,
         onChange: (info, on) => {
           const r = draft.setCompany(info, on);

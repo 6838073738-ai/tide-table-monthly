@@ -13,13 +13,19 @@ import {
   fM, fUsd, fPct, fNum, fPrice, short, fmtQty, plural, statusPill, pill,
   card, cardHead, viewHead, empty, chipGroup, downloadFile, today, hooks, progressNow, joinedBudgetUsd, isPreOrder, isPreTransfer,
   mixIsOwn, resolvedMonths, amountWords, tickerOf, isFieldInst, fieldMonthsOn, fieldsSpecNow,
-} from "../core.js?v=2.0.0";
-import { openFillDialog, undoOrder } from "./today.js?v=2.0.0";
-import { notBought, notBoughtMonth } from "./mix.js?v=2.0.0";
-import { splitLine } from "./split.js?v=2.0.0";
+} from "../core.js?v=2.1.0";
+import { openFillDialog, undoOrder } from "./today.js?v=2.1.0";
+import { notBought, notBoughtMonth } from "./mix.js?v=2.1.0";
+import { splitLine } from "./split.js?v=2.1.0";
+import * as LK from "../lock.js?v=2.1.0";
+import { nameEl, nameText, lockNow, lockSubject, lockDateLine, lockMonthWords, lockShareWords } from "./naming.js?v=2.1.0";
 
 const GROUP_TOKEN = { index: "--series-1", growth: "--series-7", crypto: "--series-5", fields: "--series-4" };
 const GROUP_ORDER = ["index", "growth", "crypto", "fields"];
+/** The group a holding is counted in on this page. The locked 10% (lock.js LOCK_GROUP) is a single stock like the
+ *  plan's others, so it counts with them in "growth": no slice, legend row or colour of its own (addendum G,
+ *  review finding UI-2). */
+const shownGroup = (i) => (i && i.group === LK.LOCK_GROUP.id ? "growth" : i ? i.group : null);
 
 function tok(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || "#888888"; }
 function withAlpha(color, a) {
@@ -57,7 +63,7 @@ export function renderHoldings() {
       h("tbody", hold.rows.map((r) => {
         const pi = priceInfo(r.inst);
         return h("tr",
-          h("th", { scope: "row" }, h("span.hold-name", r.inst.name), h("span.ticker.num", tickerOf(r.inst))),
+          h("th", { scope: "row" }, h("span.hold-name", nameEl(r.inst, { masked: isFieldInst(r.inst) }))),
           h("td.num.r", { "data-label": "Quantity" }, fmtQty(r.inst, r.qty)),
           h("td.num.r", { "data-label": "Avg cost" }, r.avgCostUsd != null ? fUsd(r.avgCostUsd, r.avgCostUsd < 10 ? 4 : 2) : "—"),
           h("td.num.r", { "data-label": "Cost" }, fUsd(r.costUsd, 2)),
@@ -65,7 +71,7 @@ export function renderHoldings() {
           h("td.num.r", { "data-label": "Value" }, r.valueUsd != null ? fUsd(r.valueUsd, 2) : "—"),
           h(`td.num.r${r.pnlUsd > 0 ? ".is-pos" : r.pnlUsd < 0 ? ".is-neg" : ""}`, { "data-label": "Change" }, r.pnlUsd != null ? `${r.pnlUsd > 0 ? "+" : ""}${fUsd(r.pnlUsd, 2)}` : "—", r.pnlPct != null ? h("span.sub", fPct(r.pnlPct, 1)) : null));
       })),
-      hold.missing.length ? h("tfoot", h("tr.hold-missing", h("td", { colspan: 7 }, h("span.muted.small", `No price yet for ${hold.missing.map((id) => instById(id).name).join(", ")}: left out of the value. ${hold.missing.some((id) => !instById(id).coingeckoId) ? "Type a stock or fund's price on the order desk to include it." : "Coins are included once the live price arrives."}`)))) : null))
+      hold.missing.length ? h("tfoot", h("tr.hold-missing", h("td", { colspan: 7 }, h("span.muted.small", `No price yet for ${hold.missing.map((id) => nameText(instById(id))).join(", ")}: left out of the value. ${hold.missing.some((id) => !instById(id).coingeckoId) ? "Type a stock or fund's price on the order desk to include it." : "Coins are included once the live price arrives."}`)))) : null))
       : empty("Nothing here yet", "Log a fill on the order desk (Today) and it appears here.", "portfolio")));
 
   out.push(splitPanel(hold));
@@ -119,7 +125,7 @@ function splitPanel(hold) {
 /** With field months: the friend's own split in their words and where to change it; no target and nothing to
  *  steer toward (spec 12.1 rule 6). */
 function fieldSplitPanel() {
-  const words = splitLine(fieldsSpecNow());
+  const words = splitLine(fieldsSpecNow(), { ninety: !!lockNow() });
   return card(".rebal-card.ttm-own-split", { "aria-labelledby": "rebal-h", "data-fk": "own-split" },
     cardHead(h("span#rebal-h", "Your split"), "How much of each month goes to your fields is your own choice."),
     words ? h("p", { "data-fk": "own-split-words" }, words) : null,
@@ -135,13 +141,12 @@ function allocItems(mode, hold) {
     // With field months, an example-plan holding with no order and nothing owned is not part of the friend's
     // year: it is left out rather than listed as "not bought".
     const theirs = fieldMonthsOn() ? (i) => isFieldInst(i) || i.targetUsd > 0 || val(i.id) > 0 : () => true;
-    return plan.instruments.filter(theirs).map((i) => {
-      const n = (seen[i.group] = (seen[i.group] || 0) + 1);
-      return { id: i.id, label: i.name, target: i.targetUsd, actual: val(i.id), color: withAlpha(tok(GROUP_TOKEN[i.group] || "--series-3"), Math.max(0.38, 1 - (n - 1) * 0.17)) };
-    });
+    const shade = (g) => { const n = (seen[g] = (seen[g] || 0) + 1); return withAlpha(tok(GROUP_TOKEN[g] || "--series-3"), Math.max(0.38, 1 - (n - 1) * 0.17)); };
+    const rows = plan.instruments.filter(theirs).map((i) => ({ id: i.id, label: nameEl(i, { masked: isFieldInst(i) }), labelText: nameText(i), target: i.targetUsd, actual: val(i.id), color: shade(shownGroup(i)) }));
+    return rows.concat(lockWaitingItem(shade));
   }
   return GROUP_ORDER.map((k) => {
-    const insts = plan.instruments.filter((i) => i.group === k);
+    const insts = plan.instruments.filter((i) => shownGroup(i) === k);
     return { id: k, label: groupLabel(k), target: insts.reduce((a, i) => a + i.targetUsd, 0), actual: insts.reduce((a, i) => a + val(i.id), 0), color: tok(GROUP_TOKEN[k]) };
   }).filter((x) => x.target > 0 || x.actual > 0);
 }
@@ -152,7 +157,7 @@ function allocCard(hold, hasFills) {
   const items = allocItems(mode, hold);
   const totT = items.reduce((a, x) => a + x.target, 0) || 1;
   const totA = items.reduce((a, x) => a + x.actual, 0);
-  const segs = items.filter((x) => x.target > 0).map((x) => ({ key: x.id, label: x.label, value: x.target, color: x.color }));
+  const segs = items.filter((x) => x.target > 0).map((x) => ({ key: x.id, label: x.labelText || x.label, value: x.target, color: x.color }));
   // The friend's own mix or fields in some month they count (the standing mix, or one a month keeps): the year
   // is theirs.
   const ownMix = mixIsOwn() || resolvedMonths().some((r) => !r.preJoin && r.mode === "own");
@@ -162,6 +167,7 @@ function allocCard(hold, hasFills) {
   const year = own ? "Your year at your amounts" : `The plan's year at ${amounts}`;
   /** Why an instrument has no order, or is left out from some month on (instrument rows only). */
   const note = (x) => {
+    if (x.lockWaiting) return "Not trading yet · its 10% goes to VWRA";
     const why = mode === "instrument" ? notBought(x.id) : null;
     if (!why) return null;
     if (!x.target) {
@@ -192,7 +198,35 @@ function allocCard(hold, hasFills) {
             h("td.num.r", h("span", fPct(tp, 1, false)), h("span.sub", fM(x.target))),
             h("td.num.r", ap == null ? h("span.muted", "—") : [h("span", fPct(ap, 1, false)), h("span.sub", fUsd(x.actual, 2))]),
             h("td.cmp-cell", h("div.cmp", { "aria-hidden": "true" }, h("span.cmp-t", { style: { width: Math.min(100, tp * (mode === "instrument" ? 1.4 : 1)).toFixed(1) + "%" } }), ap != null ? h("span.cmp-a", { style: { width: Math.min(100, ap * (mode === "instrument" ? 1.4 : 1)).toFixed(1) + "%", background: x.color } }) : null)));
-        }))))));
+        }))))),
+    lockNote());
+}
+
+/**
+ * The locked 10% before it trades has no instrument (lock-api.md 3): its row in the year's mix, by instrument, is drawn
+ * from plan.scale.lock with $0, last, like a holding with no order. Once some month buys it, it is an instrument.
+ */
+function lockWaitingItem(shade) {
+  const L = lockNow();
+  if (!L || app.plan.instruments.some((i) => LK.isLockInst(i))) return [];
+  return [{ id: "lock", label: nameEl(lockSubject()), labelText: nameText(lockSubject()), target: 0, actual: 0, color: shade("growth"), lockWaiting: true }];
+}
+
+/**
+ * The locked 10% in the friend's holdings (addendum B.6, G): one plain note under the mix's table, which has its row,
+ * like the card's other notes: no card, heading or chips of its own. It says the share, where the next month's 10%
+ * goes (with its date line while it does not trade), and the "as written" line.
+ */
+function lockNote() {
+  const L = lockNow();
+  if (!L) return null;
+  const next = schedule().dates.find((d) => L.months && L.months[d.id] && d.effective >= today()) || null;
+  const w = next ? lockMonthWords(app.plan, next.id) : null;
+  const words = !w ? null
+    : w.trading && w.m.orderCents ? `On ${short(next.effective)}: ${fM(w.m.orderCents / 100)}. ${w.text}`
+      : `On ${short(next.effective)}: ${w.text} ${lockDateLine()}`;
+  return h("p.fine.ttm-lock-note", { "data-fk": "hold-lock" }, lockShareWords(),
+    words ? [" ", h("span", { "data-fk": "hold-lock-next" }, words)] : null, ` ${LK.LOCK_COPY.asWritten}`);
 }
 
 /** Every VWRA order buys its plan amount plus what earlier orders and transfers left over. */
@@ -255,7 +289,7 @@ function fillLog() {
         return h("tr",
           h("td.num", { "data-label": "Date" }, s.filledAt ? short(s.filledAt) : "—"),
           h("td", { "data-label": "Order" }, h("span.num", o.id), h("span.sub", `plan ${short(so.date)}`)),
-          h("td", { "data-label": "Instrument" }, i.name),
+          h("td", { "data-label": "Instrument" }, nameEl(i, { masked: isFieldInst(i) })),
           h("td.num.r", { "data-label": "Qty" }, fmtQty(i, s.qty)),
           h("td.num.r", { "data-label": "Price" }, fPrice(s.price, i.quoteCurrency)),
           h("td.num.r", { "data-label": "Fees" }, Number.isFinite(s.fees) ? fNum(s.fees, 2) : "—"),

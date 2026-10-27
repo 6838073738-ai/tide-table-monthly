@@ -1,46 +1,55 @@
-// Tide Table · Monthly 2.0: the entry point. It loads the base plan (data/base-plan.json) and the open data's
+// Tide Table · Monthly 2.1: the entry point. It loads the base plan (data/base-plan.json) and the open data's
 // index (data/index.json, through datafiles.js), scales the plan to the friend's amounts, mix and fields
 // (months.js, split.js), and owns the router (#/today, #/fields, #/field/<id>[/<company>], #/company/<id>,
-// #/split, #/year, #/money, #/holdings, #/rules, #/settings, #/setup, #/mix), the storybook frame (contents
-// column, top bar, tab bar, footer; book.js), the Bangkok clock, price freshness, the older-tab banner, the
-// theme and Still pictures. Views are in js/views/, shared helpers in js/core.js. Everything the friend enters
+// #/stocks, #/split, #/year, #/money, #/holdings, #/rules, #/settings, #/setup, #/mix), the storybook frame
+// (contents column, top bar, tab bar, footer; book.js), the Bangkok clock, price freshness, the older-tab banner,
+// the theme and Still pictures. Views are in js/views/, shared helpers in js/core.js. Everything the friend enters
 // stays in this browser (store.js).
+//
+// 2.1 (docs/tt2/ADDENDUM-2026-10-27b.md B, D): every friend's plan holds Anthropic locked at 10% of each month. This
+// file adds the lock to a plan record that has none (months.lockMutator, a normal plan change that keeps every
+// started month), reads the upcoming list's entry for it (lock.js loadLockEntry: data/upcoming.json when the site
+// has it, else the bundled data/upcoming-curated.json) and saves its first trading day once the list shows it
+// (docs/tt2/build/lock-api.md 4). The Stocks page (views/stocks.js) is a tab.
 
 import {
   app, hooks, h, clear, ui, L, store, prices, $, $$, S, today, initNow, now, saveUi, errorState, modal, ago,
-  sourceLink, M, planKeyOf, amountWords, mixIsOwn, confirmDialog, toast, long, universeOn, hasFieldMonths,
+  sourceLink, M, amountWords, mixIsOwn, confirmDialog, toast, long, universeOn, hasFieldMonths,
   commitPlanChange, dayShort, pre,
-} from "./core.js?v=2.0.0";
-import * as scale from "./scale.js?v=2.0.0";
-import * as book from "./book.js?v=2.0.0";
-import * as D from "./datafiles.js?v=2.0.0";
-import * as FU from "./fieldsui.js?v=2.0.0";
-import { fieldName, isFieldId } from "./fields-catalog.js?v=2.0.0";
-import { THEME_KEY, STILL_KEY, cleanPlan, validateImport, withoutUnbought } from "./store.js?v=2.0.0";
-import { renderSetup } from "./views/setup.js?v=2.0.0";
-import { renderToday, stopTodayTicker } from "./views/today.js?v=2.0.0";
-import { renderYear } from "./views/year.js?v=2.0.0";
-import { renderMoney } from "./views/money.js?v=2.0.0";
-import { renderHoldings } from "./views/holdings.js?v=2.0.0";
-import { renderRules } from "./views/rules.js?v=2.0.0";
-import { renderSettings } from "./views/settings.js?v=2.0.0";
-import { renderMix } from "./views/mix.js?v=2.0.0";
-import { renderFields, configureFieldsUi, upcomingDoc } from "./views/fields.js?v=2.0.0";
-import { renderField } from "./views/field.js?v=2.0.0";
-import { renderCompany } from "./views/company.js?v=2.0.0";
-import { renderSplit } from "./views/split.js?v=2.0.0";
-import { resetDraft } from "./views/draft.js?v=2.0.0";
+} from "./core.js?v=2.1.0";
+import * as scale from "./scale.js?v=2.1.0";
+import * as book from "./book.js?v=2.1.0";
+import * as D from "./datafiles.js?v=2.1.0";
+import * as FU from "./fieldsui.js?v=2.1.0";
+import { fieldName, isFieldId } from "./fields-catalog.js?v=2.1.0";
+import { THEME_KEY, STILL_KEY, cleanPlan, validateImport, withoutUnbought } from "./store.js?v=2.1.0";
+import * as LK from "./lock.js?v=2.1.0";
+import { renderSetup } from "./views/setup.js?v=2.1.0";
+import { renderToday, stopTodayTicker } from "./views/today.js?v=2.1.0";
+import { renderYear } from "./views/year.js?v=2.1.0";
+import { renderMoney } from "./views/money.js?v=2.1.0";
+import { renderHoldings } from "./views/holdings.js?v=2.1.0";
+import { renderRules } from "./views/rules.js?v=2.1.0";
+import { renderSettings } from "./views/settings.js?v=2.1.0";
+import { renderMix } from "./views/mix.js?v=2.1.0";
+import { renderFields, configureFieldsUi, upcomingDoc } from "./views/fields.js?v=2.1.0";
+import { renderField } from "./views/field.js?v=2.1.0";
+import { renderCompany } from "./views/company.js?v=2.1.0";
+import { renderSplit } from "./views/split.js?v=2.1.0";
+import { renderStocks } from "./views/stocks.js?v=2.1.0";
+import { resetDraft } from "./views/draft.js?v=2.1.0";
 
 const BASE_TITLE = "Tide Table · Monthly";
 const VIEWS = [
-  { id: "today", title: "Today", icon: "today", deps: ["state", "crypto", "fx", "time", "theme", "data"], render: renderToday, onHide: stopTodayTicker },
+  { id: "today", title: "Today", icon: "today", deps: ["state", "crypto", "fx", "time", "theme", "data", "lock"], render: renderToday, onHide: stopTodayTicker },
   { id: "fields", title: "Fields", icon: "fields", deps: ["data"], render: renderFields, fields: true },
   { id: "field", title: "A field", icon: "fields", deps: ["data"], render: renderField, fields: true, nav: "fields", group: "hidden" },
   { id: "company", title: "A company", icon: "fields", deps: ["data"], render: renderCompany, fields: true, nav: "fields", group: "hidden" },
-  { id: "split", title: "My split", short: "Split", icon: "split", deps: ["state", "data", "fx"], render: renderSplit, fields: true },
-  { id: "year", title: "My year", short: "Year", icon: "year", deps: ["state", "time", "data"], render: renderYear },
-  { id: "money", title: "Money", icon: "funding", deps: ["state", "fx", "time"], render: renderMoney },
-  { id: "holdings", title: "Holdings", icon: "portfolio", deps: ["state", "crypto", "theme"], render: renderHoldings },
+  { id: "stocks", title: "Stocks", icon: "market", deps: ["state", "data", "time", "lock"], render: renderStocks },
+  { id: "split", title: "My split", short: "Split", icon: "split", deps: ["state", "data", "fx", "lock"], render: renderSplit, fields: true },
+  { id: "year", title: "My year", short: "Year", icon: "year", deps: ["state", "time", "data", "lock"], render: renderYear },
+  { id: "money", title: "Money", icon: "funding", deps: ["state", "fx", "time", "lock"], render: renderMoney },
+  { id: "holdings", title: "Holdings", icon: "portfolio", deps: ["state", "crypto", "theme", "lock"], render: renderHoldings },
   { id: "rules", title: "Rules", icon: "rules", deps: ["state", "time"], render: renderRules },
   { id: "settings", title: "Settings", icon: "settings", deps: ["state", "crypto", "fx"], render: renderSettings },
   { id: "setup", title: "Your amount", icon: "funding", group: "hidden", deps: ["fx"], render: renderSetup },
@@ -65,7 +74,9 @@ const mixReachable = () => mixIsOwn() || Object.values((S().plan && S().plan.mon
  */
 function syncPlan() {
   const p = S().plan;
-  const key = planKeyOf(p);
+  // months.planKey: core.planKeyOf's parts and the lock (lock-api.md 4.1), so adding the lock or saving its first
+  // trading day works the plan out again at once
+  const key = M.planKey(p);
   if (key === app.planKey) return false;
   app.planKey = key;
   app.planError = null;
@@ -110,6 +121,7 @@ function onPlanChange() {
   // place (a month's amount, the mix) redraws the view where it is, and keeps the focus where it was.
   route({ force: true, focus: newStage || currentRoute().view !== app.active });
   syncFirstTrade();
+  syncLockTrade();
 }
 
 // ---------------------------------------------------------------- rendering
@@ -272,18 +284,57 @@ function skipToContent(e) {
 
 const chrome = { rail: null, topbar: null, tabbar: null };
 
-/** The tabs (brief G10, spec 8.2): five with the open data's list, else Today · My year · Settings. */
+/**
+ * The tabs (brief G10, spec 8.2, addendum D.1): every tab labelled. With the open data's list, Today · Fields ·
+ * Stocks · My split · My year · Settings; else Today · Stocks · My year · Settings. On a phone a bar of six uses the
+ * short words (Split, Year) and a narrower picture (friends.css), so from 360 px each word stays on one line; under
+ * 360 px the brief's pattern for a full bar takes over (moreTab): the first four tabs, then "More".
+ */
 function tabItems() {
-  const ids = fieldsOffered() ? ["today", "fields", "split", "year", "settings"] : ["today", "year", "settings"];
+  const ids = fieldsOffered() ? ["today", "fields", "stocks", "split", "year", "settings"] : ["today", "stocks", "year", "settings"];
   return ids.map((id) => ({ id, label: byId[id].title, short: byId[id].short || byId[id].title, href: "#/" + id, icon: byId[id].icon }));
 }
 /** The contents column lists every view a friend can open. */
 function railItems() {
-  const ids = fieldsOffered() ? ["today", "fields", "split", "year", "money", "holdings", "rules", "settings"]
-    : ["today", "year", "money", "holdings", "rules", "settings"];
+  const ids = fieldsOffered() ? ["today", "fields", "stocks", "split", "year", "money", "holdings", "rules", "settings"]
+    : ["today", "stocks", "year", "money", "holdings", "rules", "settings"];
   return ids.map((id) => ({ id, label: byId[id].title, href: "#/" + id, icon: byId[id].icon }));
 }
 const navIdOf = (id) => (byId[id] && byId[id].nav) || id;
+
+/** The tabs a bar of six shows on the narrowest phones (under 360 px, friends.css); the rest are under "More". */
+const TABS_NARROW = 4;
+/**
+ * A bar of more than five tabs: the tabs after the fourth get .ttm-tab-fold, and a "More" button (.ttm-tab-more)
+ * opens a sheet with them and every other page of the contents column. friends.css shows the button and hides the
+ * folded tabs under 360 px only, so wider phones keep every tab in the bar. Today is always first and never folded.
+ */
+function moreTab(tabs, items) {
+  if (items.length <= 5) return;
+  const folded = items.slice(TABS_NARROW).map((x) => x.id);
+  for (const id of folded) {
+    const a = tabs.querySelector(`a.bk-tab[data-view="${CSS.escape(id)}"]`);
+    if (a) a.classList.add("ttm-tab-fold");
+  }
+  const more = h("button.bk-tab.ttm-tab-more", { type: "button", "aria-haspopup": "dialog", "data-fk": "tab-more", on: { click: () => openMore(items) } },
+    h("span.bk-tab-icon", book.lineIcon("more")), h("span.bk-tab-long", "More"));
+  tabs.append(more);
+  chrome.more = more;
+  chrome.moreIds = new Set(items.slice(0, TABS_NARROW).map((x) => x.id));
+}
+
+/** The sheet behind "More": the folded tabs, then the other pages of the contents column, each one link. */
+function openMore(items) {
+  const shown = new Set(items.slice(0, TABS_NARROW).map((x) => x.id));
+  const rest = railItems().filter((x) => !shown.has(x.id));
+  const m = modal({
+    title: "More", cls: ".sheet.ttm-more",
+    body: h("ul.bk-list.ttm-more-pages", rest.map((x) => h("li", h("a", {
+      href: x.href, "data-fk": "more-" + x.id, "aria-current": navIdOf(app.active) === x.id ? "page" : null,
+      on: { click: (e) => { e.preventDefault(); m.keepFocus(); m.close(); setTimeout(() => hooks.go(x.id), 0); } },
+    }, book.lineIcon(x.icon || "info"), h("span", x.label))))),
+  });
+}
 
 function brandSub() {
   const words = app.plan ? amountWords() : "";
@@ -338,7 +389,10 @@ function buildChrome() {
   const top = book.topBar({ brand, tools: pill });
   top.setAttribute("data-topbar", "");
   swap("topbar", top);
-  const tabs = app.plan ? book.tabBar({ items: tabItems(), current }) : h("div", { hidden: true });
+  const items = app.plan ? tabItems() : [];
+  const tabs = app.plan ? book.tabBar({ items, current }) : h("div", { hidden: true });
+  chrome.more = null;
+  if (app.plan) moreTab(tabs, items);
   tabs.setAttribute("data-tabbar", "");
   swap("tabbar", tabs);
   document.documentElement.dataset.tabs = app.plan ? String(tabItems().length) : "0";
@@ -352,6 +406,8 @@ function renderBrand() {
 function setActiveNav(id) {
   const n = navIdOf(id);
   for (const k of ["rail", "tabbar"]) if (chrome[k] && chrome[k].bk && chrome[k].bk.setCurrent) chrome[k].bk.setCurrent(n);
+  // "More" is the current tab on the narrowest phones when the page is one of its own (friends.css shows it there)
+  if (chrome.more) chrome.more.classList.toggle("is-current", !chrome.moreIds.has(n));
 }
 
 function tickClock() {
@@ -533,6 +589,81 @@ function firstTradeWords(name, first, s) {
   return `${lead} The months you have started stay as they are, so it gets its part of your field from the order date on ${dayShort(from.date)}.`;
 }
 
+// ---------------------------------------------------------------- the locked 10% (lock-api.md 4)
+
+let lockTried = null;
+/**
+ * Add the locked 10% to a plan record that has none (lock-api.md 4.2): a 2.0 state, an import, "Start over" or
+ * another tab's 2.0 save. It is a normal plan change (months.lockMutator through commitPlanChange): every month the
+ * friend has started keeps its orders, and an order marked placed never changes. A refusal (said in the console) is
+ * not tried again until the record changes; a save forgets the record, so a later save that drops the lock again (an
+ * older tab's quiet re-migration, a 2.0 tab) gets it back even when that record is the same as before. It is saved
+ * as the app's own change (auto), so it does not count as the friend having saved here. True when it was saved.
+ */
+function ensureLock() {
+  if (!app.base || !M.needsLock(S())) return false;
+  const key = M.planKey(S().plan);
+  if (lockTried === key) return false;
+  lockTried = key;
+  const m = M.lockMutator(app.base, S(), { today: today() });
+  if (!m) return false;
+  try {
+    commitPlanChange(m, { auto: true });
+    const done = !M.needsLock(S());
+    if (done) lockTried = null;
+    return done;
+  } catch (e) {
+    console.warn("The locked 10% could not be added to this plan", e);
+    return false;
+  }
+}
+
+/** The upcoming list's entry for the locked listing, for the views (app.lockEntry); they draw again when it changes. */
+async function loadLock() {
+  const { entry } = await LK.loadLockEntry({ live: universeOn() ? upcomingDoc : null });
+  const changed = JSON.stringify(entry || null) !== JSON.stringify(app.lockEntry || null);
+  app.lockEntry = entry || null;
+  if (changed) invalidate("lock");
+  return app.lockEntry;
+}
+
+/**
+ * Save the locked listing's first trading day once the list shows it (lock-api.md 4.3, like syncFirstTrade): set
+ * once, never moved, and only when it changes no order marked placed. From the first month after that day that the
+ * friend has not started, its 10% is an order of its own.
+ */
+let lockSyncing = false;
+async function syncLockTrade() {
+  if (lockSyncing || !app.base) return;
+  lockSyncing = true;
+  try {
+    const entry = await loadLock();
+    if (!app.plan || !entry) return;
+    const m = M.lockMutator(app.base, S(), { today: today(), entry });
+    if (!m) return;
+    const cand = M.planChange(app.base, S(), m);
+    const touched = M.placedChanged(S(), app.plan, cand.plan);
+    if (touched.length) { console.warn("syncLockTrade: not saved, it would change orders marked placed", touched); return; }
+    commitPlanChange(m, { auto: true });
+    const L = LK.lockOf(app.plan);
+    if (L && L.first) toast(lockTradeWords(L), "info", 6000);
+  } catch (err) {
+    console.warn(err);
+  } finally {
+    lockSyncing = false;
+  }
+}
+
+/** The note after the first trading day is saved: from which order date its 10% is an order of its own. */
+function lockTradeWords(L) {
+  const name = L.name || LK.LOCK_NAME;
+  const from = app.base.orderDates.find((x) => x.id === L.start);
+  const lead = `${name} trades since ${dayShort(L.first)}.`;
+  return from
+    ? `${lead} From the order date on ${dayShort(from.date)}, its 10% of each month is an order of its own.`
+    : `${lead} That is after the months this plan has left, so its 10% stays with VWRA.`;
+}
+
 /** The app's version from this module's own version query (the build adds it); this code is 2.0 at least. */
 function appVersion() {
   const v = new URL(import.meta.url).searchParams.get("v");
@@ -565,6 +696,10 @@ async function init() {
     return;
   }
   app.data = await indexP;
+  // The lock before the first render, so the friend never sees the plan without it (lock-api.md 4.2), and the
+  // upcoming entry, so its first lines carry their dates.
+  ensureLock();
+  try { await loadLock(); } catch (e) { console.warn(e); }
   syncPlan();
   if (app.plan) prices.start(app.plan, pre().orderIds);
   app.lastDay = today();
@@ -574,6 +709,9 @@ async function init() {
 
   let lastTheme = S().settings.theme, lastStill = stillOn();
   store.subscribe((s) => {
+    // A plan record without the lock (setup, an import, Start over, another tab's 2.0 save) gets it first; that
+    // change comes back here and draws the page.
+    if (ensureLock()) return;
     if (s.settings.theme !== lastTheme) { lastTheme = s.settings.theme; applyTheme(lastTheme); invalidate("theme"); syncSwitches(); }
     if (stillOn() !== lastStill) { lastStill = stillOn(); book.applyStill(lastStill); try { localStorage.setItem(STILL_KEY, lastStill ? "1" : "0"); } catch { /* blocked */ } syncSwitches(); invalidate("theme"); }
     renderFresh();
@@ -616,11 +754,13 @@ async function init() {
   renderOlder();
   route({ initial: true });
   syncFirstTrade();
+  syncLockTrade();
 
   // QA and debugging handle (references to the shared modules; the friend's data stays in this browser).
   window.TTM = {
-    store, scale, months: M, prices, app, logic: L, ui, now, today, invalidate, data: D, fieldsui: FU,
+    store, scale, months: M, prices, app, logic: L, ui, now, today, invalidate, data: D, fieldsui: FU, lock: LK,
     get plan() { return app.plan; },
+    get lockEntry() { return app.lockEntry || null; },
     render: (id) => renderView(id || app.active),
     go: (id) => hooks.go(id),
   };

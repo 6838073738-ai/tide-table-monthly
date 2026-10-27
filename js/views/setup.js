@@ -7,13 +7,38 @@ import {
   app, h, clear, icon, L, S, prices, commit, toast, hooks, card, field, errorState, sourceLink, today, now,
   fM, fB, fUsd, fThb, fNum, long, dayShort, dateWords, monthName, locked, parseNum, svg,
   M, commitPlanChange, explain, fixed, openMonthIds, resolvedMonths, mixIsOwn, store, universeOn,
-} from "../core.js?v=2.0.0";
-import { scalePlan, thbToUsd, usdToThb, beforeJoin, ownIdMonth, MIN_MONTHLY_USD, MAX_MONTHLY_USD, BASE_MONTHLY_USD } from "../scale.js?v=2.0.0";
-import { importState } from "./settings.js?v=2.0.0";
-import * as book from "../book.js?v=2.0.0";
-import { rateNow as rateToday, readTyped, inputRecord, recordWords, placedWarning, monthWordOf, monthOption, listAnd, holdName, paidBy } from "./amounts.js?v=2.0.0";
+} from "../core.js?v=2.1.0";
+import { scalePlan, thbToUsd, usdToThb, beforeJoin, ownIdMonth, MIN_MONTHLY_USD, MAX_MONTHLY_USD, BASE_MONTHLY_USD } from "../scale.js?v=2.1.0";
+import { importState } from "./settings.js?v=2.1.0";
+import * as book from "../book.js?v=2.1.0";
+import * as LK from "../lock.js?v=2.1.0";
+import { lockDateLine } from "./naming.js?v=2.1.0";
+import { rateNow as rateToday, readTyped, inputRecord, recordWords, placedWarning, monthWordOf, monthOption, listAnd, holdName, paidBy } from "./amounts.js?v=2.1.0";
 
 const GROUP_TOKEN = { index: "--series-1", growth: "--series-7", crypto: "--series-5" };
+/** The locked 10% (lock.js LOCK_GROUP) is a single stock like the plan's others, so the mix counts it with them in
+ *  "growth": no slice, legend row or colour of its own (addendum G, review finding UI-2). */
+const shownGroup = (i) => (i && i.group === LK.LOCK_GROUP.id ? "growth" : i ? i.group : null);
+
+/**
+ * The year a new friend gets at `usd` a month: the written plan with the locked 10% (addendum B.1), from their first
+ * month (months.adoptLock gives a fresh plan the same). Falls back to the plan alone if the lock cannot be worked
+ * out, so the preview always shows a year.
+ */
+function newPlanAt(usd, input = null) {
+  const pj = beforeJoin(app.base, joinDate());
+  const rec = {
+    monthlyUsd: usd, input: { ...(input || { currency: "USD", amount: usd }), usd }, lockedAt: null, joinedAt: joinDate(),
+    months: {}, mix: {}, mixFrom: null, lock: { k: LK.LOCK_KEY, from: pj.firstDateId || "m13", f: null, s: null },
+  };
+  try { return M.scaleFor(app.base, rec, { inputs: false }); } catch (e) { console.warn("the locked 10% could not be shown in the preview", e); }
+  return scalePlan(app.base, usd);
+}
+
+/** The preview's line about the locked 10%, with its date line and the "as written" line (lock-api.md 6). */
+function lockPreviewNote() {
+  return `${LK.LOCK_NAME}: ${LK.LOCK_COPY.share}, locked in every plan. Until it trades, its 10% goes to VWRA. ${lockDateLine()} ${LK.LOCK_COPY.asWritten}`;
+}
 
 /** True on the "Change your monthly amount" page: there is a plan already, and it can be worked out. */
 const isChanging = () => !!(S().plan && app.plan);
@@ -293,14 +318,14 @@ function previewBody(usd) {
   const example = usd == null;
   const M = example ? BASE_MONTHLY_USD : usd;
   let plan;
-  try { plan = scalePlan(app.base, M); } catch (e) { return [errorState("This amount cannot be worked out.", e)]; }
+  try { plan = newPlanAt(M); } catch (e) { return [errorState("This amount cannot be worked out.", e)]; }
   const pj = beforeJoin(plan, joinDate());
   return yearPreview(plan, {
     title: example ? `An example year at ${fM(M)} a month` : `Your year at ${fM(M)} a month`,
     sub: example ? "Type your amount and every number below follows it." : "The same twelve dates for everyone; only the amounts follow yours.",
     each: fM(M),
     mixLine: "This is the plan's mix, shown as an illustration.",
-    notes: previewNotes(plan, M, example, pj),
+    notes: [...previewNotes(plan, M, example, pj), lockPreviewNote()],
     pj,
   });
 }
@@ -348,7 +373,7 @@ function yearPreview(plan, { title, sub, each, mixLine, notes, pj, tagOf = null,
   const noWallet = walletGone(plan, pj);
   const counted = plan.orders.filter((o) => !pj.orderIds.has(o.id) && !(noWallet && o.cryptoWait));
   const total = counted.reduce((a, o) => a + Math.round(o.usd * 100), 0) / 100;
-  const groups = plan.groups.map((g) => ({ ...g, usd: counted.filter((o) => inst[o.instrument].group === g.id).reduce((a, o) => a + o.usd, 0) })).filter((g) => g.usd > 0);
+  const groups = plan.groups.map((g) => ({ ...g, usd: counted.filter((o) => shownGroup(inst[o.instrument]) === g.id).reduce((a, o) => a + o.usd, 0) })).filter((g) => g.usd > 0);
   const own = new Set((plan.scale && plan.scale.ownMonths) || []);
   const rows = plan.orderDates.map((d, k) => {
     const before = pj.dateIds.includes(d.id);
@@ -509,6 +534,8 @@ function start(usd, changing) {
   const saved = commit((s) => {
     // The join date is kept when the plan is chosen again: it says which months count (scale.beforeJoin).
     s.plan = { monthlyUsd: usd, input: { ...input, usd }, lockedAt: null, joinedAt: joinDate(s), months: {}, mix: {}, mixFrom: null };
+    // Anthropic, locked at 10% of each month, from the first month (addendum B.1; months.adoptLock, lock-api.md 4)
+    M.adoptLock(s, app.base, { today: today() });
     // An order the amount does not buy keeps no entry. Only a to-do or placed one can be there, and left
     // in place it would stop an export from loading again.
     for (const id of Object.keys(s.orders)) if (!bought.has(id)) delete s.orders[id];

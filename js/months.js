@@ -18,16 +18,19 @@
 // plan.fields is { from, chosen, split, lists, names } (spec 8.5); it is left out when there are no field
 // months, and its from is null when only pinned months have fields (it then keeps their names). An upcoming
 // listing's name entry carries w (split.js); setFirstTrade saves its first trading day without changing a
-// month that has records or an order marked placed.
+// month that has records or an order marked placed. In 2.1 a plan record may also hold plan.lock, the locked 10%
+// (lock.js): adoptLock writes it from the first month the friend has not started, setLockFirstTrade saves its first
+// trading day the same careful way, and lockMutator says which of them a state needs.
 
 import {
   beforeJoin, fundingMonthOf, ownIdMonth, ownOrderId, ownTransferId, planShares, PlanFitError,
   isMonthlyUsdInRange, fmtMoney, MIN_MONTHLY_USD, MAX_MONTHLY_USD, MIX_TENTHS_MAX, VWRA_FLOOR_CENTS,
-} from "./scale.js?v=2.0.0";
+} from "./scale.js?v=2.1.0";
 import {
   resolveMonths, specOf, composePlan, COMPANY_ID, fieldOrder, fieldsProblem, explainFieldsProblem, nameSnapshot,
   isDay, waitingSnapshot,
-} from "./split.js?v=2.0.0";
+} from "./split.js?v=2.1.0";
+import { readLock, LOCK_KEY, entryFirstTrade, entrySnapshot } from "./lock.js?v=2.1.0";
 
 export { resolveMonths, specOf };
 
@@ -481,6 +484,122 @@ export function setFirstTrade(d, base, { id, first } = {}) {
   const past = `m${String(Math.min(99, F.dateIds.length + 1)).padStart(2, "0")}`;
   e.w = { k: w.k, f: first, s: ks < F.dateIds.length ? F.dateIds[ks] : past };
   return d;
+}
+
+// ---------------------------------------------------------------- the locked 10% (lock.js, docs/tt2/build/lock-api.md)
+
+/**
+ * What decides the scaled plan, as text: core.planKeyOf's parts and the lock record (plan.lock). The app works the
+ * plan out again whenever this changes; "" with no plan record.
+ */
+export const planKey = (p) => (p ? JSON.stringify([p.monthlyUsd, p.input, p.months || {}, p.mix || {}, p.joinedAt || null, p.fields || null, p.lock || null]) : "");
+
+/** True when the state has a plan record without a (readable) lock record: adoptLock still has to run on it. */
+export const needsLock = (state) => isObj(state) && isObj(state.plan) && !readLock(state.plan.lock);
+
+/**
+ * The months a change of the lock must leave as they are: fixed by records, with an order marked placed, or whose
+ * order date is before `today` (a Bangkok date; left out when missing). With sendDays, also a month one of whose
+ * transfers has its send day before `today` (the base plan's transfers for that month; an own month's SwissBorg
+ * transfer S-mNN goes on the same day as the month's W transfer): the friend may have sent that money as the plan
+ * stood then, without recording it. A Set of month ids.
+ */
+function startedMonths(base, state, today, { sendDays = false } = {}) {
+  const F = facts(base);
+  const out = new Set(fixedMonths(base, state).keys());
+  for (const [oid, o] of Object.entries(isObj(state.orders) ? state.orders : {})) {
+    const m = isObj(o) && o.status === "placed" ? orderMonth(F, oid) : null;
+    if (m) out.add(m);
+  }
+  if (typeof today === "string" && isDay(today)) {
+    for (const d of F.dateIds) if (F.dateOf[d] < today) out.add(d);
+    if (sendDays) for (const t of base.funding.transfers) if (F.dateOf[t.forDate] && isDay(t.send) && t.send < today) out.add(t.forDate);
+  }
+  return out;
+}
+/** The id that means "after the plan's last month" (m13 for a 12-month plan). */
+const pastId = (F) => `m${String(Math.min(99, F.dateIds.length + 1)).padStart(2, "0")}`;
+
+/**
+ * The first month the lock applies to (addendum B.5): the first joined month that comes after every month the
+ * friend has started (fixed by records, an order marked placed, or an order date before today). With
+ * opts.sendDays, a month whose transfer's send day is before today counts as started too (startedMonths): use it
+ * when the lock is added to a plan the friend has been following without it, because adding the lock to November
+ * changes the amounts of its two transfers (S01 and W01), which may have gone already. A month id past the plan's
+ * last month when none is left.
+ */
+export function lockFromFor(base, state, today = null, { sendDays = false } = {}) {
+  const F = facts(base);
+  const s = isObj(state) ? state : {};
+  const pre = beforeJoin(base, isObj(s.plan) ? s.plan.joinedAt : null);
+  let k = pre.firstDateId ? F.dateIds.indexOf(pre.firstDateId) : F.dateIds.length;
+  const started = startedMonths(base, s, today, { sendDays });
+  F.dateIds.forEach((d, i) => { if (started.has(d)) k = Math.max(k, i + 1); });
+  return k < F.dateIds.length ? F.dateIds[k] : pastId(F);
+}
+
+/**
+ * The lock in a plan record that has none yet: plan.lock = { k, from, f: null, s: null }, from lockFromFor, so
+ * every month the friend has started keeps what it had. sendDays (lockFromFor): true for a plan the friend has been
+ * following without the lock (lockMutator passes it); false, the default, for a plan made just now (setup), whose
+ * money has not been sent under any other plan. A plan record that already has one is left as it is. Changes `d` (a
+ * draft state) and returns it; throws a MonthChangeError "no_plan" without a plan record.
+ */
+export function adoptLock(d, base, { today = null, sendDays = false } = {}) {
+  if (!isObj(d) || !isObj(d.plan)) throw new MonthChangeError("no_plan", "There is no monthly amount yet.");
+  if (readLock(d.plan.lock)) return d;
+  d.plan.lock = { k: LOCK_KEY, from: lockFromFor(base, d, today, { sendDays }), f: null, s: null };
+  return d;
+}
+
+/**
+ * The locked listing's first trading day, once the data shows it (entry: the upcoming list's entry, listed on a US
+ * exchange): lock.f becomes that day, lock.s the first month whose order date is after it and that comes after every
+ * lock month the friend has started (startedMonths), and the snapshot { id, n, l, t, v } comes from the entry, so no
+ * month with records and no order marked placed changes. Saving the same day again changes nothing. Changes `d` and
+ * returns it; throws a MonthChangeError "no_plan", "no_lock" (adoptLock has not run), "first" (the entry shows no
+ * first trading day) or "first_set" (another day is already saved).
+ */
+export function setLockFirstTrade(d, base, { entry = null, today = null } = {}) {
+  if (!isObj(d) || !isObj(d.plan)) throw new MonthChangeError("no_plan", "There is no monthly amount yet.");
+  const lock = readLock(d.plan.lock);
+  if (!lock) throw new MonthChangeError("no_lock", "This plan has no locked 10% yet.");
+  const first = entryFirstTrade(entry);
+  const snap = first ? entrySnapshot(entry) : null;
+  if (!first || !snap) throw new MonthChangeError("first", "That is not a date Tide Table can read.");
+  if (lock.f != null) {
+    if (lock.f === first) return d;
+    throw new MonthChangeError("first_set", "Its first trading day is already saved.");
+  }
+  const F = facts(base);
+  const started = startedMonths(base, d, today);
+  let k0 = F.dateIds.findIndex((x) => F.dateOf[x] > first);
+  if (k0 < 0) k0 = F.dateIds.length;
+  let ks = k0;
+  F.dateIds.forEach((x, i) => { if (i >= k0 && x >= lock.from && started.has(x)) ks = Math.max(ks, i + 1); });
+  d.plan.lock = { k: lock.k, from: lock.from, f: first, s: ks < F.dateIds.length ? F.dateIds[ks] : pastId(F), ...snap };
+  return d;
+}
+
+/**
+ * The one change the lock needs now, as a deterministic mutator for core.commitPlanChange, or null when there is
+ * nothing to do: adoptLock when the plan record has no lock record (a 2.0 state, an import, another tab's save: a
+ * plan the friend has followed without the lock, so a month whose transfer's send day is before today keeps what it
+ * had, adoptLock's sendDays), and setLockFirstTrade when `entry` shows a first trading day that is not saved yet.
+ * today: the Bangkok date the change is made on.
+ */
+export function lockMutator(base, state, { today = null, entry = null } = {}) {
+  if (!isObj(state) || !isObj(state.plan)) return null;
+  const lock = readLock(state.plan.lock);
+  const first = entryFirstTrade(entry) && entrySnapshot(entry) ? entryFirstTrade(entry) : null;
+  const adopt = !lock;
+  const trade = !!first && (adopt || lock.f == null);
+  if (!adopt && !trade) return null;
+  return (d) => {
+    if (adopt) adoptLock(d, base, { today, sendDays: true });
+    if (trade) setLockFirstTrade(d, base, { entry, today });
+    return d;
+  };
 }
 
 // ---------------------------------------------------------------- after a change

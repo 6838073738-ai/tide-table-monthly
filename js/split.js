@@ -27,11 +27,19 @@
 // (so its base orders give way, VWRA holds the month and its SwissBorg money is dropped), then its VWRA
 // order is lowered and the company orders are added. The plan's text is rendered last, so its words about
 // a field month name the companies.
+//
+// The locked 10% (Tide Table 2.1; lock.js, docs/tt2/build/lock-api.md): a plan record with a lock record
+// (plan.lock) is worked out with every lock month's orders at 90% of the month, field months included (the
+// split's part is floor(9 * A * s / 10^4)), and the 10% goes to VWRA or, once the listing trades, to its own
+// order. A plan record without one is worked out exactly as in 2.0.
 
 import {
   scalePlan, scaleAmounts, renderTemplates, beforeJoin, planShares, ownOrderId, ownIdMonth, fmtMoney,
   PlanFitError, DEFAULT_MIN_ORDER_USD, MIX_TENTHS_MAX,
-} from "./scale.js?v=2.0.0";
+} from "./scale.js?v=2.1.0";
+import {
+  readLock, lockState, ninetyYear, addLockOrders, rebuildTransfers, retotal, checkRollable, lockTemplates, LOCK_NAME,
+} from "./lock.js?v=2.1.0";
 
 /** The 14 field ids in catalogue order (spec 6.1: the 11 big fields A to Z by plain name, then the
  *  close-ups). app/js/fields-catalog.js holds the catalogue itself; a test keeps the two the same. */
@@ -255,14 +263,16 @@ function readySpec(spec, dateId) {
  * - rolled: the companies not bought because their part is under $5 (cents: their exact part; usd: whole
  *   dollars); with s = 0 there are none;
  * - vwra = A - the buys (0 or more): what VWRA takes; it is (A - P) + rounding + rolledCents.
+ * With ninety (a lock month, lock.js), the fields' part is of 90% of the month: P = floor(9 * A * s / 10^4), so
+ * VWRA also keeps the other 10%; the result then has ninety: true.
  * Throws a PlanFitError "fields" for a spec that cannot be bought (no field, an empty list, a bad split).
  */
-export function splitMonth(A, spec, { dateId = null, waiting = null } = {}) {
+export function splitMonth(A, spec, { dateId = null, waiting = null, ninety = false } = {}) {
   if (!Number.isSafeInteger(A) || A < 0) throw new RangeError("splitMonth: the month's amount must be a whole number of cents.");
   const { s, F, L } = readySpec(spec, dateId);
-  if (!Number.isSafeInteger(A * s)) throw new Error("splitMonth: the month is too large to work out exactly.");
+  if (!Number.isSafeInteger((ninety ? 9 : 1) * A * s)) throw new Error("splitMonth: the month is too large to work out exactly.");
   const wait = waiting instanceof Set ? waiting : new Set(Array.isArray(waiting) ? waiting : []);
-  const P = divFloor(A * s, SPLIT_MAX);
+  const P = ninety ? divFloor(9 * A * s, 10 * SPLIT_MAX) : divFloor(A * s, SPLIT_MAX);
   const P_f = divFloor(P, F.length);
   const raw = new Map(); // company -> { cents, parts }, in the order of F and then of each list
   const W = new Set(), waitingFields = [];
@@ -295,6 +305,7 @@ export function splitMonth(A, spec, { dateId = null, waiting = null } = {}) {
   }
   const out = { s, F, L, A, P, P_f, buys, rolled, vwra: A - spent, rounding: P - spent - rolledCents - waitingCents, rolledCents };
   if (W.size) Object.assign(out, { W: [...W].sort(byCode), waitingCents, waitingFields });
+  if (ninety) out.ninety = true;
   return out;
 }
 
@@ -464,8 +475,8 @@ function arrayItemOf(plan, path) {
   if (!item) throw new Error(`Template ${path}: "text": null needs an array item on its path to remove.`);
   return item;
 }
-function applyTexts(plan) {
-  const rendered = renderTemplates(plan, plan.templates);
+function applyTexts(plan, templates = plan.templates) {
+  const rendered = renderTemplates(plan, templates);
   const drops = new Map();
   for (const [path, text] of Object.entries(rendered)) {
     if (text === null) {
@@ -480,8 +491,9 @@ function applyTexts(plan) {
   for (const [arr, indexes] of drops) for (const i of [...indexes].sort((a, b) => b - a)) arr.splice(i, 1);
 }
 
-/** The field months' orders, rolls, instruments and explanations, added to a numbers-only plan. */
-function addFields(base, plan, fieldMonths, catalog, waiting) {
+/** The field months' orders, rolls, instruments and explanations, added to a numbers-only plan. ninety: the
+ *  lock months (a Set), whose split is of 90% of the month (splitMonth). */
+function addFields(base, plan, fieldMonths, catalog, waiting, ninety = null) {
   const B = baseOf(base);
   const sc = plan.scale;
   const fieldIds = plan.orderDates.map((d) => d.id).filter((d) => has(fieldMonths, d));
@@ -489,7 +501,8 @@ function addFields(base, plan, fieldMonths, catalog, waiting) {
   sc.fields = {};
   for (const d of fieldIds) {
     const A = toCents(sc.months[d]);
-    const r = splitMonth(A, fieldMonths[d], { dateId: d, waiting: isObj(waiting) ? waiting[d] : null });
+    const n9 = !!(ninety && ninety.has(d));
+    const r = splitMonth(A, fieldMonths[d], { dateId: d, waiting: isObj(waiting) ? waiting[d] : null, ninety: n9 });
     const vwraId = ownOrderId(d, B.restId);
     const k = plan.orders.findIndex((o) => o.id === vwraId);
     if (k < 0) throw new Error(`composePlan: ${d} has no ${B.restId} order.`);
@@ -504,6 +517,7 @@ function addFields(base, plan, fieldMonths, catalog, waiting) {
     for (const f of r.F) for (const c of r.L[f]) companies.add(c);
     sc.fields[d] = { s: r.s, F: r.F, L: r.L, A: r.A, P: r.P, P_f: r.P_f, vwra: r.vwra, rounding: r.rounding, rolled: r.rolled.map((x) => ownOrderId(d, x.company)), rolledCents: r.rolledCents };
     if (r.W) Object.assign(sc.fields[d], { W: r.W, waitingCents: r.waitingCents, waitingFields: r.waitingFields });
+    if (n9) sc.fields[d].ninety = true;
     // The month's Interactive Brokers transfer still pays exactly its amount: VWRA and the companies.
     const paid = plan.orders.filter((o) => ownIdMonth(o.id) === d && o.account === v.account).reduce((a, o) => a + toCents(o.usd), 0);
     const t = plan.funding.transfers.filter((x) => x.forDate === d);
@@ -554,8 +568,14 @@ function addFields(base, plan, fieldMonths, catalog, waiting) {
  * companies that do not trade in a month (upcoming listings, splitMonth). Throws what scalePlan throws, a
  * PlanFitError "mix_and_fields" for a field month that also has a mix, and a PlanFitError "fields" for a
  * field spec that cannot be bought.
+ *
+ * lock (lock.js): { lock: a lock record (readLock), states: { dateId: "waiting" | "started" | "trades" } } for the
+ * lock months (joined months from lock.from on). Their orders are worked out at 90% of the month (ninetyYear; field
+ * months with splitMonth's ninety), the 10% stays with VWRA or becomes its own order (addLockOrders), the transfers
+ * and totals are worked out again from the orders, and the text is rendered last (lockTemplates). The checks are
+ * scalePlan's at the friend's amounts, plus the text check at 90%. plan.scale.lock says what the 10% did each month.
  */
-export function composeYear(base, monthlyUsd, opts = {}, fieldMonths = {}, catalog = {}, waiting = {}) {
+export function composeYear(base, monthlyUsd, opts = {}, fieldMonths = {}, catalog = {}, waiting = {}, lock = null) {
   const o = opts || {};
   const fm = isObj(fieldMonths) ? fieldMonths : {};
   const ids = Object.keys(fm);
@@ -573,16 +593,52 @@ export function composeYear(base, monthlyUsd, opts = {}, fieldMonths = {}, catal
     args = { ...o, months };
   }
   const ref = scalePlan(base, monthlyUsd, args); // every check scale.js makes, and the plan's scale record
-  const { plan } = scaleAmounts(base, monthlyUsd, args);
-  plan.scale = structuredClone(ref.scale);
+  const lk = lock && isObj(lock.states) && readLock(lock.lock) ? lock : null;
+  const lockSet = lk ? new Set(Object.keys(lk.states).filter((d) => lk.states[d])) : null;
+  let plan, year = null;
+  if (lk) {
+    year = ninetyYear(base, monthlyUsd, args, lockSet);
+    plan = year.plan;
+    plan.scale = structuredClone(ref.scale);
+    plan.scale.rolled = year.rolled;
+  } else {
+    ({ plan } = scaleAmounts(base, monthlyUsd, args));
+    plan.scale = structuredClone(ref.scale);
+  }
   const input = plan.scale.input;
   if (input && input.currency === "THB") {
     plan.meta.planFx = input.rate;
     for (const f of plan.fx || []) if (f.id === "USDTHB") f.plan = input.rate;
   }
-  if (ids.length) addFields(base, plan, fm, catalog, waiting);
-  applyTexts(plan);
+  if (ids.length) addFields(base, plan, fm, catalog, waiting, lockSet);
+  if (!lk) {
+    applyTexts(plan);
+    return plan;
+  }
+  const B = baseOf(base);
+  const orderMonths = addLockOrders(plan, { lock: lk.lock, states: lk.states, months: year.months, usTime: B.usTime });
+  const tr = rebuildTransfers(base, plan, ref.scale.ownMonths || []);
+  plan.funding.transfers = tr.transfers;
+  if (tr.dropped.length) plan.scale.droppedTransfers = tr.dropped;
+  else delete plan.scale.droppedTransfers;
+  retotal(plan, year.months);
+  checkRollable(base, plan);
+  applyTexts(plan, lockTemplates(base, plan, orderMonths));
   return plan;
+}
+
+/** The lock months of a plan record and their states ({ lock, states }), or null when it has no lock record:
+ *  every joined month from lock.from on (lock.lockState). */
+export function lockMonthsOf(base, planRec) {
+  const lock = readLock(isObj(planRec) ? planRec.lock : null);
+  if (!lock) return null;
+  const states = {};
+  for (const r of resolveMonths(base, planRec)) {
+    if (r.preJoin) continue;
+    const st = lockState(lock, r.dateId, r.date);
+    if (st) states[r.dateId] = st;
+  }
+  return { lock, states };
 }
 
 /**
@@ -591,12 +647,14 @@ export function composeYear(base, monthlyUsd, opts = {}, fieldMonths = {}, catal
  * planRec.fields.names (the snapshot), so orders never need the data files. The snapshot's waiting records
  * say which upcoming listings do not trade in a month (waitingIn). With no field months the result is
  * scalePlan(base, ...scaleArgs) exactly. With inputs false, the amounts as typed are left out. Throws what
- * composeYear throws.
+ * composeYear throws. A plan record with a lock record (plan.lock, lock.js) has its lock months worked out with
+ * the locked 10% (composeYear's lock); without one, the plan is the 2.0 plan exactly.
  */
 export function composePlan(base, planRec, catalog = null, { inputs = true } = {}) {
   const { monthlyUsd, opts } = scaleArgs(base, planRec, { inputs });
   const fm = fieldMonthsOf(base, planRec);
-  if (!Object.keys(fm).length) return scalePlan(base, monthlyUsd, opts);
+  const lock = lockMonthsOf(base, planRec);
+  if (!Object.keys(fm).length) return lock ? composeYear(base, monthlyUsd, opts, {}, {}, {}, lock) : scalePlan(base, monthlyUsd, opts);
   const names = isObj(planRec) && isObj(planRec.fields) ? planRec.fields.names : null;
   const cat = catalog || catalogFrom(names);
   const waiting = {};
@@ -606,7 +664,7 @@ export function composePlan(base, planRec, catalog = null, { inputs = true } = {
     const ids = [...wait].filter((id) => listed.has(id)).sort(byCode);
     if (ids.length) waiting[d] = ids;
   }
-  return composeYear(base, monthlyUsd, opts, fm, cat, waiting);
+  return composeYear(base, monthlyUsd, opts, fm, cat, waiting, lock);
 }
 
 // ---------------------------------------------------------------- the order rows' "why" (G5)
@@ -623,7 +681,8 @@ const pctOf = (tenths) => `${Number.isInteger(tenths / 10) ? tenths / 10 : (tent
  *   parts of Technology"; ticked in two fields: "Half of Cars and a third of Spending and leisure";
  * - VWRA: "60% of the month, plus $3.40 left from rounding, plus $8 from 2 orders under $5", and, while an
  *   upcoming listing is all a field holds that trades, "plus $40 from Technology, where no company you ticked
- *   is trading yet".
+ *   is trading yet". In a lock month (lock.js) the split is of the other 90%: "60% of the month's other 90%, …,
+ *   plus $50, the 10% for Anthropic this month" (or "plus $0.30 left from Anthropic's 10%" once it is an order).
  * A company counts only the companies of its field that trade that month; a waiting one has no order (null).
  */
 export function orderWhy(plan, orderId, fieldName = () => "this field") {
@@ -635,11 +694,15 @@ export function orderWhy(plan, orderId, fieldName = () => "this field") {
   const rest = (plan.orders.find((o) => o.id === orderId && o.carryTarget) || null);
   if (rest) {
     const parts = [];
-    if (f.s < SPLIT_MAX) parts.push(`${pctOf(SPLIT_MAX - f.s)} of the month`);
+    if (f.s < SPLIT_MAX) parts.push(f.ninety ? `${pctOf(SPLIT_MAX - f.s)} of the month's other 90%` : `${pctOf(SPLIT_MAX - f.s)} of the month`);
     if (f.rounding > 0) parts.push(`${fmtMoney(f.rounding / 100)} left from rounding`);
     const k = f.rolled.length;
     if (k) parts.push(`${fmtMoney(f.rolledCents / 100)} from ${k} order${k === 1 ? "" : "s"} under ${fmtMoney(MIN_ORDER_CENTS / 100)}`);
     if (f.waitingCents > 0) parts.push(`${fmtMoney(f.waitingCents / 100)} from ${joinAnd(f.waitingFields.map(name))}, where no company you ticked is trading yet`);
+    const lk = plan.scale.lock && isObj(plan.scale.lock.months) ? plan.scale.lock.months[d] : null;
+    const who = (plan.scale.lock && plan.scale.lock.name) || LOCK_NAME;
+    if (lk && lk.to === "VWRA" && lk.cents > 0) parts.push(`${fmtMoney(lk.cents / 100)}, the 10% for ${who} this month`);
+    else if (lk && lk.to === "order" && lk.restCents > 0) parts.push(`${fmtMoney(lk.restCents / 100)} left from ${who}'s 10%`);
     return parts.length ? parts.join(", plus ") : `Nothing is left for ${id} this month.`;
   }
   const W = Array.isArray(f.W) ? f.W : [];

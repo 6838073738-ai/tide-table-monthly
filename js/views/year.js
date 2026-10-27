@@ -6,12 +6,14 @@ import {
   app, h, S, L, today, ost, isDone, instById, schedule, funding, carry, autoDeskDate, fM, fB, fUsd, long, short, dayShort,
   inDays, plural, statusPill, pill, viewHead, card, progressNow, pre, isPreDate, skippedUsd, monthName, joinedBudgetUsd, dateNotesFor,
   monthOf, fixed, amountWords, mixIsOwn, tickerOf,
-} from "../core.js?v=2.0.0";
-import { openDesk, chapterPages } from "./today.js?v=2.0.0";
-import { waitingWhy } from "../split.js?v=2.0.0";
-import { fieldName } from "../fields-catalog.js?v=2.0.0";
-import { openMonthDialog, monthWordOf, recordWords, listAnd } from "./amounts.js?v=2.0.0";
-import { upcomingChecked } from "./fields.js?v=2.0.0";
+} from "../core.js?v=2.1.0";
+import { openDesk, chapterPages } from "./today.js?v=2.1.0";
+import { waitingWhy } from "../split.js?v=2.1.0";
+import { fieldName } from "../fields-catalog.js?v=2.1.0";
+import { openMonthDialog, monthWordOf, recordWords, listAnd } from "./amounts.js?v=2.1.0";
+import { upcomingChecked } from "./fields.js?v=2.1.0";
+import * as LK from "../lock.js?v=2.1.0";
+import { nameEl, nameText, lockNow, lockMonthLine, lockShareWords } from "./naming.js?v=2.1.0";
 
 const TX_PILL = { todo: ["To send", "neutral", "□"], sent: ["Sent", "sky", "↗"], arrived: ["Arrived", "kelp", "✓"] };
 const ROLL_WORDS = { below_min: "Not bought at your amount", not_in_mix: "Not in your mix" };
@@ -60,8 +62,12 @@ export function renderYear() {
     : "";
   const mixFrom = S().plan && S().plan.mixFrom;
   const mixNote = mixIsOwn() && mixFrom ? ` Your orders follow your own mix from ${monthWordOf(mixFrom)}.` : "";
+  // The locked 10% (addendum B.6, G): one sentence and the "as written" line in the page's own intro, with no
+  // heading, chips or block of its own; each month card says where its 10% goes.
+  const lock = lockNow(plan);
+  const lockIntro = lock ? [" ", h("span", { "data-fk": "year-lock" }, `${lockShareWords(plan)} ${LK.LOCK_COPY.asWritten}`)] : null;
   const out = [viewHead("year", plan.meta.subtitle, "My year",
-    `Twelve order dates, on the second Tuesday of each month. Each month's money is sent the week before and must arrive by the Friday before the order date.${joinNote}${mixNote} ${pr.done + pr.skipped} of ${pr.total} orders done so far.`)];
+    [`Twelve order dates, on the second Tuesday of each month. Each month's money is sent the week before and must arrive by the Friday before the order date.${joinNote}${mixNote} ${pr.done + pr.skipped} of ${pr.total} orders done so far.`, lockIntro])];
   // The year as twelve larger chapter pages (brief 4.8.5); each opens its order date on Today's desk.
   out.push(h("div.bk-section.ttm-chapters", chapterPages({ large: true })));
   const more = h("p.bk-note.ttm-more-links", "Also: ",
@@ -93,7 +99,7 @@ export function renderYear() {
         // A skipped order shows the money it actually held (after carries and short transfers), not the plan's.
         const skipped = !before && s.status === "skipped" ? skippedUsd(o, cr) : null;
         return h("li.mc-order",
-          h("span.mc-name", i.name, h("span.ticker.num", tickerOf(i))),
+          h("span.mc-name", nameEl(i, { masked: i.group === "fields" })),
           before ? h("span.mc-amt.num", "—", h("span.mc-sub", " not bought"))
             // A $0 VWRA order (an own mix that leaves it nothing) is there for leftovers and the rules' carries.
             : h("span.mc-amt.num", s.status === "filled" ? fUsd(s.costUsd, 2) : skipped != null ? fUsd(skipped, 2) : adj != null ? fUsd(adj, 2) : o.carryTarget && !(o.usd > 0) ? "takes any leftover" : fM(o.usd),
@@ -111,10 +117,12 @@ export function renderYear() {
         })) : h("div.mc-money", h("p.mc-tx.muted", "Paid from the money already in the SwissBorg wallet.")),
       Object.entries(ROLL_WORDS).map(([reason, words]) => {
         const rs = rolled.filter((r) => (r.reason || "below_min") === reason);
-        return rs.length ? h("p.mc-note", `${words}: ${sentenceEnd(listAnd([...new Set(rs.map((r) => instById(r.instrument).name))]))} The share is in a VWRA order.`) : null;
+        return rs.length ? h("p.mc-note", `${words}: ${sentenceEnd(listAnd([...new Set(rs.map((r) => nameText(instById(r.instrument))))]))} The share is in a VWRA order.`) : null;
       }),
       // An upcoming listing the friend ticked that does not trade yet: where its part goes this month.
       ...waitingLines(d.id),
+      // The locked 10%: where this month's goes, with its date line while it does not trade (lock-api.md 6).
+      before ? null : lockMonthLine(plan, d.id, { fk: "year-lock-" + d.id, asWritten: false }),
       notes.length && !before ? h("details.disc.mc-notes", h("summary", { "data-fk": "year-notes-" + d.id }, plural(notes.length, "note") + " from the plan"), h("ul.disc-body", notes.map((n) => h("li", n)))) : null,
       amountLine(d),
       h("div.mc-foot",

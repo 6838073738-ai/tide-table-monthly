@@ -704,6 +704,29 @@
   .bk-dock-detail:not([hidden]) { display: block; font-size: var(--t-small); }
 }
 
+.bk-tn-ticker { white-space: nowrap; }
+.bk-tn-name { overflow-wrap: break-word; }
+
+.bk-tn-sr { -webkit-user-select: none; user-select: none; }
+.bk-years td, .bk-debt td { font-variant-numeric: lining-nums tabular-nums; }
+.bk-years tbody th { font-weight: 700; }
+.bk-concept { overflow-wrap: anywhere; }
+.bk-debt .bk-concept { display: block; color: var(--ink-soft); }
+.bk-debt .bk-concept-words { display: block; }
+.bk-figures > div.bk-stack + div.bk-stack { margin-top: 32px; }
+@media (min-width: 560px) {
+  .bk-years td:not(:nth-child(2)), .bk-years thead th:nth-child(n+3) { text-align: right; padding-right: 0; padding-left: 12px; }
+}
+
+.bk-figures { container: bk-figures / inline-size; }
+@container bk-figures (min-width: 720px) {
+  table.bk-debt :is(th, td):not(:last-child) { white-space: nowrap; }
+}
+
+@media (max-width: 559px) {
+  :is(.bk-table, .bk-compare) caption { display: block; padding-bottom: 4px; }
+}
+
 .bk-bob { animation: bk-bob var(--d-bob) var(--ease-float) infinite; transform-box: fill-box; transform-origin: 50% 85%; }
 .bk-drift { animation: bk-drift var(--d-drift) var(--ease-float) infinite alternate; }
 .bk-bloom > * { animation: bk-bloom var(--d-bloom) var(--ease-soft) both; }
