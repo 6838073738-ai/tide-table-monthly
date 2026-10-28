@@ -1120,20 +1120,32 @@ function attributionOf(items) {
   return parts.join(" ");
 }
 
+/**
+ * The words around "In the news" (spec 7.4), from a list's headlinesCheckedAt (exported for the tests): none, the
+ * line shown when the list is empty, and checked, the "Headlines checked on" line. A list never checked (null: no
+ * run has yet read every source that can give it headlines, pipeline/news.py) says so and has no "checked on" line,
+ * so an empty list is never read as "none found". what: "company" or "field".
+ */
+export function newsWords(checkedAt, what = "company") {
+  const p = checkedAt ? bangkokParts(checkedAt) : null;
+  if (!p) return { none: `Tide Table has not checked headlines for this ${what === "field" ? "field" : "company"} yet.`, checked: null };
+  const day = dayWords(p.date);
+  return { none: `No headlines found in the sources Tide Table reads in the 30 days to ${day}.`, checked: `Headlines checked on ${day}.` };
+}
+
 /** "In the news" (spec 7.4): third-party headlines, newest first, outside both sides. */
-function newsSection(list, checkedAt, noteContent, level = 2) {
+function newsSection(list, checkedAt, noteContent, { level = 2, what = "company" } = {}) {
   const items = (Array.isArray(list) ? list : []).filter((x) => x && x.title && x.url);
-  const checked = checkedAt ? bangkokParts(checkedAt) : null;
-  const to = checked ? dayWords(checked.date) : "—";
+  const words = newsWords(checkedAt, what);
   return section(
     B("sectionHead", { title: COPY.news, level }),
     B("headlineList", {
       items: items.map((x) => ({ title: x.title, publisher: x.publisher || "", date: dayWords(x.date), url: x.url })),
       note: noteContent,
-      none: `No headlines found in the sources Tide Table reads in the 30 days to ${to}.`,
+      none: words.none,
       attribution: attributionOf(items),
     }),
-    checked ? B("note", `Headlines checked on ${dayWords(checked.date)}.`) : null,
+    words.checked ? B("note", words.checked) : null,
   );
 }
 
@@ -1450,7 +1462,7 @@ export function fieldPage(fieldId, { company = null, headingId } = {}) {
       ));
       body.append(newsSection(e.headlines, e.headlinesCheckedAt,
         [`Headlines from the last 30 days that name a company in ${f.name} or the ${f.name} industry, newest first. `,
-          "Tide Table does not sort them into either side."]));
+          "Tide Table does not sort them into either side."], { what: "field" }));
     }
     const list = companyList(f.id, { open: company });
     body.append(list);
@@ -1810,7 +1822,8 @@ function drawDetail(body, rec, { fieldId, compact, standalone }) {
   if (compact) body.append(B("fold", { summary: FIGURES_COPY.fold, children: [figuresBlock(rec, { level: headLevel, prices, compact: true })] }));
   else body.append(figuresBlock(rec, { level: headLevel, prices }));
   body.append(newsSection(rec.headlines, rec.headlinesCheckedAt,
-    ["Headlines from the last 30 days that name ", mask(rec.name), ", newest first. Tide Table does not sort them into either side."], headLevel));
+    ["Headlines from the last 30 days that name ", mask(rec.name), ", newest first. Tide Table does not sort them into either side."],
+    { level: headLevel, what: "company" }));
   const filings = (rec.filings || []).filter((x) => x && x.form && x.url).slice(0, 3);
   if (filings.length) {
     body.append(section(B("sectionHead", { title: COPY.filings, level: headLevel }),
