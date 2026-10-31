@@ -7,13 +7,14 @@ import {
   app, h, clear, icon, L, S, prices, commit, toast, hooks, card, field, errorState, sourceLink, today, now,
   fM, fB, fUsd, fThb, fNum, long, dayShort, dateWords, monthName, locked, parseNum, svg,
   M, commitPlanChange, explain, fixed, openMonthIds, resolvedMonths, mixIsOwn, store, universeOn,
-} from "../core.js?v=2.1.0";
-import { scalePlan, thbToUsd, usdToThb, beforeJoin, ownIdMonth, MIN_MONTHLY_USD, MAX_MONTHLY_USD, BASE_MONTHLY_USD } from "../scale.js?v=2.1.0";
-import { importState } from "./settings.js?v=2.1.0";
-import * as book from "../book.js?v=2.1.0";
-import * as LK from "../lock.js?v=2.1.0";
-import { lockDateLine } from "./naming.js?v=2.1.0";
-import { rateNow as rateToday, readTyped, inputRecord, recordWords, placedWarning, monthWordOf, monthOption, listAnd, holdName, paidBy } from "./amounts.js?v=2.1.0";
+} from "../core.js?v=2.2.0";
+import { scalePlan, thbToUsd, usdToThb, beforeJoin, ownIdMonth, MIN_MONTHLY_USD, MAX_MONTHLY_USD, BASE_MONTHLY_USD } from "../scale.js?v=2.2.0";
+import { importState } from "./settings.js?v=2.2.0";
+import * as book from "../book.js?v=2.2.0";
+import * as LK from "../lock.js?v=2.2.0";
+import { lockDateLine } from "./naming.js?v=2.2.0";
+import * as ALM from "./almanac.js?v=2.2.0";
+import { rateNow as rateToday, readTyped, inputRecord, recordWords, placedWarning, monthWordOf, monthOption, listAnd, holdName, paidBy } from "./amounts.js?v=2.2.0";
 
 const GROUP_TOKEN = { index: "--series-1", growth: "--series-7", crypto: "--series-5" };
 /** The locked 10% (lock.js LOCK_GROUP) is a single stock like the plan's others, so the mix counts it with them in
@@ -118,7 +119,11 @@ export function renderSetup() {
   const base = app.base;
   const first = base.orderDates[0].date, last = base.orderDates[base.orderDates.length - 1].date;
   const pj = beforeJoin(base, joinDate());
-  const out = [];
+  // The almanac (addendum d.B2.2; addendum 2026-10-28 B.2): a first visit opens on this page, so it keeps the
+  // frontispiece plate above the welcome, away from the form (views/almanac.js). It is the first screen's plate from
+  // 760 px, so it loads at once there; a phone hides it (friends.css), and lazy, it never loads there.
+  const wide = typeof matchMedia === "function" && matchMedia("(min-width: 760px)").matches;
+  const out = changing ? [] : [ALM.frontispiece("setup", { lazy: !wide })];
   if (S().plan && !app.plan) out.push(h("p.banner.is-warn", { role: "alert" }, icon("alert"), h("span", "The amount saved in this browser could not be used. Please choose your monthly amount again; your other records are kept.")));
   // A saved state this version could not read (spec 8.5: a damaged copy) is set aside whole, never thrown away.
   if (store.unread && !S().plan) {

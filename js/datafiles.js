@@ -3,7 +3,7 @@
 // load. It holds no path of either app: the host calls configure({base}) first. Pure ES module: nothing runs at
 // import, and every network call goes through the fetch the host gives (or the browser's own).
 
-import { isFieldId } from "./fields-catalog.js?v=2.1.0";
+import { isFieldId } from "./fields-catalog.js?v=2.2.0";
 
 /** File names a set may hold (spec 4.13); anything else is never asked for. */
 export const NAME_RE = /^(index|fields|search|risk|field-[a-z]{3,16}|co-[0-9a-f]{2})\.json$/;

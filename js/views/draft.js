@@ -3,10 +3,10 @@
 // sessionStorage ("ttm:fields-draft") until Save my split commits them through core.commitPlanChange
 // (months.setFieldsFrom). Nothing here leaves the browser, and none of it goes into a URL.
 
-import { app, S, M, commitPlanChange, today, savedFields } from "../core.js?v=2.1.0";
-import { nameSnapshot, fieldOrder, fieldsProblem, explainFieldsProblem, MAX_FIELD_COMPANIES, MAX_COMPANIES } from "../split.js?v=2.1.0";
-import { fieldName } from "../fields-catalog.js?v=2.1.0";
-import { isLockedListing, lockedInPlanWords } from "./naming.js?v=2.1.0";
+import { app, S, M, commitPlanChange, today, savedFields } from "../core.js?v=2.2.0";
+import { nameSnapshot, fieldOrder, fieldsProblem, explainFieldsProblem, MAX_FIELD_COMPANIES, MAX_COMPANIES } from "../split.js?v=2.2.0";
+import { fieldName } from "../fields-catalog.js?v=2.2.0";
+import { isLockedListing, lockedInPlanWords } from "./naming.js?v=2.2.0";
 
 const KEY = "ttm:fields-draft";
 const isObj = (v) => !!v && typeof v === "object" && !Array.isArray(v);

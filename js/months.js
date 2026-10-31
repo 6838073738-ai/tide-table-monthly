@@ -25,12 +25,12 @@
 import {
   beforeJoin, fundingMonthOf, ownIdMonth, ownOrderId, ownTransferId, planShares, PlanFitError,
   isMonthlyUsdInRange, fmtMoney, MIN_MONTHLY_USD, MAX_MONTHLY_USD, MIX_TENTHS_MAX, VWRA_FLOOR_CENTS,
-} from "./scale.js?v=2.1.0";
+} from "./scale.js?v=2.2.0";
 import {
   resolveMonths, specOf, composePlan, COMPANY_ID, fieldOrder, fieldsProblem, explainFieldsProblem, nameSnapshot,
   isDay, waitingSnapshot,
-} from "./split.js?v=2.1.0";
-import { readLock, LOCK_KEY, entryFirstTrade, entrySnapshot } from "./lock.js?v=2.1.0";
+} from "./split.js?v=2.2.0";
+import { readLock, LOCK_KEY, entryFirstTrade, entrySnapshot } from "./lock.js?v=2.2.0";
 
 export { resolveMonths, specOf };
 

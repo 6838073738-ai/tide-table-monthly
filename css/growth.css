@@ -1,0 +1,129 @@
+/* Tide Table · Monthly 2.2: the Growth page (js/views/growth.js), Today's growth card, and a tab bar of seven
+   (docs/tt2/ADDENDUM-2026-10-27c.md D.3). Linked by js/main.js after the page's own stylesheets when index.html does
+   not link it. Every figure, line and growth uses the same neutral inks for a rise and a fall: nothing here colours a
+   figure by its sign (addendum c.B.2). Text stays 18 px or more, in ink or ink-soft (AA in both themes). */
+
+/* ---------------------------------------------------------------- a tab bar of seven (main.js moreTab) */
+/* With the open data the bar has seven tabs. On a phone it uses the short words and a narrower picture, as a bar of
+   six does (friends.css); under 480 px it keeps its first five tabs and "More", and under 360 px its first four and
+   "More" (friends.css), so no word is ever cut. */
+@media (max-width: 759px) {
+  :root[data-tabs="7"] .bk-tabbar { gap: 0; padding-left: 2px; padding-right: 2px; }
+  :root[data-tabs="7"] .bk-tab { padding-left: 0; padding-right: 0; }
+  :root[data-tabs="7"] .bk-tab-icon { width: 40px; }
+  :root[data-tabs="7"] .bk-tab-long.has-short {
+    position: absolute !important; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0);
+    clip-path: inset(50%); white-space: nowrap;
+  }
+  :root[data-tabs="7"] .bk-tab-short { display: block; }
+}
+@media (max-width: 479px) {
+  :root[data-tabs="7"] .bk-tabbar { display: flex; justify-content: space-between; }
+  :root[data-tabs="7"] .bk-tabbar .bk-tab { flex: 1 0 auto; min-width: 48px; padding: 4px 1px; }
+  :root[data-tabs="7"] .bk-tabbar .bk-tab.ttm-tab-fold7 { display: none; }
+  :root[data-tabs="7"] .bk-tabbar .bk-tab.ttm-tab-more {
+    /* the font of the page but .bk-tab's own 20 px line, so the bar keeps its height */
+    display: flex; margin: 0; border: 0; background: none; font-family: inherit; font-size: var(--t-small); line-height: 20px; color: var(--ink);
+    cursor: pointer; -webkit-appearance: none; appearance: none;
+  }
+  :root[data-tabs="7"] .bk-tab.ttm-tab-more.is-current7 { font-weight: 700; }
+  :root[data-tabs="7"] .bk-tab.ttm-tab-more.is-current7 .bk-tab-icon::before {
+    content: ""; position: absolute; inset: 0; z-index: -1; border-radius: var(--r-wash); background: var(--paper-raised);
+    box-shadow: inset 0 0 0 1px var(--gold-deco);
+  }
+}
+
+/* ---------------------------------------------------------------- the figures */
+.gr-figs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 14px; margin: 0; }
+.gr-fig { display: grid; gap: 6px; min-width: 0; }
+.gr-fig-label {
+  font-family: var(--font-label); font-weight: 600; font-size: var(--t-small); letter-spacing: var(--track-label);
+  font-variant: small-caps; color: var(--ink);
+}
+.gr-fig-value { margin: 0; display: grid; gap: 4px; min-width: 0; }
+.gr-fig-value > .num { font-size: clamp(24px, 2.6vw, 30px); font-weight: 600; line-height: 1.2; color: var(--ink); white-space: normal; overflow-wrap: anywhere; }
+.gr-fig-value > .gr-none { font-size: var(--t-body); color: var(--ink); }
+.gr-fig-sub { font-size: var(--t-small); color: var(--ink-soft); }
+.gr-none { color: var(--ink-soft); font-style: italic; }
+.gr-count { margin: 14px 0 0; font-size: var(--t-body); font-weight: 700; color: var(--ink); }
+.gr-line { margin: 6px 0 0; font-size: var(--t-small); color: var(--ink); }
+.gr-line .link-arrow { display: inline-flex; align-items: center; min-height: var(--tap); }
+.gr-basis { margin: 10px 0 0; font-size: var(--t-small); color: var(--ink-soft); max-width: 70ch; }
+.gr-figures .bk-note { margin-top: 8px; }
+
+/* before the start: the one sentence, under a small still plate */
+.gr-wait { display: grid; gap: 16px; justify-items: start; }
+.gr-wait::before { justify-self: stretch; }   /* justify-items would collapse the star stop to no width, leaving a bare 88 px hole */
+.gr-wait .bk-plate { justify-self: start; }
+.gr-start { margin: 0; font-size: var(--t-body); color: var(--ink); max-width: 60ch; }
+
+/* ---------------------------------------------------------------- the chart */
+.gr-chart { margin: 0; display: grid; gap: 8px; }
+.gr-chart-frame {
+  padding: 14px 12px 34px; border-radius: var(--r-plate); background: var(--paper-raised);
+  border: 1px solid var(--gold-deco); box-shadow: var(--plate-ring);
+}
+.gr-chart-plot { position: relative; height: 240px; }
+.gr-chart-svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.gr-grid { stroke: var(--rule); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.gr-line-value, .gr-line-put { fill: none; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.gr-line-value { stroke: var(--series-1); stroke-width: 3; }
+.gr-line-put { stroke: var(--series-6); stroke-width: 2.5; stroke-dasharray: 7 6; }
+.gr-chart-marks { position: absolute; inset: 0; pointer-events: none; }
+.gr-chart-y {
+  position: absolute; left: 0; font-size: var(--t-small); line-height: 1.2; color: var(--ink-soft);
+  background: var(--paper-raised); padding: 0 4px;
+}
+.gr-chart-y:first-child { transform: none; }
+.gr-chart-y:nth-child(2) { transform: translateY(4px); } /* $0 sits under the baseline, clear of the lines */
+.gr-chart-end {
+  position: absolute; right: 0; transform: translateY(-50%); max-width: 70%;
+  font-size: var(--t-small); line-height: 1.25; color: var(--ink); text-align: right;
+  background: var(--paper-raised); padding: 1px 6px; border-radius: 3px; box-shadow: 0 0 0 1px var(--rule);
+}
+.gr-chart-end b { font-weight: 600; }
+.gr-chart-x { display: flex; justify-content: space-between; gap: 12px; font-size: var(--t-small); color: var(--ink-soft); }
+.gr-legend { display: flex; flex-wrap: wrap; gap: 6px 22px; margin: 0; padding: 0; list-style: none; font-size: var(--t-small); color: var(--ink); }
+.gr-legend li { display: inline-flex; align-items: center; gap: 8px; }
+.gr-legend-mark { width: 36px; height: 12px; flex: none; }
+.gr-legend-mark path { fill: none; stroke-linecap: round; }
+.gr-legend-mark.is-value path { stroke: var(--series-1); stroke-width: 3; }
+.gr-legend-mark.is-put path { stroke: var(--series-6); stroke-width: 2.5; stroke-dasharray: 7 6; }
+.gr-chart-say { margin-top: 8px; }
+.gr-chart-sec .bk-fold { margin-top: 8px; }
+@media (max-width: 559px) { .gr-chart-plot { height: 220px; } .gr-chart-frame { padding: 12px 8px 32px; } }
+
+/* ---------------------------------------------------------------- the table (a ledger; blocks under 560 px) */
+.gr-table-wrap { min-width: 0; }
+.gr-table th[scope="row"] { min-width: 12em; }
+.gr-table .num { white-space: nowrap; }
+.gr-paid { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+.gr-paid li { overflow-wrap: anywhere; }
+.gr-day { white-space: nowrap; }
+.gr-src { color: var(--ink-soft); }
+.gr-block { display: block; }
+.gr-table .bk-fold-summary { min-height: var(--tap); }
+/* Seven columns need a wide page: below that each holding is a block of labelled lines (as every .bk-table is under
+   560 px), so the page never scrolls sideways. */
+@media (max-width: 1399px) {
+  .gr-table thead { display: none; }
+  .gr-table, .gr-table :is(tbody, tr, th, td) { display: block; }
+  .gr-table tr { padding: 10px 0; border-bottom: 1px solid var(--rule); }
+  .gr-table tbody { border-top: 3px double var(--gold-deco); }
+  .gr-table :is(th, td) { border: 0; padding: 2px 0; }
+  .gr-table td[data-label]:not([data-label=""])::before { content: attr(data-label) ": "; color: var(--ink-soft); font-family: var(--font-body); }
+  .gr-table th[scope="row"] { min-width: 0; padding-bottom: 4px; }
+  .gr-table .gr-paid { margin-top: 2px; }
+  .gr-table .num { white-space: normal; overflow-wrap: anywhere; }
+  .gr-table .gr-block { display: inline; }
+  .gr-table .gr-block::before { content: " "; }
+}
+
+/* ---------------------------------------------------------------- Today's growth card */
+.ttm-growth .gr-mini { display: flex; flex-wrap: wrap; gap: 10px 28px; margin: 0; }
+.gr-mini-pair { display: grid; gap: 2px; min-width: 0; }
+.gr-mini-pair dt { font-size: var(--t-small); color: var(--ink-soft); }
+.gr-mini-pair dd { margin: 0; font-size: var(--t-body); color: var(--ink); }
+.gr-mini-pair dd .num { font-weight: 600; }
+.ttm-growth .gr-count { margin-top: 10px; font-weight: 400; font-size: var(--t-small); }
+.ttm-growth .link-arrow { display: inline-flex; align-items: center; min-height: var(--tap); margin-top: 4px; }

@@ -2,10 +2,10 @@
 // with that company open in place). Its Choose toggle is the page's one main button; under the page, a quiet way
 // on to My split. The words and actions are configured in views/fields.js.
 
-import { app, h } from "../core.js?v=2.1.0";
-import * as book from "../book.js?v=2.1.0";
-import * as FU from "../fieldsui.js?v=2.1.0";
-import { WORDS } from "./fields.js?v=2.1.0";
+import { app, h } from "../core.js?v=2.2.0";
+import * as book from "../book.js?v=2.2.0";
+import * as FU from "../fieldsui.js?v=2.2.0";
+import { WORDS } from "./fields.js?v=2.2.0";
 
 export function renderField() {
   const r = app.route || {};

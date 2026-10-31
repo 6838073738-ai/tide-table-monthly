@@ -13,12 +13,13 @@ import {
   fM, fUsd, fPct, fNum, fPrice, short, fmtQty, plural, statusPill, pill,
   card, cardHead, viewHead, empty, chipGroup, downloadFile, today, hooks, progressNow, joinedBudgetUsd, isPreOrder, isPreTransfer,
   mixIsOwn, resolvedMonths, amountWords, tickerOf, isFieldInst, fieldMonthsOn, fieldsSpecNow,
-} from "../core.js?v=2.1.0";
-import { openFillDialog, undoOrder } from "./today.js?v=2.1.0";
-import { notBought, notBoughtMonth } from "./mix.js?v=2.1.0";
-import { splitLine } from "./split.js?v=2.1.0";
-import * as LK from "../lock.js?v=2.1.0";
-import { nameEl, nameText, lockNow, lockSubject, lockDateLine, lockMonthWords, lockShareWords } from "./naming.js?v=2.1.0";
+} from "../core.js?v=2.2.0";
+import { openFillDialog, undoOrder } from "./today.js?v=2.2.0";
+import { notBought, notBoughtMonth } from "./mix.js?v=2.2.0";
+import { splitLine } from "./split.js?v=2.2.0";
+import * as LK from "../lock.js?v=2.2.0";
+import { nameEl, nameText, lockNow, lockSubject, lockDateLine, lockMonthWords, lockShareWords } from "./naming.js?v=2.2.0";
+import * as ALM from "./almanac.js?v=2.2.0";
 
 const GROUP_TOKEN = { index: "--series-1", growth: "--series-7", crypto: "--series-5", fields: "--series-4" };
 const GROUP_ORDER = ["index", "growth", "crypto", "fields"];
@@ -72,7 +73,8 @@ export function renderHoldings() {
           h(`td.num.r${r.pnlUsd > 0 ? ".is-pos" : r.pnlUsd < 0 ? ".is-neg" : ""}`, { "data-label": "Change" }, r.pnlUsd != null ? `${r.pnlUsd > 0 ? "+" : ""}${fUsd(r.pnlUsd, 2)}` : "—", r.pnlPct != null ? h("span.sub", fPct(r.pnlPct, 1)) : null));
       })),
       hold.missing.length ? h("tfoot", h("tr.hold-missing", h("td", { colspan: 7 }, h("span.muted.small", `No price yet for ${hold.missing.map((id) => nameText(instById(id))).join(", ")}: left out of the value. ${hold.missing.some((id) => !instById(id).coingeckoId) ? "Type a stock or fund's price on the order desk to include it." : "Coins are included once the live price arrives."}`)))) : null))
-      : empty("Nothing here yet", "Log a fill on the order desk (Today) and it appears here.", "portfolio")));
+      // The almanac (addendum d.B2.2): an empty state carries a small decorative plate (views/almanac.js)
+      : ALM.emptyPlate("alembic", empty("Nothing here yet", "Log a fill on the order desk (Today) and it appears here.", "portfolio"))));
 
   out.push(splitPanel(hold));
   out.push(allocCard(hold, hasFills));

@@ -16,13 +16,22 @@
 // record, plan.lock ({ k, from, f, s } and the listing's snapshot once it trades; lock.readLock cleans it). A state
 // without it (1.x, 2.0, or a new plan) loads exactly as before, and months.adoptLock adds it from the first month
 // the friend has not started, through the usual plan change, so the months before it keep what they had.
+//
+// Tide Table 2.2 (docs/tt2/ADDENDUM-2026-10-27c.md D.1, D.4) keeps the state at version 2 too: the growth tracker's
+// prices typed for an order are one more record, `typed` ({ "<dateId>:<instrumentId>": {price, at} }: the price the
+// friend typed on Today's order desk for that month's order of that holding, once its order date had come). A state
+// without it (1.x, 2.0, 2.1) loads with `typed` {} and every other record exactly as it was; its `prices` (the latest
+// price typed or logged for each holding, which sizes the orders) stay as they are. A tab of 2.1 or older that is still
+// open saves the state without `typed` (it keeps only the keys it knows, under the same key and version), so 2.2 keeps
+// a copy of the typed prices beside the state (TYPED_COPY_KEY) and puts them back: in this tab when such a save arrives,
+// and at the next load when no 2.2 tab was open (review finding RR-02).
 
-import { isMonthlyUsdInRange, MIX_TENTHS_MAX } from "./scale.js?v=2.1.0";
-import { explainFit, monthWord, monthOfOrder } from "./months.js?v=2.1.0";
-import { readLock } from "./lock.js?v=2.1.0";
+import { isMonthlyUsdInRange, MIX_TENTHS_MAX } from "./scale.js?v=2.2.0";
+import { explainFit, monthWord, monthOfOrder } from "./months.js?v=2.2.0";
+import { readLock } from "./lock.js?v=2.2.0";
 import {
   FIELD_IDS, FIELD_ID, COMPANY_ID, SPLIT_MAX, MAX_FIELD_COMPANIES, MAX_COMPANIES, fieldOrder, nameSnapshot, isAddableVenue,
-} from "./split.js?v=2.1.0";
+} from "./split.js?v=2.2.0";
 
 export const PLAN_ID = "monthly-2026-27";
 export const STATE_VERSION = 2;
@@ -44,6 +53,16 @@ export const MAX_IMPORT_BYTES = 512 * 1024;
 export const MAX_DEPTH = 8;
 /** At most this many month entries are kept (the plan has 12 order dates). */
 export const MAX_MONTH_KEYS = 24;
+/** A typed price's key (2.2): "<dateId>:<instrumentId>", an order date id m01..m12 and an instrument id. */
+export const TYPED_KEY = /^m\d\d:[A-Za-z0-9_-]{1,24}$/;
+/** At most this many typed prices are kept (12 order dates, each with at most a few dozen holdings). */
+export const MAX_TYPED = 600;
+/** The key of the price typed for a month's order of a holding (store.typed). */
+export const typedKey = (dateId, instrumentId) => `${dateId}:${instrumentId}`;
+/** A copy of the typed prices beside the state (2.2), { createdAt, typed }, written with every save: a tab of an older
+ *  version saves the state without them, and they come back from here for the same state (its createdAt). It never
+ *  travels in an export, and "Start over" removes it with the state. */
+export const TYPED_COPY_KEY = "ttm:state:v2:typed";
 
 const THEMES = ["auto", "dark", "light"];
 const ORDER_STATUS = ["pending", "placed", "filled", "skipped"];
@@ -68,6 +87,8 @@ export const DEFAULT_STATE = () => ({
   orders: {},
   funding: {},
   prices: {}, // prices typed from the friend's own broker app: { [instrumentId]: {price, at, src} }
+  // 2.2: the price typed on Today for a month's order once its date had come: { "<dateId>:<instrumentId>": {price, at} }
+  typed: {},
   prep: {},
   thesis: {},
   journal: [],
@@ -361,6 +382,24 @@ const TRANSFER_FIELDS = {
   arrivedAt: (v) => (isDate(v) ? v : null),
 };
 const PRICE_FIELDS = { price: num, at: stamp, src: (v) => (v === "fill" ? "fill" : "entry") };
+
+/**
+ * The prices typed for an order (2.2, state.typed): { "<dateId>:<instrumentId>": {price, at} }, each a price above 0
+ * with the time it was typed. A key that is not one (TYPED_KEY), or an entry without a usable price and time, is
+ * dropped; at most MAX_TYPED are kept, the newest when there are more.
+ */
+export function cleanTyped(m) {
+  if (!isObj(m)) return {};
+  const keep = [];
+  for (const [k, v] of Object.entries(m)) {
+    if (!TYPED_KEY.test(k) || !isObj(v)) continue;
+    const price = num(v.price), at = stamp(v.at);
+    if (price == null || !(price > 0) || !at) continue;
+    keep.push([k, { price, at }]);
+  }
+  if (keep.length > MAX_TYPED) keep.sort((a, b) => Date.parse(b[1].at) - Date.parse(a[1].at)).splice(MAX_TYPED);
+  return Object.fromEntries(keep.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0)));
+}
 function cleanThesis(t) {
   if (!isObj(t)) return null;
   const out = {};
@@ -398,6 +437,7 @@ export function withDefaults(s) {
   };
   if (st.still === true) out.settings.still = true; // Still pictures (spec 8.5); off when left out
   out.prices = cleanMap(src.prices, (p) => fields(p, PRICE_FIELDS));
+  out.typed = cleanTyped(src.typed); // 2.2: none before it, so an older state gets {} and nothing else changes
   out.prep = cleanMap(src.prep, (v) => (typeof v === "boolean" ? v : null));
   out.thesis = cleanMap(src.thesis, cleanThesis);
   out.journal = (Array.isArray(src.journal) ? src.journal : []).filter((j) => isObj(j) && typeof j.text === "string").slice(0, 2000)
@@ -504,6 +544,25 @@ function checkLegacy(raw1) {
   return true;
 }
 
+/** True when a saved state document has no `typed` record at all: a tab of 2.1 or older wrote it (every save of this
+ *  version writes one, {} included). */
+const lacksTyped = (doc) => isObj(doc) && !Object.prototype.hasOwnProperty.call(doc, "typed");
+
+/** The typed prices kept beside the state for the same state (TYPED_COPY_KEY and createdAt), cleaned; {} when none. */
+function typedCopyFor(createdAt) {
+  if (!createdAt) return {};
+  let c = null;
+  try { c = JSON.parse(read(TYPED_COPY_KEY) || "null"); } catch { return {}; }
+  return isObj(c) && c.createdAt === createdAt ? cleanTyped(c.typed) : {};
+}
+
+/** Keep the copy of the typed prices beside the state (after each save), or remove it when there are none. */
+function writeTypedCopy() {
+  const t = state.typed;
+  if (state.createdAt && isObj(t) && Object.keys(t).length) write(TYPED_COPY_KEY, JSON.stringify({ createdAt: state.createdAt, typed: t }));
+  else remove(TYPED_COPY_KEY);
+}
+
 /** After this version's first successful save: SEEN_KEY says so (written only when the flag flips). */
 function markTouched() {
   if (seen && seen.touched) return;
@@ -535,6 +594,12 @@ export const store = {
       const next = doc ? cleaned(doc) : null;
       if (next) {
         state = next;
+        // A tab of 2.1 or older saved it last, without the typed prices: they come back from the copy beside it. Saved
+        // by this version, the copy follows the state (a state saved before the copy existed gets one now).
+        if (lacksTyped(doc)) {
+          const typed = typedCopyFor(state.createdAt);
+          if (Object.keys(typed).length) { state.typed = typed; store.save(); }
+        } else writeTypedCopy();
         const raw1 = read(LEGACY_KEY);
         if (raw1) checkLegacy(raw1);
       } else {
@@ -592,7 +657,7 @@ export const store = {
   /** Start over: remove the saved state of both versions, SEEN_KEY and both set-aside copies, then save
    *  `next` (a fresh state) as version 2. */
   startOver(next = DEFAULT_STATE()) {
-    for (const k of [STATE_KEY, LEGACY_KEY, SEEN_KEY, UNREAD_KEY, LEGACY_UNREAD_KEY]) remove(k);
+    for (const k of [STATE_KEY, LEGACY_KEY, SEEN_KEY, UNREAD_KEY, LEGACY_UNREAD_KEY, TYPED_COPY_KEY]) remove(k);
     seen = null;
     store.olderCopy = null;
     store.replace(next);
@@ -612,6 +677,7 @@ export const store = {
       store.saveError = null;
       store.lastSaved = Date.now();
       store.available = true;
+      writeTypedCopy();
       return true;
     } catch (e) {
       store.saveError = e;
@@ -631,12 +697,24 @@ export const store = {
 
 // Another tab of this app saved: take its copy (this tab has no pending edits; every edit saves at once).
 // An older copy of the app saves to version 1: migrate it while there is no version 2 state yet, else check it.
+// A tab of 2.1 or older saves version 2 without the typed prices (2.2): this tab keeps its own for the same state and
+// saves them back, once for each such save (so two tabs can never pass one state back and forth).
+let keptFrom = null;
 window.addEventListener("storage", (e) => {
   if (e.newValue == null) return;
   if (e.key === STATE_KEY) {
     try {
       const doc = JSON.parse(e.newValue);
-      if (isObj(doc) && doc.planId === PLAN_ID) { state = withDefaults(doc); emit(); }
+      if (isObj(doc) && doc.planId === PLAN_ID) {
+        const keep = lacksTyped(doc) && state.createdAt && doc.createdAt === state.createdAt && Object.keys(state.typed || {}).length ? state.typed : null;
+        state = withDefaults(doc);
+        if (keep) {
+          state.typed = cleanTyped(keep);
+          const h = textHash(e.newValue);
+          if (keptFrom !== h) { keptFrom = h; store.save(); }
+        }
+        emit();
+      }
     } catch { /* ignore a half-written value */ }
   } else if (e.key === LEGACY_KEY) {
     const raw2 = read(STATE_KEY);
@@ -745,7 +823,12 @@ export function validateImport(doc, plan, { base = null, error = null } = {}) {
     errs.push(...r.errs);
     if (!plan && !r.bad) errs.push(error ? `The amounts or the mix in the file cannot be used: ${explainFit(error, ref)}` : "The amounts or the mix in the file cannot be used.");
   }
-  for (const k of ["profile", "settings", "orders", "funding", "prices", "prep", "thesis"]) if (doc[k] != null && !isObj(doc[k])) errs.push(`"${k}" must be an object.`);
+  for (const k of ["profile", "settings", "orders", "funding", "prices", "typed", "prep", "thesis"]) if (doc[k] != null && !isObj(doc[k])) errs.push(`"${k}" must be an object.`);
+  // 2.2: a price typed for an order is a number above 0 with the time it was typed (a key that names no order date
+  // and holding is left out when the file is loaded, as cleanTyped does).
+  if (isObj(doc.typed) && Object.entries(doc.typed).some(([k, v]) => TYPED_KEY.test(k) && (!isObj(v) || num(v.price) == null || !(v.price > 0) || !isStamp(v.at)))) {
+    errs.push("A price typed for an order must be a number above 0 with a time.");
+  }
   if (doc.journal != null && !Array.isArray(doc.journal)) errs.push('"journal" must be a list.');
   const obj = (v) => (isObj(v) ? v : {});
   const okDate = (v) => v == null || v === "" || isDate(v);

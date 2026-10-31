@@ -7,11 +7,11 @@
 // (app.lockEntry, main.js), each with its date line and the one short "as written" line, and with the same row,
 // colour and position rules as every other holding: no highlight, no badge beyond its factual chips.
 
-import { app, h, fM, fUsd, ost, isDone, isPreOrder, instById, skippedUsd } from "../core.js?v=2.1.0";
-import * as N from "../names.js?v=2.1.0";
-import * as LK from "../lock.js?v=2.1.0";
-import * as FU from "../fieldsui.js?v=2.1.0";
-import * as book from "../book.js?v=2.1.0";
+import { app, h, fM, fUsd, ost, isDone, isPreOrder, instById, skippedUsd } from "../core.js?v=2.2.0";
+import * as N from "../names.js?v=2.2.0";
+import * as LK from "../lock.js?v=2.2.0";
+import * as FU from "../fieldsui.js?v=2.2.0";
+import * as book from "../book.js?v=2.2.0";
 
 // ---------------------------------------------------------------- ticker and full name
 

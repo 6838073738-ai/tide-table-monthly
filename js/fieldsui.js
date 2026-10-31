@@ -18,14 +18,14 @@
 // share-price change where the set has prices (docs/tt2/build/data-records.md). The figures are drawn from the
 // record as the data holds it: nothing is estimated, re-picked or ranked.
 
-import * as book from "./book.js?v=2.1.0";
-import * as ui from "./ui.js?v=2.1.0";
-import * as data from "./datafiles.js?v=2.1.0";
-import * as names from "./names.js?v=2.1.0";
-import { money, CUR_NAME } from "./facts.js?v=2.1.0";
+import * as book from "./book.js?v=2.2.0";
+import * as ui from "./ui.js?v=2.2.0";
+import * as data from "./datafiles.js?v=2.2.0";
+import * as names from "./names.js?v=2.2.0";
+import { money, CUR_NAME } from "./facts.js?v=2.2.0";
 import {
   SECTORS, CLOSEUPS, INSIDE, fieldById, fieldName, alsoWords, isFieldId, matchFields, foldText, joinAnd,
-} from "./fields-catalog.js?v=2.1.0";
+} from "./fields-catalog.js?v=2.2.0";
 
 // ---------------------------------------------------------------- configuration
 

@@ -10,19 +10,23 @@ import {
   card, cardHead, ruleQuote, disclosure, field, afterRender, sourceLink, commit, modal, confirmDialog, plural,
   pre, isPreOrder, isPreTransfer, isPreDate, joinedPlan, joinedBudgetUsd, progressNow, coinQty, leftoverText, coinMinUsd, skippedUsd,
   copyDue, exportState, howOf, dateNotesFor, openMonthIds, isBoughtInst, prepNotNeeded,
-  tickerOf, isFieldInst, universeOn, hasFieldMonths, fixed, monthOf,
-} from "../core.js?v=2.1.0";
-import { ownIdMonth } from "../scale.js?v=2.1.0";
-import { orderWhy, waitingWhy } from "../split.js?v=2.1.0";
-import * as book from "../book.js?v=2.1.0";
-import * as FU from "../fieldsui.js?v=2.1.0";
-import * as D from "../datafiles.js?v=2.1.0";
-import { fieldName } from "../fields-catalog.js?v=2.1.0";
-import { monthAmountLink } from "./amounts.js?v=2.1.0";
-import { splitLine } from "./split.js?v=2.1.0";
-import { upcomingChecked } from "./fields.js?v=2.1.0";
-import * as LK from "../lock.js?v=2.1.0";
-import { nameEl, nameText, whatNamed, lockWhyLine, lockFacts } from "./naming.js?v=2.1.0";
+  tickerOf, isFieldInst, universeOn, hasFieldMonths, fixed, monthOf, dtfOf,
+} from "../core.js?v=2.2.0";
+import { ownIdMonth } from "../scale.js?v=2.2.0";
+import { orderWhy, waitingWhy } from "../split.js?v=2.2.0";
+import * as book from "../book.js?v=2.2.0";
+import * as FU from "../fieldsui.js?v=2.2.0";
+import * as D from "../datafiles.js?v=2.2.0";
+import { fieldName } from "../fields-catalog.js?v=2.2.0";
+import { monthAmountLink } from "./amounts.js?v=2.2.0";
+import { splitLine } from "./split.js?v=2.2.0";
+import { upcomingChecked } from "./fields.js?v=2.2.0";
+import * as LK from "../lock.js?v=2.2.0";
+import { nameEl, nameText, whatNamed, lockWhyLine, lockFacts } from "./naming.js?v=2.2.0";
+import { typedKey } from "../store.js?v=2.2.0";
+import { recordedPaid, deskPrice } from "../tracker.js?v=2.2.0";
+import { growthCard } from "./growth.js?v=2.2.0";
+import * as ALM from "./almanac.js?v=2.2.0";
 
 /** The one-time panel for a friend with records, on their first 2.0 visit (spec 8.2), is remembered here. */
 const INTRO_KEY = "ttm:fields-intro";
@@ -190,13 +194,18 @@ export function renderToday() {
   const sch0 = schedule();
   const focusDate = autoDeskDate(sch0) || sch0.dates[sch0.dates.length - 1];
   const k = Math.max(0, sch0.dates.findIndex((d) => d.id === focusDate.id));
+  // The glass almanac (addendum 2026-10-28 B): the hero box heads the first screen, the night plate with the wheel of
+  // the heavens, where js/hero.js may grow the 3D armillary; the heading stands alone under it, and the next-step
+  // panel keeps the calm zone's distance from the box with the heading between them. The frontispiece opens My year,
+  // not this page (views/almanac.js).
+  const box = ALM.hero();
+  afterRender(() => ALM.mountHero(box));
   const out = [
+    box,
     book.openingHead({
       kicker: `Chapter ${CHAPTER_WORDS[k] || String(k + 1)}`, title: monthName(focusDate.effective, false, true), level: 1, id: "h-today",
-      lines: [h("span.greet", name ? `Hello, ${name}.` : "Hello.", h("span.greet-date", ` Today is ${new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: "Asia/Bangkok" }).format(new Date(t))}.`))],
-      vignette: book.vignette("today"),
+      lines: [h("span.greet", name ? `Hello, ${name}.` : "Hello.", h("span.greet-date", ` Today is ${dtfOf("greet-date", { weekday: "long", day: "numeric", month: "long", timeZone: "Asia/Bangkok" }).format(new Date(t))}.`))],
     }),
-    ...dataNotices(),
   ];
 
   // ---- the next-step panel (brief 4.7 and 4.8.1): a wash panel with one heading, the when
@@ -209,16 +218,20 @@ export function renderToday() {
     const title = money && next.kind === "funding" && money.toSend ? `Send the money for ${monthName(dateOfId(next.forDate), false, true)}` : next.title;
     const isToday = next === todayOrder;
     const count = h("span.hero-count", { "data-fk": "hero-count" }, ` · ${countWords(next, isToday)}`);
+    const todo = heroTodo(next, fund, st, money);
     kids = [
       h("p.eyebrow", isToday ? "Today · order day" : `${next.date === td ? "Today" : "Next"} · ${EVENT_KIND[next.kind] || "Event"}${next.step ? " · step " + next.step : ""}`),
       h("h2.bk-h2#next-title", title),
       h("p.hero-when", h("span", long(next.date)), heroWhen(next), count),
+      // The main button comes right under the heading and its date (style brief F8: a phone shows both on its first
+      // screen with the hero box above them); what the step involves follows it.
+      todo && todo.button,
       calendarChips(future, td),
       // The plan's summary quotes plan amounts: left out when a rule for differences changed one of them
       // (the list below shows the amounts that apply), and for a month's money with several transfers.
       next.summary && (!money || money.group.length === 1) && !(next.kind === "order" && ordersOn(next.id).some((o) => !isDone(o.id) && adjustFor(o, carry()) !== 0))
         ? h("p.hero-summary", next.summary) : null,
-      heroTodo(next, fund, st, money),
+      todo && todo.body,
     ];
     after = afterList(future.filter((e) => e !== next).slice(0, 4), td);
     afterRender(() => startTodayTicker(count, next, isToday));
@@ -229,8 +242,8 @@ export function renderToday() {
       // Every date has passed but some orders were never logged: the year is not complete yet.
       const dates = [...new Set(left.map((o) => o.dateId))];
       kids = [h("p.eyebrow", "Every order date has passed"), h("h2.bk-h2#next-title", `${plural(left.length, "order")} still open`),
-        h("p.hero-summary", `${dates.map((d) => short(dateOfId(d))).join(", ")}: log each fill, or record a skip, so your records are complete.`),
-        mainButton("Open the order desk", "#desk", "hero-desk", (e) => { e.preventDefault(); openDesk(dates[0]); })];
+        mainButton("Open the order desk", "#desk", "hero-desk", (e) => { e.preventDefault(); openDesk(dates[0]); }),
+        h("p.hero-summary", `${dates.map((d) => short(dateOfId(d))).join(", ")}: log each fill, or record a skip, so your records are complete.`)];
     } else if (!joinedPlan().orders.length) {
       kids = [h("p.eyebrow", "Before you joined"), h("h2.bk-h2#next-title", "The plan's twelve months had passed."),
         h("p.hero-summary", "Nothing is due. The plan's maintenance calendar is on the Rules page."),
@@ -245,11 +258,16 @@ export function renderToday() {
   panel.classList.add("ttm-step");
   panel.setAttribute("data-fk", "next-step");
   out.push(panel);
+  // the open data's notices come right under the next step, so the first screen keeps the step and its button with
+  // the hero box above them (style brief F8)
+  out.push(...dataNotices());
   if (after) out.push(after);
 
   out.push(keepCopyCard());
   out.push(readyCard());
   out.push(renderProgress(st));
+  // 2.2 (addendum c.D.3): the growth tracker's short card, "on time, never sold" (views/growth.js)
+  out.push(growthCard());
   out.push(renderAlerts());
   out.push(renderDesk());
   const pr = progressNow();
@@ -264,12 +282,15 @@ export function renderToday() {
   return out;
 }
 
+// Only the time is a figure (IBM Plex Mono, addendum d.B.2); the words round it stay in the body face.
 function heroWhen(next) {
-  if (!next.untimed) return h("span.num", ` · ${bkkTime(next.at)} Bangkok time`);
+  if (!next.untimed) return h("span", " · ", h("span.num", bkkTime(next.at)), " Bangkok time");
   if (next.kind === "order") return h("span", " · any time that day");
-  if (next.kind === "funding" || next.kind === "prep") return h("span.num", " · by 17:00 Bangkok time");
+  if (next.kind === "funding" || next.kind === "prep") return h("span", " · by ", h("span.num", "17:00"), " Bangkok time");
   return null;
 }
+/** An order's time as a figure (span.num), or "Any time" in words (word: its class, not the figure face). */
+const timeCell = (o, cls, word) => (o.time === "any" ? h(`${cls}${word || ""}`, timeLabel(o)) : h(`${cls}.num`, timeLabel(o)));
 
 /**
  * Every transfer behind a send or arrive-by event: all of that day's transfers still to send, or all of
@@ -286,22 +307,26 @@ function moneyGroup(next, fund, st) {
   return { group, stOf, toSend: group.some((t) => stOf(t) === "todo") };
 }
 
+/**
+ * What the next step involves (body: div.hero-todo) and its main button, apart: the panel puts the button right under
+ * its heading and date, and the body after the calendar chips (style brief F8). Null for a step with neither.
+ */
 function heroTodo(next, fund, st, money) {
   const cr = carry();
   if (next.kind === "order") {
     const os = ordersOn(next.id).filter((o) => !isDone(o.id));
     const shown = os.slice(0, 4);
-    return h("div.hero-todo",
-      h("ul.todo-list", shown.map((o) => h("li", h("span.todo-time.num", timeLabel(o)), h("span.todo-acct", o.account), h("span.todo-what", whatOf(o, cr, true))))),
-      os.length > shown.length ? h("p.muted.small", `+ ${os.length - shown.length} more on the order desk below`) : null,
-      mainButton("Open the order desk", "#desk", "hero-desk", (e) => { e.preventDefault(); openDesk(next.id); }));
+    return { body: h("div.hero-todo",
+      h("ul.todo-list", shown.map((o) => h("li", timeCell(o, "span.todo-time"), h("span.todo-acct", o.account), h("span.todo-what", whatOf(o, cr, true))))),
+      os.length > shown.length ? h("p.muted.small", `+ ${os.length - shown.length} more on the order desk below`) : null),
+    button: mainButton("Open the order desk", "#desk", "hero-desk", (e) => { e.preventDefault(); openDesk(next.id); }) };
   }
   if (money) {
     const { group, stOf, toSend } = money;
     const fs = st.funding || {};
     const fx = fxInfo();
     const toDo = group.filter((t) => stOf(t) === "todo" && howOf(t));
-    return h("div.hero-todo",
+    return { body: h("div.hero-todo",
       h("ul.todo-list.is-money", { "data-fk": "hero-transfers" }, group.map((t) => {
         const s = fs[t.id] || {};
         return h("li",
@@ -312,30 +337,43 @@ function heroTodo(next, fund, st, money) {
       })),
       toDo.map((t) => h("p.muted.small", toDo.length > 1 || group.length > 1 ? `${dest(t.to)}: ${howOf(t)}` : howOf(t))),
       // Before any of the month's money goes, its amount can still change (no record fixes the month yet).
-      toSend && openMonthIds().includes(next.forDate) ? monthAmountLink(next.forDate, "td-month-" + next.forDate) : null,
-      mainButton(toSend ? "Record it on Money" : "Open Money", "#/money", "hero-money"));
+      toSend && openMonthIds().includes(next.forDate) ? monthAmountLink(next.forDate, "td-month-" + next.forDate) : null),
+    button: mainButton(toSend ? "Record it on Money" : "Open Money", "#/money", "hero-money") };
   }
   if (next.kind === "prep") {
     const items = prepNeeded();
     const done = items.filter((p) => st.prep[p.id]).length;
-    return h("div.hero-todo",
-      h("p.todo-line", h("strong", `${done} of ${items.length}`), " getting-ready checks done."),
-      mainButton("Open the checklist", "#ready", "hero-checklist", (e) => { e.preventDefault(); const r = $("#ready") || $("#prep-h"); if (r) { r.scrollIntoView({ behavior: ui.reducedMotion() ? "auto" : "smooth", block: "start" }); r.focus({ preventScroll: true }); } else hooks.go("rules"); }));
+    return { body: h("div.hero-todo",
+      h("p.todo-line", h("strong", `${done} of ${items.length}`), " getting-ready checks done.")),
+    button: mainButton("Open the checklist", "#ready", "hero-checklist", (e) => { e.preventDefault(); const r = $("#ready") || $("#prep-h"); if (r) { r.scrollIntoView({ behavior: ui.reducedMotion() ? "auto" : "smooth", block: "start" }); r.focus({ preventScroll: true }); } else hooks.go("rules"); }) };
   }
   if (next.kind === "milestone") {
-    return h("div.hero-todo",
-      h("p.todo-line", "Look up each one's closing price that day, then type them in Settings."),
-      mainButton("Enter the closes", "#/settings", "hero-ceilings"));
+    return { body: h("div.hero-todo",
+      h("p.todo-line", "Look up each one's closing price that day, then type them in Settings.")),
+    button: mainButton("Enter the closes", "#/settings", "hero-ceilings") };
   }
   return null;
 }
 
-/** Open the order desk on a date and bring it into view. */
+/**
+ * Open the order desk on a date and bring it into view. The desk takes the focus once Today has been drawn with it
+ * (renderDesk, app.focusDesk): coming from another page, the router draws Today a frame or more later, behind the frost
+ * veil, and gives the focus to its heading first, so a fixed wait could focus a desk not drawn yet (review RR-01).
+ */
 export function openDesk(dateId) {
   app.deskDate = dateId;
-  if (app.active !== "today") { hooks.go("today"); }
-  hooks.invalidate("state");
-  setTimeout(() => { const d = $("#desk"); if (d) { d.scrollIntoView({ behavior: ui.reducedMotion() ? "auto" : "smooth", block: "start" }); d.focus({ preventScroll: true }); } }, 120);
+  app.focusDesk = true;
+  // From another page the route draws Today, desk and all; drawn twice, the second drawing could cut the scroll short
+  if (app.active !== "today") hooks.go("today");
+  else hooks.invalidate("state");
+}
+
+/** After the drawing that consumes app.focusDesk, once the router has placed its own focus: the desk, in view. */
+function focusDeskSoon() {
+  afterRender(() => setTimeout(() => {
+    const d = $("#desk");
+    if (d) { d.scrollIntoView({ behavior: ui.reducedMotion() ? "auto" : "smooth", block: "start" }); d.focus({ preventScroll: true }); }
+  }, 0));
 }
 
 /**
@@ -366,11 +404,25 @@ function startTodayTicker(el, next, isToday) {
   app.todayTimer = setInterval(() => { if (!document.hidden) tick(); }, 1000);
 }
 
-/** "After that": the next few steps under the panel, a quiet list, and a link to the whole year. */
+/**
+ * "After that": the next few steps under the panel, a quiet list, and a link to the whole year. The first step that
+ * leads up to an order date carries that date's small tarot card (addendum d.B.4: by its place in time, never by what
+ * it buys), the card the date has on My year too (views/almanac.js placeOf); the later steps to the same date keep the
+ * card's cell empty, so one picture never runs down the column like a bullet.
+ */
 function afterList(after, td) {
+  const dates = schedule().dates;
+  const carded = new Set();
+  const cardOf = (e) => {
+    const place = ALM.placeOf(dates, e);
+    if (place == null || carded.has(place)) return null;
+    carded.add(place);
+    return place;
+  };
   return h("section.bk-section.ttm-after", { "aria-labelledby": "after-h", "data-fk": "hero-after" },
     book.sectionHead({ title: "After that", level: 2, id: "after-h" }),
-    after.length ? h("ol.upcoming", after.map((e) => h("li",
+    after.length ? h("ol.upcoming.alm-steps", after.map((e) => h("li",
+      ALM.miniCard(cardOf(e)),
       h("span.up-date.num", short(e.date)),
       h("span.up-text", h("span.up-title", e.title), h("span.up-rel", `${EVENT_KIND[e.kind] || ""} · ${inDays(L.daysBetween(td, e.date))}`)))))
       : book.note("Nothing else scheduled."),
@@ -607,6 +659,7 @@ function renderAlerts() {
 // ---------------------------------------------------------------- order desk
 
 function renderDesk() {
+  if (app.focusDesk) { app.focusDesk = false; focusDeskSoon(); }
   const sch = schedule();
   const td = today();
   const auto = autoDeskDate(sch);
@@ -645,12 +698,13 @@ function renderDesk() {
   const fieldLines = selPre ? [] : fieldMonthLines(sel.id);
   if (universeOn()) afterRender(() => markDelisted(os));
   const body = [
-    h("div.desk-cols", { "aria-hidden": "true" }, ["Time", "Order", "Price", "Ceiling", "Size at this price", "Market", ""].map((t) => h("span", t))),
     h("ol.desk-list", { "aria-labelledby": "desk-h" }, rows),
   ];
   if (selPre) body.unshift(h("p.desk-past", icon("info"), `Before you joined: this order date came before you started on ${long(pre().joinedAt)}. Nothing is bought or sent for it, and nothing is owed.`));
   else if (dd < 0 && openCount) body.unshift(h("p.desk-past", icon("info"), `This date has passed with ${plural(openCount, "order")} still open. The plan: if an exchange was closed, place the order on its next open day; then log the fill or record a skip.`));
-  return card(".desk", { id: "desk", tabindex: "-1", "aria-labelledby": "desk-h" }, head,
+  // data-fk: a redraw (coin prices, CoinGecko's daily history) gives the focus back to the desk when it had it, as after
+  // "Open the order desk" (main.js renderView; review finding RR-01)
+  return card(".desk", { id: "desk", tabindex: "-1", "data-fk": "desk", "aria-labelledby": "desk-h" }, head,
     h("p.desk-help", "For each order: type the price your broker's app shows (coins update by themselves), place the order there, then log the fill here. “How to place” explains each step."),
     fieldLines.length ? h("div.desk-fields", fieldLines) : null,
     body,
@@ -733,23 +787,64 @@ function priceCell(o, i, pi) {
       h(`span.price-src${pi.kind === "last" ? ".is-stale" : ""}`, pi.price == null ? (prices.data.off ? "live prices are off" : prices.data.cryptoStatus === "error" ? "CoinGecko is not answering; trying again later" : "waiting for CoinGecko") : priceSource(pi)));
   }
   const id = "price-" + i.id;
+  // 2.2: a row whose order date has passed is about that order: its field holds the price paid for it (the growth
+  // tracker's, tracker.js recordedPaid), never the holding's price now, which a row of today or later takes. A logged
+  // fill is that price, changed with "Edit fill" (review finding M2). It is named by its date, not as "Price you paid",
+  // while nothing says the friend paid it: the order may still be open, or skipped (the tracker counts it all the same).
+  const past = o.date < today();
+  const paid = pastPaid(o, i);
+  if (paid && paid.label === "fill") {
+    return h("div.dr-price", h("span.cell-label.is-shown", "Price you paid"),
+      h("span.num.price.dr-price-val", fPrice(paid.price, i.quoteCurrency)), h("span.price-src", "your fill price"));
+  }
   const input = h("input.price-input", {
     id: "in-" + id, "data-fk": id, inputmode: "decimal", autocomplete: "off", spellcheck: "false", maxlength: 12,
-    value: pi.price != null ? String(pi.price) : "", placeholder: "US$",
+    value: past ? (paid ? String(paid.price) : "") : pi.price != null ? String(pi.price) : "", placeholder: "US$",
     "aria-describedby": "src-" + id,
-    on: { change: (e) => savePrice(i, e.target) },
+    // 2.2: a price typed again with the same figure still counts as typed for this order (no change event fires).
+    // data-edited also tells the router not to draw the page again while the field is being typed in (main.js).
+    on: {
+      input: (e) => { e.target.dataset.edited = "1"; },
+      change: (e) => { delete e.target.dataset.edited; savePrice(o, i, e.target); },
+      blur: (e) => { if (e.target.dataset.edited) { delete e.target.dataset.edited; savePrice(o, i, e.target); } },
+    },
   });
+  const src = past
+    ? (paid ? paidWords(o, i) : "Type it to count this order in Growth")
+    : pi.price == null ? "Type it to size the order" : priceSource(pi);
   return h("div.dr-price.is-input",
-    h("label.cell-label.is-shown", { for: "in-" + id }, `Price in your app`, h("span.visually-hidden", ` for ${nameText(i)}, in US dollars`)),
+    h("label.cell-label.is-shown", { for: "in-" + id }, past ? `Price on ${short(o.date)}` : "Price in your app", h("span.visually-hidden", ` for ${nameText(i)}, in US dollars`)),
     input,
-    h("span.price-src#src-" + id, pi.price == null ? "Type it to size the order" : priceSource(pi)));
+    h("span.price-src#src-" + id, src));
 }
 
-function savePrice(i, el) {
+/** The price paid a row whose order date has passed holds (a fill, or a price typed for it); null on any other row. */
+function pastPaid(o, i) {
+  return o.date < today() ? recordedPaid(S(), { id: o.id, dateId: o.dateId, date: o.date, instrument: i.id }) : null;
+}
+
+/** Where a past row's price paid comes from, in words: the price typed for this order, or one typed that day before
+ *  2.2 (kept then only as the holding's latest price, tracker.js recordedPaid). */
+function paidWords(o, i) {
+  const t = S().typed[typedKey(o.dateId, i.id)];
+  return t && t.price > 0 ? "the price you typed for this order" : "the price you typed that day";
+}
+
+/**
+ * A price typed on the desk (tracker.js deskPrice keeps it in the records).
+ * - On a row of today or later: the holding's latest price (it sizes its orders and values it), and on the order's
+ *   own date also the price typed for that order (store `typed`, 2.2: the growth tracker's price paid when no fill is
+ *   logged for it). Clearing the field clears both.
+ * - On a row whose order date has passed: that order's price paid, dated by its order date, and the holding's latest
+ *   price only while no newer one is kept, so an old price never becomes the price now (review finding M2). Clearing
+ *   the field clears that order's price (and a latest price typed that day, which would still count for it).
+ */
+function savePrice(o, i, el) {
   const raw = el.value.trim();
+  const order = { dateId: o.dateId, date: o.date };
   if (raw === "") {
     el.removeAttribute("aria-invalid");
-    commit((d) => { delete d.prices[i.id]; });
+    commit((d) => deskPrice(d, { order, instrument: i.id, price: null, today: today() }));
     return;
   }
   const v = parseNum(raw);
@@ -763,7 +858,10 @@ function savePrice(i, el) {
     return;
   }
   el.removeAttribute("aria-invalid");
-  commit((d) => { d.prices[i.id] = { price: v, at: new Date().toISOString(), src: "entry" }; });
+  const at = new Date().toISOString();
+  // the typed price's day is the app's day (?now= moves it, to look at a plan date; in use it is the same time)
+  const typedAt = new Date(now()).toISOString();
+  commit((d) => deskPrice(d, { order, instrument: i.id, price: v, today: today(), at, typedAt }));
 }
 
 /** Where a leftover or a skipped order's money goes: the next VWRA order still open, or (after the last
@@ -793,7 +891,7 @@ function coinShort(o, cr) {
 function preRow(o) {
   const i = instById(o.instrument);
   return h("li.desk-row.is-pre", { "data-row": o.id },
-    h("div.dr-time", h("span.num", timeLabel(o)), o.time !== "any" ? h("span.dr-tz", "Bangkok") : null),
+    h("div.dr-time", timeCell(o, "span", ".dr-any"), o.time !== "any" ? h("span.dr-tz", "Bangkok") : null),
     h("div.dr-order", h("p.dr-name", nameEl(i, { masked: isFieldInst(i) })), h("p.dr-what", h("span.acct-chip", o.account), " ", whatNamed(o))),
     h("div.dr-act", pill("Before you joined", "muted", "–")));
 }
@@ -814,7 +912,6 @@ function deskRow(o, ctx) {
   const atSt = o.time === "any" ? null : ui.marketStatus(venue, new Date(L.bkkToEpoch(o.date, o.time)));
   const hr = c.value != null ? L.headroomPct(p, c.value) : null;
   const ht = howTo(i);
-  const fresh = app.justFilled && app.justFilled.id === o.id && Date.now() - app.justFilled.t < 1600;
   const ct = nextCarryTarget(o);
   const where = leftoverWhere(o, ct);
   const mc = o.carryTarget && !isDone(o.id) ? ctx.carry.byOrder[o.id] : null;
@@ -857,6 +954,12 @@ function deskRow(o, ctx) {
   } else {
     sizeBits.push(h("span.size-qty.num", `≈ ${qtyWords(i, sz.qty)}`), h("span.size-cost.num", `for ${fUsd(usdNow, usdNow % 1 ? 2 : 0)}, fee included`));
   }
+  // 2.2: on a row whose order date has passed the field holds that order's price paid, so the size says the price it is
+  // worked out at, right under the figures it gives (the holding's latest price, which sizes every open order)
+  if (!i.coingeckoId && p != null && !isDone(o.id) && !zero && !takesLeftover(o, ctx.carry) && o.date < today()) {
+    const paid = pastPaid(o, i);
+    if (!paid || paid.price !== p) sizeBits.splice(2, 0, h("span.size-note", { "data-fk": "sized-at-" + o.id }, `at ${fPrice(p, i.quoteCurrency)}, ${priceSource(pi)}`));
+  }
   if (adj && !isDone(o.id) && !(coinNote && usdNow <= 0)) sizeBits.push(h("span.size-note", `${adj > 0 ? "+" : "−"}${fUsd(Math.abs(adj), 2)} by the rules for differences`));
   const skipFirst = zero || !!coinNote || takesLeftover(o, ctx.carry);
   const nothing = !!coinNote && usdNow <= 0;
@@ -898,7 +1001,7 @@ function deskRow(o, ctx) {
       atSt ? h("p.how-then", `${venue.label} at ${o.time} Bangkok time on ${short(o.date)}: ${atSt.open ? "inside" : "outside"} regular trading hours.`) : null));
 
   return h(`li.desk-row.is-${status}${o.thesisGate ? ".is-gated" : ""}${skipFirst ? ".is-zero" : ""}`, { "data-row": o.id },
-    h("div.dr-time", h("span.num", timeLabel(o)), o.time !== "any" ? h("span.dr-tz", "Bangkok") : null),
+    h("div.dr-time", timeCell(o, "span", ".dr-any"), o.time !== "any" ? h("span.dr-tz", "Bangkok") : null),
     h("div.dr-order",
       h("p.dr-name", nameEl(i, { masked: isFieldInst(i) })),
       h("p.dr-what", h("span.acct-chip", o.account), " ", whatOf(o, ctx.carry)),
@@ -911,7 +1014,7 @@ function deskRow(o, ctx) {
     h("div.dr-size", h("span.cell-label", "Size at this price"), sizeBits),
     h("div.dr-venue", h("span.cell-label", "Market"), h(`span.venue-inline${nowSt.open ? ".is-open" : ""}`, h("span.vdot", { "aria-hidden": "true" }), `${VENUE_SHORT[venue.id] || venue.label} ${nowSt.open ? "open" : "closed"}`), h("span.dr-hours", "now · regular hours")),
     h("div.dr-act", statusPill(status), actions),
-    status === "filled" ? h(`div.stamp${fresh ? ".stamp-in" : ""}`, { "aria-hidden": "true" }, "Filled") : null,
+    status === "filled" ? h("div.stamp", { "aria-hidden": "true" }, "Filled") : null,
     h("div.dr-how", how));
 }
 
@@ -935,21 +1038,6 @@ export async function undoOrder(o) {
   }
   commit((d) => { d.orders[o.id] = { status: "pending", qty: null, price: null, fees: null, costUsd: null, filledAt: null, note: "", redirect: null }; });
   toast("Back to to-do", "info");
-}
-
-function celebrate(oid) {
-  app.justFilled = { id: oid, t: Date.now() };
-  const row = document.querySelector(`[data-row="${CSS.escape(oid)}"]`);
-  if (!row || ui.reducedMotion()) return;
-  const r = row.getBoundingClientRect();
-  const host = h("div.spray", { "aria-hidden": "true", style: { left: Math.round(Math.min(r.right - 90, window.innerWidth - 40)) + "px", top: Math.round(r.top + Math.min(r.height / 2, 60)) + "px" } });
-  for (let k = 0; k < 18; k++) {
-    const a = (k / 18) * Math.PI * 2 + Math.random() * 0.35;
-    const dist = 26 + Math.random() * 54;
-    host.append(h("i", { style: { "--dx": (Math.cos(a) * dist).toFixed(1) + "px", "--dy": (Math.sin(a) * dist - 14).toFixed(1) + "px", "--d": Math.round(Math.random() * 140) + "ms", "--s": (0.5 + Math.random() * 0.9).toFixed(2) } }));
-  }
-  document.body.append(host);
-  setTimeout(() => host.remove(), 1200);
 }
 
 export function openFillDialog(o) {
@@ -1032,7 +1120,6 @@ export function openFillDialog(o) {
         const cur = d.prices[i.id];
         if (!i.coingeckoId && (!cur || !(Date.parse(cur.at) > Date.parse(at)))) d.prices[i.id] = { price, at, src: "fill" };
       });
-      if (first) celebrate(o.id);
       toast(`${first ? "Filled" : "Fill updated"}: ${nameText(i)} · ${fmtQty(i, qty)} @ ${fPrice(price, i.quoteCurrency)} · ${fUsd(cost, 2)}`, "success");
       return true;
     },

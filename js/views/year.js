@@ -6,14 +6,15 @@ import {
   app, h, S, L, today, ost, isDone, instById, schedule, funding, carry, autoDeskDate, fM, fB, fUsd, long, short, dayShort,
   inDays, plural, statusPill, pill, viewHead, card, progressNow, pre, isPreDate, skippedUsd, monthName, joinedBudgetUsd, dateNotesFor,
   monthOf, fixed, amountWords, mixIsOwn, tickerOf,
-} from "../core.js?v=2.1.0";
-import { openDesk, chapterPages } from "./today.js?v=2.1.0";
-import { waitingWhy } from "../split.js?v=2.1.0";
-import { fieldName } from "../fields-catalog.js?v=2.1.0";
-import { openMonthDialog, monthWordOf, recordWords, listAnd } from "./amounts.js?v=2.1.0";
-import { upcomingChecked } from "./fields.js?v=2.1.0";
-import * as LK from "../lock.js?v=2.1.0";
-import { nameEl, nameText, lockNow, lockMonthLine, lockShareWords } from "./naming.js?v=2.1.0";
+} from "../core.js?v=2.2.0";
+import { openDesk, chapterPages } from "./today.js?v=2.2.0";
+import { waitingWhy } from "../split.js?v=2.2.0";
+import { fieldName } from "../fields-catalog.js?v=2.2.0";
+import { openMonthDialog, monthWordOf, recordWords, listAnd } from "./amounts.js?v=2.2.0";
+import { upcomingChecked } from "./fields.js?v=2.2.0";
+import * as LK from "../lock.js?v=2.2.0";
+import { nameEl, nameText, lockNow, lockMonthLine, lockShareWords } from "./naming.js?v=2.2.0";
+import * as ALM from "./almanac.js?v=2.2.0";
 
 const TX_PILL = { todo: ["To send", "neutral", "□"], sent: ["Sent", "sky", "↗"], arrived: ["Arrived", "kelp", "✓"] };
 const ROLL_WORDS = { below_min: "Not bought at your amount", not_in_mix: "Not in your mix" };
@@ -66,7 +67,8 @@ export function renderYear() {
   // heading, chips or block of its own; each month card says where its 10% goes.
   const lock = lockNow(plan);
   const lockIntro = lock ? [" ", h("span", { "data-fk": "year-lock" }, `${lockShareWords(plan)} ${LK.LOCK_COPY.asWritten}`)] : null;
-  const out = [viewHead("year", plan.meta.subtitle, "My year",
+  // The almanac (addendum 2026-10-28 B.2): the frontispiece plate opens this page, above its heading (views/almanac.js)
+  const out = [ALM.frontispiece("year"), viewHead("year", plan.meta.subtitle, "My year",
     [`Twelve order dates, on the second Tuesday of each month. Each month's money is sent the week before and must arrive by the Friday before the order date.${joinNote}${mixNote} ${pr.done + pr.skipped} of ${pr.total} orders done so far.`, lockIntro])];
   // The year as twelve larger chapter pages (brief 4.8.5); each opens its order date on Today's desk.
   out.push(h("div.bk-section.ttm-chapters", chapterPages({ large: true })));
@@ -85,7 +87,9 @@ export function renderYear() {
     const tx = fund.transfers.filter((t) => t.forDate === d.id);
     const rolled = ((plan.scale && plan.scale.rolled) || []).filter((r) => r.dateId === d.id);
     const notes = dateNotesFor(d.id);
-    return h(`li.month-card${done ? ".is-done" : ""}${before ? ".is-pre" : ""}${isNext ? ".is-next" : ""}${overdue ? ".is-overdue" : ""}`, { "aria-labelledby": "ym-" + d.id },
+    // The almanac (addendum d.B.4): the month's tarot card, the card of its place in time (month 1 is I), beside its
+    // date heading only; the orders and amounts run under them (views/almanac.js dated)
+    return ALM.dated(h(`li.month-card${done ? ".is-done" : ""}${before ? ".is-pre" : ""}${isNext ? ".is-next" : ""}${overdue ? ".is-overdue" : ""}`, { "aria-labelledby": "ym-" + d.id },
       h("header.mc-head",
         h("p.eyebrow", `Month ${k + 1}${before ? " · before you joined" : isNext ? " · next" : done ? " · done" : overdue ? " · date passed" : ""}`),
         h("h2.mc-date#ym-" + d.id, long(d.effective)),
@@ -127,7 +131,7 @@ export function renderYear() {
       amountLine(d),
       h("div.mc-foot",
         h("span.mc-rel", before ? "Before you joined" : done ? "All done" : `${inDays(L.daysBetween(td, d.effective))}`),
-        h("button.btn.btn-small", { type: "button", "data-fk": "year-" + d.id, on: { click: () => openDesk(d.id) } }, "Open on the desk")));
+        h("button.btn.btn-small", { type: "button", "data-fk": "year-" + d.id, on: { click: () => openDesk(d.id) } }, "Open on the desk"))), k + 1);
   })));
 
   out.push(card(".year-total", { "aria-label": "The year in numbers" },

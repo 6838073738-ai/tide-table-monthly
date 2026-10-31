@@ -6,12 +6,12 @@
 // holds it at 10% of each month and where this month's 10% goes, with the "as written" line: no chips (the page
 // shows them already) and no heading of its own.
 
-import { app, h, schedule, autoDeskDate } from "../core.js?v=2.1.0";
-import * as FU from "../fieldsui.js?v=2.1.0";
-import * as book from "../book.js?v=2.1.0";
-import { fieldsDock } from "./fields.js?v=2.1.0";
-import { isLockedListing, lockNow, lockMonthLine, lockShareWords } from "./naming.js?v=2.1.0";
-import * as LK from "../lock.js?v=2.1.0";
+import { app, h, schedule, autoDeskDate } from "../core.js?v=2.2.0";
+import * as FU from "../fieldsui.js?v=2.2.0";
+import * as book from "../book.js?v=2.2.0";
+import { fieldsDock } from "./fields.js?v=2.2.0";
+import { isLockedListing, lockNow, lockMonthLine, lockShareWords } from "./naming.js?v=2.2.0";
+import * as LK from "../lock.js?v=2.2.0";
 
 /** The month the line speaks of: the order date the desk opens on (the next one with open orders), else the last. */
 function focusDate() {

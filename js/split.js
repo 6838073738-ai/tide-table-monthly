@@ -36,10 +36,10 @@
 import {
   scalePlan, scaleAmounts, renderTemplates, beforeJoin, planShares, ownOrderId, ownIdMonth, fmtMoney,
   PlanFitError, DEFAULT_MIN_ORDER_USD, MIX_TENTHS_MAX,
-} from "./scale.js?v=2.1.0";
+} from "./scale.js?v=2.2.0";
 import {
   readLock, lockState, ninetyYear, addLockOrders, rebuildTransfers, retotal, checkRollable, lockTemplates, LOCK_NAME,
-} from "./lock.js?v=2.1.0";
+} from "./lock.js?v=2.2.0";
 
 /** The 14 field ids in catalogue order (spec 6.1: the 11 big fields A to Z by plain name, then the
  *  close-ups). app/js/fields-catalog.js holds the catalogue itself; a test keeps the two the same. */

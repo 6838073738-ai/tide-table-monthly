@@ -6,14 +6,14 @@
 
 import {
   app, h, ui, toast, hooks, explain, monthOf, monthName, dateOfId, fM, fB, plural, onCleanup,
-} from "../core.js?v=2.1.0";
-import * as book from "../book.js?v=2.1.0";
-import * as FU from "../fieldsui.js?v=2.1.0";
-import { fieldName } from "../fields-catalog.js?v=2.1.0";
-import * as draft from "./draft.js?v=2.1.0";
-import { WORDS } from "./fields.js?v=2.1.0";
-import * as LK from "../lock.js?v=2.1.0";
-import { nameEl, nameText, lockNow, lockSubject, lockMonthWords, lockDateLine } from "./naming.js?v=2.1.0";
+} from "../core.js?v=2.2.0";
+import * as book from "../book.js?v=2.2.0";
+import * as FU from "../fieldsui.js?v=2.2.0";
+import { fieldName } from "../fields-catalog.js?v=2.2.0";
+import * as draft from "./draft.js?v=2.2.0";
+import { WORDS } from "./fields.js?v=2.2.0";
+import * as LK from "../lock.js?v=2.2.0";
+import { nameEl, nameText, lockNow, lockSubject, lockMonthWords, lockDateLine } from "./naming.js?v=2.2.0";
 
 const TEXT = Object.freeze({
   lede: ["Choose how much of each month goes to your fields. The rest goes to the all-world fund, VWRA.",

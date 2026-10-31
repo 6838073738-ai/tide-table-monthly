@@ -10,17 +10,17 @@
 import {
   app, h, S, schedule, autoDeskDate, monthOf, joinedPlan, ceilingOf, fmtCeil, fM, fNum, dayShort, monthName, viewHead,
   universeOn, savedFields, fieldsSpecNow, fieldMonthsOn, accountLabel, countWord, plural, instById,
-} from "../core.js?v=2.1.0";
-import * as book from "../book.js?v=2.1.0";
-import * as FU from "../fieldsui.js?v=2.1.0";
-import * as D from "../datafiles.js?v=2.1.0";
-import * as N from "../names.js?v=2.1.0";
-import * as LK from "../lock.js?v=2.1.0";
-import { fieldName } from "../fields-catalog.js?v=2.1.0";
-import { notBought, notBoughtMonth } from "./mix.js?v=2.1.0";
+} from "../core.js?v=2.2.0";
+import * as book from "../book.js?v=2.2.0";
+import * as FU from "../fieldsui.js?v=2.2.0";
+import * as D from "../datafiles.js?v=2.2.0";
+import * as N from "../names.js?v=2.2.0";
+import * as LK from "../lock.js?v=2.2.0";
+import { fieldName } from "../fields-catalog.js?v=2.2.0";
+import { notBought, notBoughtMonth } from "./mix.js?v=2.2.0";
 import {
   nameEl, nameText, lockNow, lockEntry, lockSubject, lockChips, lockDateLine, lockMonthWords, andList,
-} from "./naming.js?v=2.1.0";
+} from "./naming.js?v=2.2.0";
 
 /** The page's own words (new in 2.1; plain, describing, never judging). */
 export const COPY = Object.freeze({
@@ -286,8 +286,7 @@ function lockFigures(e) {
     host.append(book.note(FU.upcomingTimingWords(e)));
     const est = e.estimate && Array.isArray(e.estimate.sources) ? e.estimate.sources.filter((x) => x && x.url) : [];
     if (est.length) {
-      host.append(h("div.st-sources", h("p.eyebrow", FU.UPCOMING_COPY.timingSources),
-        book.linkList({ label: FU.UPCOMING_COPY.timingSources, items: est.map((x) => ({ text: x.label, meta: FU.dayWords(x.date), url: x.url })) })));
+      host.append(h("div.st-sources", book.fold({ summary: FU.UPCOMING_COPY.timingSources, children: book.linkList({ label: FU.UPCOMING_COPY.timingSources, items: est.map((x) => ({ text: x.label, meta: FU.dayWords(x.date), url: x.url })) }) })));
     }
   }
   const checked = FU.upcomingCheckedWords(e);

@@ -1,4 +1,5 @@
-// The Warm Storybook atoms, shared by both apps: pure DOM builders with the data passed in.
+// The almanac atoms (the alchemist's almanac look, docs/tt2/ADDENDUM-2026-10-27d.md), shared by both apps: pure DOM
+// builders with the data passed in.
 // The contract is docs/tt2/build/book-api.md. Every builder takes one props object (picture, vignette, lineIcon,
 // labelChip and note take their key first) and returns one Element whose root carries data-bk="<name>". Live atoms
 // hang a small controller on el.bk; a controller call never fires the atom's own callbacks.
@@ -6,7 +7,7 @@
 // animation frames, and the only timer is the split strip's settle debounce. Nothing here ranks, scores, sorts or
 // colours a number. Importing this file touches no document or window.
 
-import { h, clear } from "./ui.js?v=2.1.0";
+import { h, clear } from "./ui.js?v=2.2.0";
 
 // ------------------------------------------------------------------------------------------- fixed copy
 
@@ -20,7 +21,14 @@ const CHART_LABELS = {
   legendWorld: "The all-world fund alone", legendDip: "From the high to the deepest dip",
 };
 
-const SCENE = "on a green hill under a wide sky.";
+const EMBLEM_NAMES = {
+  cars: "the sign of Mars", financials: "the balance", energy: "the sign of fire", staples: "the sign of salt",
+  health: "the rod of Asclepius", realestate: "the sign of earth", industrials: "the sign of Saturn",
+  materials: "the sign of sulphur", communication: "the sign of air", utilities: "the sign of water",
+  discretionary: "the sign of Venus", technology: "the sign of Mercury", retail: "the crescent Moon",
+  telecom: "the sign of Uranus",
+};
+const SEAL_SCENE = (name) => `An engraved picture: ${name} in a ringed seal, on a starry plate above the hills.`;
 export const FIXED = deepFreeze({
   bothSides: "Facts from the past and today, from both sides. Not a forecast. Tide Table never says buy, sell or hold.",
   well: "What has been going well",
@@ -52,22 +60,16 @@ export const FIXED = deepFreeze({
   contents: "Contents",
   pages: "Pages",
   vignettes: {
-    today: "A painted picture: a little paper boat sails on the tide past a small house on stilts, a tree and an island with a palm.",
-    cars: "A painted picture: a small red car drives toward you on a country road between green hills.",
-    financials: `A painted picture: a piggy bank and a coin ${SCENE}`,
-    energy: `A painted picture: a flame ${SCENE}`,
-    staples: `A painted picture: a bowl of rice with chopsticks ${SCENE}`,
-    health: `A painted picture: a doctor's bag ${SCENE}`,
-    realestate: `A painted picture: a small house with a chimney ${SCENE}`,
-    industrials: `A painted picture: two gears ${SCENE}`,
-    materials: `A painted picture: two stones and a pickaxe ${SCENE}`,
-    communication: `A painted picture: two speech bubbles ${SCENE}`,
-    utilities: `A painted picture: a light bulb and a drop of water ${SCENE}`,
-    discretionary: `A painted picture: a kite with a long tail ${SCENE}`,
-    technology: `A painted picture: a computer screen ${SCENE}`,
-    retail: `A painted picture: a shop with a striped awning ${SCENE}`,
-    telecom: `A painted picture: a radio mast ${SCENE}`,
+    today: "An engraved picture: a little paper boat sails on the waves under a crescent moon and a few stars.",
+    ...Object.fromEntries(Object.entries(EMBLEM_NAMES).map(([id, name]) => [id, SEAL_SCENE(name)])),
   },
+  plates: {
+    hero: "The almanac's frontispiece.",
+    alembic: "The alchemist's bench: the tools of the work.",
+    hourglass: "The hourglass of the year.",
+    starchart: "A chart of the heavens.",
+  },
+  wheelRing: "AURUM NOSTRUM · ABUNDANTIA · 10¹² · SOLVE ET COAGULA",
 });
 
 export const PICTURES = Object.freeze(["financials", "energy", "staples", "health", "realestate", "industrials",
@@ -128,6 +130,8 @@ const ICONS = {
   calendar: ["r 5 7 22 20 3", "M5 13h22M11 4v6M21 4v6"],
   funding: ["M4 11h20M20 7l4 4-4 4M28 21H8M12 17l-4 4 4 4"],
   portfolio: ["c 16 16 12", "M16 4v12l8.5 8.5"],
+  // Growth: a tide staff standing in water, a level that reads a fall as plainly as a rise (no arrow, no chart)
+  growth: ["M16 4v24M16 6h5M16 10h3M16 14h5", "M3 20q3.25-3 6.5 0t6.5 0 6.5 0 6.5 0"],
   rules: ["r 7 6 18 22 2", "M12 3.5h8v5h-8zM11 15l2.5 2.5L18 13M11 23h10"],
   market: ["M8 19a5 5 0 0 1 .6-9.9A7 7 0 0 1 21.6 9.6 4.8 4.8 0 1 1 23 19z", "M3 25q3.25-3 6.5 0t6.5 0 6.5 0 6.5 0"],
   news: ["M5 7h18v18a3 3 0 0 0 3 3H8a3 3 0 0 1-3-3zM23 12h4v13a3 3 0 0 1-3 3", "M9 12h10M9 17h10M9 22h6"],
@@ -173,68 +177,76 @@ function doneMark() {
     h("path", { d: "M8.5 15.5l4.2 4.2 8.8-9", class: "bk-done-tick" }));
 }
 
-// Drawing data, from the picture-book mockups (inline pictures only; the files are pre-baked).
-const SPOT = {
-  cars: [["p|bk-f-rose|M16 80 C16 70 22 64 31 63 L41 49 C44 45 48 43 54 43 L72 43 C79 43 83 46 87 51 L95 62 C103 63 106 69 106 76 L106 80 Z","p|bk-f-white|M47 61 L53 50 C54 48.5 55.5 48 57 48 L62 48 L62 61 Z","p|bk-f-white|M67 48 L73 48 C76 48 78 49.5 80 52 L86 61 L67 61 Z","c|bk-f-glow|100 70 3.5"],
-    ["p|bk-ln|M16 80 C16 70 22 64 31 63 L41 49 C44 45 48 43 54 43 L72 43 C79 43 83 46 87 51 L95 62 C103 63 106 69 106 76 L106 80 Z","p|bk-ln bk-ln-thin|M47 61 L53 50 C54 48.5 55.5 48 57 48 L62 48 L62 61 Z M67 48 L73 48 C76 48 78 49.5 80 52 L86 61 L67 61 Z M64 64 L64 76","c|bk-f-ink|38 81 11","c|bk-f-ink|84 81 11","c|bk-f-white|38 81 4.2","c|bk-f-white|84 81 4.2","p|bk-ln bk-ln-thin bk-ln-soft|M8 95 Q60 91 112 95"]],
-  retail: [["p|bk-f-sand|M24 54 L96 54 L96 98 L24 98 Z","p|bk-f-rose|M18 40 L32 40 L32 54 Q25 62 18 54 Z","p|bk-f-white|M32 40 L46 40 L46 54 Q39 62 32 54 Z","p|bk-f-rose|M46 40 L60 40 L60 54 Q53 62 46 54 Z","p|bk-f-white|M60 40 L74 40 L74 54 Q67 62 60 54 Z","p|bk-f-rose|M74 40 L88 40 L88 54 Q81 62 74 54 Z","p|bk-f-white|M88 40 L102 40 L102 54 Q95 62 88 54 Z","p|bk-f-sky|M64 70 L84 70 L84 98 L64 98 Z","p|bk-f-sky|M32 66 L56 66 L56 84 L32 84 Z","c|bk-f-marigold|39 79 4","c|bk-f-rose|48 79 4","p|bk-f-white|M42 24 L78 24 L78 36 L42 36 Z"],
-    ["p|bk-ln|M24 56 L24 98 L96 98 L96 56","p|bk-ln|M18 40 L102 40 L102 54 Q95 62 88 54 Q81 62 74 54 Q67 62 60 54 Q53 62 46 54 Q39 62 32 54 Q25 62 18 54","p|bk-ln bk-ln-thin|M64 98 L64 70 L84 70 L84 98 M32 66 L56 66 L56 84 L32 84 Z M42 24 L78 24 L78 36 L42 36 Z M60 36 L60 40","c|bk-f-ink|79 85 1.8","p|bk-ln bk-ln-thin bk-ln-soft|M10 99 L110 99"]],
-  telecom: [["p|bk-f-white|M60 28 L78 98 L42 98 Z|.7","c|bk-f-glow|60 24 6"],
-    ["p|bk-ln|M60 28 L44 98 M60 28 L76 98 M38 98 L82 98","p|bk-ln bk-ln-thin|M53 56 L67 56 M50 70 L70 70 M47 84 L73 84 M53 56 L70 70 M67 56 L50 70 M50 70 L73 84 M70 70 L47 84","c|bk-ln|60 24 6","p|bk-ln bk-ln-thin|M45 16 Q39 24 45 32 M75 16 Q81 24 75 32 M36 10 Q26 24 36 38 M84 10 Q94 24 84 38"]],
-  technology: [["p|bk-f-white|M20 28 Q20 24 24 24 L96 24 Q100 24 100 28 L100 78 Q100 82 96 82 L24 82 Q20 82 20 78 Z","p|bk-f-sky|M27 31 L93 31 L93 75 L27 75 Z","p|bk-f-sand|M52 82 L48 96 L72 96 L68 82 Z","p|bk-f-white|M34 38 L60 38 L60 58 L34 58 Z|.85","p|bk-f-marigold|M66 40 L86 40 L86 50 L66 50 Z"],
-    ["p|bk-ln|M20 28 Q20 24 24 24 L96 24 Q100 24 100 28 L100 78 Q100 82 96 82 L24 82 Q20 82 20 78 Z M52 82 L48 96 L72 96 L68 82 M40 97 L80 97","p|bk-ln bk-ln-thin|M34 38 L60 38 L60 58 L34 58 Z M38 45 L54 45 M38 51 L50 51 M66 40 L86 40 L86 50 L66 50 Z","p|bk-f-white bk-ln bk-ln-thin|M68 56 L68 72 L72 68 L76 75 L79 73 L75 66 L81 66 Z"]],
-  health: [["p|bk-f-white|M22 46 Q22 40 28 40 L92 40 Q98 40 98 46 L98 90 Q98 96 92 96 L28 96 Q22 96 22 90 Z","p|bk-f-rose|M53 52 L67 52 L67 61 L76 61 L76 75 L67 75 L67 84 L53 84 L53 75 L44 75 L44 61 L53 61 Z"],
-    ["p|bk-ln|M22 46 Q22 40 28 40 L92 40 Q98 40 98 46 L98 90 Q98 96 92 96 L28 96 Q22 96 22 90 Z M46 40 L46 33 Q46 27 52 27 L68 27 Q74 27 74 33 L74 40","p|bk-ln bk-ln-thin|M53 52 L67 52 L67 61 L76 61 L76 75 L67 75 L67 84 L53 84 L53 75 L44 75 L44 61 L53 61 Z"]],
-  financials: [["e|bk-f-rose|58 70 34 25","p|bk-f-rose|M44 50 L40 36 L55 46 Z","e|bk-f-rose|93 70 7 9","p|bk-f-rose|M36 86 L36 99 L46 99 L46 90 Z M68 90 L68 99 L78 99 L78 86 Z","c|bk-f-glow|60 27 10"],
-    ["e|bk-ln|58 70 34 25","p|bk-ln bk-ln-thin|M44 50 L40 36 L55 46","e|bk-ln bk-ln-thin|93 70 7 9","p|bk-ln bk-ln-thin|M36 88 L36 99 L46 99 L46 92 M68 92 L68 99 L78 99 L78 88","p|bk-ln|M51 47 L67 47","c|bk-ln bk-ln-thin|60 27 10","p|bk-ln bk-ln-thin|M60 22 L60 32","c|bk-f-ink|79 62 2.6","c|bk-f-ink|91 68 1.4","c|bk-f-ink|95 68 1.4","p|bk-ln bk-ln-thin|M24 67 Q14 63 18 56 Q23 51 26 58"]],
-  discretionary: [["p|bk-f-marigold|M64 14 L62 46 L30 44 Z","p|bk-f-rose|M64 14 L94 46 L62 46 Z","p|bk-f-marigold|M62 46 L94 46 L60 84 Z","p|bk-f-rose|M30 44 L62 46 L60 84 Z","p|bk-f-lilac|M52 92 L58 96 L52 100 Z M64 96 L58 100 L64 104 Z"],
-    ["p|bk-ln|M64 14 L94 46 L60 84 L30 44 Z","p|bk-ln bk-ln-thin|M64 14 L60 84 M30 44 L94 46","p|bk-ln bk-ln-thin|M60 84 Q50 92 58 98 Q66 104 56 112"]],
-  staples: [["p|bk-f-white|M24 62 Q26 42 46 40 Q60 30 76 40 Q96 42 96 62 Z","p|bk-f-sky|M18 62 L102 62 Q100 92 74 98 L46 98 Q20 92 18 62 Z","p|bk-f-sky|M48 98 L72 98 L70 105 L50 105 Z"],
-    ["p|bk-ln|M18 62 L102 62 Q100 92 74 98 L46 98 Q20 92 18 62 Z M48 98 L50 105 L70 105 L72 98","p|bk-ln bk-ln-thin|M24 62 Q26 42 46 40 Q60 30 76 40 Q96 42 96 62","p|bk-ln bk-ln-thin bk-ln-soft|M40 50 L43 48 M54 44 L57 45 M66 49 L69 47 M78 52 L81 53 M48 56 L51 55 M62 56 L65 57","p|bk-ln bk-ln-thin|M30 78 Q36 73 42 78 Q48 83 54 78 Q60 73 66 78 Q72 83 78 78 Q84 73 90 78","p|bk-ln|M72 32 L108 14 M76 36 L110 22","p|bk-ln bk-ln-thin bk-ln-soft|M42 30 Q38 24 42 18 Q46 12 42 6 M56 28 Q52 22 56 16"]],
-  industrials: [["p|bk-f-sand|M78.0 64.0 L85.8 67.6 L84.5 73.7 L75.9 73.8 L72.4 79.4 L76.1 87.2 L71.1 91.0 L64.5 85.6 L58.2 87.6 L56.0 95.9 L49.8 95.7 L48.2 87.3 L42.0 84.8 L35.0 89.8 L30.4 85.6 L34.6 78.1 L31.4 72.2 L22.9 71.5 L22.0 65.3 L30.1 62.3 L31.4 55.8 L25.3 49.8 L28.6 44.5 L36.7 47.3 L42.0 43.2 L41.2 34.7 L47.1 32.7 L51.5 40.1 L58.2 40.4 L63.0 33.3 L68.8 35.6 L67.4 44.1 L72.4 48.6 L80.7 46.3 L83.6 51.8 L77.1 57.4Z","c|bk-f-paper|54 64 9","p|bk-f-marigold|M103.0 30.0 L107.8 32.3 L106.8 36.2 L101.4 35.6 L98.9 38.6 L100.1 43.8 L96.4 45.4 L93.5 40.9 L89.6 40.7 L86.2 44.9 L82.7 43.0 L84.4 38.0 L82.1 34.8 L76.7 34.8 L76.0 30.9 L81.0 29.0 L82.1 25.2 L78.7 21.1 L81.4 18.0 L85.9 20.8 L89.6 19.3 L90.7 14.1 L94.7 14.2 L95.4 19.5 L98.9 21.4 L103.7 19.0 L106.0 22.3 L102.3 26.1Z"],
-    ["p|bk-ln|M78.0 64.0 L85.8 67.6 L84.5 73.7 L75.9 73.8 L72.4 79.4 L76.1 87.2 L71.1 91.0 L64.5 85.6 L58.2 87.6 L56.0 95.9 L49.8 95.7 L48.2 87.3 L42.0 84.8 L35.0 89.8 L30.4 85.6 L34.6 78.1 L31.4 72.2 L22.9 71.5 L22.0 65.3 L30.1 62.3 L31.4 55.8 L25.3 49.8 L28.6 44.5 L36.7 47.3 L42.0 43.2 L41.2 34.7 L47.1 32.7 L51.5 40.1 L58.2 40.4 L63.0 33.3 L68.8 35.6 L67.4 44.1 L72.4 48.6 L80.7 46.3 L83.6 51.8 L77.1 57.4Z","c|bk-ln|54 64 9","p|bk-ln bk-ln-thin|M103.0 30.0 L107.8 32.3 L106.8 36.2 L101.4 35.6 L98.9 38.6 L100.1 43.8 L96.4 45.4 L93.5 40.9 L89.6 40.7 L86.2 44.9 L82.7 43.0 L84.4 38.0 L82.1 34.8 L76.7 34.8 L76.0 30.9 L81.0 29.0 L82.1 25.2 L78.7 21.1 L81.4 18.0 L85.9 20.8 L89.6 19.3 L90.7 14.1 L94.7 14.2 L95.4 19.5 L98.9 21.4 L103.7 19.0 L106.0 22.3 L102.3 26.1Z","c|bk-ln bk-ln-thin|92 30 4"]],
-  energy: [["p|bk-f-marigold|M60 104 C36 104 26 86 30 70 C34 56 46 50 46 34 C58 42 62 50 62 58 C66 52 66 44 64 36 C80 46 92 62 90 78 C88 94 78 104 60 104 Z","p|bk-f-rose|M60 100 C48 100 44 90 46 82 C48 74 56 70 56 62 C64 68 70 76 70 84 C70 94 66 100 60 100 Z"],
-    ["p|bk-ln|M60 104 C36 104 26 86 30 70 C34 56 46 50 46 34 C58 42 62 50 62 58 C66 52 66 44 64 36 C80 46 92 62 90 78 C88 94 78 104 60 104 Z","p|bk-ln bk-ln-thin|M60 100 C48 100 44 90 46 82 C48 74 56 70 56 62 C64 68 70 76 70 84 C70 94 66 100 60 100 Z"]],
-  materials: [["p|bk-f-sky|M20 98 Q18 78 34 72 Q50 64 60 78 Q70 94 60 100 Z","p|bk-f-lilac|M54 100 Q54 84 68 80 Q86 76 94 88 Q98 100 88 101 Z","c|bk-f-glow|44 84 3"],
-    ["p|bk-ln|M20 98 Q18 78 34 72 Q50 64 60 78 Q70 94 60 100 Z M54 100 Q54 84 68 80 Q86 76 94 88 Q98 100 88 101","p|bk-ln bk-ln-heavy|M50 30 L86 78","p|bk-f-white bk-ln bk-ln-thin|M24 40 Q44 12 76 20 Q60 22 52 28 Q40 30 24 40 Z","p|bk-ln bk-ln-thin bk-ln-soft|M10 102 L110 102"]],
-  utilities: [["p|bk-f-glow|M60 14 C40 14 30 30 32 46 C34 58 44 64 46 74 L74 74 C76 64 86 58 88 46 C90 30 80 14 60 14 Z","p|bk-f-sand|M46 74 L74 74 L72 90 L48 90 Z","p|bk-f-sky|M96 62 C96 62 108 78 108 86 C108 93 102 98 96 98 C90 98 84 93 84 86 C84 78 96 62 96 62 Z"],
-    ["p|bk-ln|M60 14 C40 14 30 30 32 46 C34 58 44 64 46 74 L74 74 C76 64 86 58 88 46 C90 30 80 14 60 14 Z M46 74 L48 90 L72 90 L74 74","p|bk-ln bk-ln-thin|M48 80 L72 80 M49 85 L71 85 M54 90 Q60 98 66 90 M54 56 L60 46 L66 56","p|bk-ln bk-ln-thin|M96 62 C96 62 108 78 108 86 C108 93 102 98 96 98 C90 98 84 93 84 86 C84 78 96 62 96 62 Z"]],
-  realestate: [["p|bk-f-white|M30 60 L90 60 L90 98 L30 98 Z","p|bk-f-rose|M22 62 L60 30 L98 62 Z","p|bk-f-rose|M76 40 L76 24 L86 24 L86 48 Z","p|bk-f-sky|M52 74 L66 74 L66 98 L52 98 Z","p|bk-f-glow|M35 70 L46 70 L46 81 L35 81 Z","p|bk-f-glow|M73 70 L84 70 L84 81 L73 81 Z"],
-    ["p|bk-ln|M30 62 L30 98 L90 98 L90 62 M22 62 L60 30 L98 62 M76 41 L76 24 L86 24 L86 49","p|bk-ln bk-ln-thin|M52 98 L52 74 L66 74 L66 98 M35 70 L46 70 L46 81 L35 81 Z M40.5 70 L40.5 81 M35 75.5 L46 75.5 M73 70 L84 70 L84 81 L73 81 Z M78.5 70 L78.5 81 M73 75.5 L84 75.5","p|bk-ln bk-ln-thin bk-ln-soft|M81 18 Q76 13 81 8 Q86 3 82 0","p|bk-ln bk-ln-thin bk-ln-soft|M12 99 L108 99"]],
-  communication: [["p|bk-f-white|M18 30 Q18 22 26 22 L74 22 Q82 22 82 30 L82 56 Q82 64 74 64 L44 64 L31 76 L33 64 L26 64 Q18 64 18 56 Z","p|bk-f-sky|M46 78 Q46 70 54 70 L94 70 Q102 70 102 78 L102 94 Q102 102 94 102 L90 102 L92 112 L80 102 L54 102 Q46 102 46 94 Z"],
-    ["p|bk-ln|M18 30 Q18 22 26 22 L74 22 Q82 22 82 30 L82 56 Q82 64 74 64 L44 64 L31 76 L33 64 L26 64 Q18 64 18 56 Z","c|bk-f-ink|36 43 4","c|bk-f-ink|50 43 4","c|bk-f-ink|64 43 4","p|bk-ln|M46 78 Q46 70 54 70 L94 70 Q102 70 102 78 L102 94 Q102 102 94 102 L90 102 L92 112 L80 102 L54 102 Q46 102 46 94 Z","p|bk-ln bk-ln-thin|M56 82 L92 82 M56 90 L82 90"]],
-  globe: [["c|bk-f-sky|60 60 40","p|bk-f-meadow|M36 34 Q50 24 60 32 Q60 44 48 46 Q40 54 32 46 Q28 40 36 34 Z","p|bk-f-meadow|M64 50 Q78 46 86 56 Q90 70 80 82 Q70 86 66 76 Q60 64 64 50 Z","p|bk-f-meadow|M34 66 Q46 62 48 74 Q46 88 38 90 Q28 82 34 66 Z"],
-    ["c|bk-ln|60 60 40","e|bk-ln bk-ln-thin bk-ln-soft|60 60 18 40","e|bk-ln bk-ln-thin bk-ln-soft|60 60 40 13","p|bk-ln bk-ln-thin|M36 34 Q50 24 60 32 Q60 44 48 46 Q40 54 32 46 Q28 40 36 34 Z M64 50 Q78 46 86 56 Q90 70 80 82 Q70 86 66 76 Q60 64 64 50 Z M34 66 Q46 62 48 74 Q46 88 38 90 Q28 82 34 66 Z"]],
+// The emblems, engraved: one alchemical, planetary or elemental sign for each field, and the globe, the coin and the
+// vessel for the holdings outside every field. The same drawings as the files app/img/<id>-day.svg and -night.svg,
+// painted by classes here for the inline vignettes. Each op is [kind, role, geometry]: kind "p" a path, "c" a circle
+// "cx cy r", "e" an ellipse "cx cy rx ry"; role "g" a glyph line, "f" a closed shape on the sheet, "t" a thin line.
+// Every field has the same seal, ink and weights: no emblem reads as richer than another, and none uses gold leaf,
+// a crown, a coin or Jupiter (addendum d.B.6).
+const GLYPHS = {
+  financials: [["p", "g", "M60 32 V88 M46 90 H74 M30 41 H90"], ["c", "f", "60 31 3.5"], ["p", "t", "M30 41 L20 66 M30 41 L40 66 M90 41 L80 66 M90 41 L100 66"], ["p", "f", "M17 66 H43 Q42 77 30 77 Q18 77 17 66 Z"], ["p", "f", "M77 66 H103 Q102 77 90 77 Q78 77 77 66 Z"]],
+  energy: [["p", "f", "M60 27 L91 84 H29 Z"]],
+  staples: [["c", "f", "60 60 26"], ["p", "g", "M34 60 H86"]],
+  health: [["p", "g", "M60 24 V96"], ["p", "g", "M46 92 C76 88 76 76 60 72 C44 68 44 57 60 53 C76 49 75 40 63 37"], ["e", "f", "60 35 5 4"]],
+  realestate: [["p", "f", "M29 35 H91 L60 91 Z"], ["p", "g", "M39 54 H81"]],
+  industrials: [["p", "g", "M52 26 V72 M38 38 H66"], ["p", "g", "M52 60 C58 50 76 50 77 62 C78 74 63 78 70 93"]],
+  materials: [["p", "f", "M60 25 L85 63 H35 Z"], ["p", "g", "M60 63 V97 M45 81 H75"]],
+  communication: [["p", "f", "M60 27 L91 84 H29 Z"], ["p", "g", "M40 65 H80"]],
+  utilities: [["p", "f", "M29 35 H91 L60 91 Z"]],
+  discretionary: [["c", "f", "60 45 19"], ["p", "g", "M60 64 V97 M46 82 H74"]],
+  technology: [["p", "g", "M44 22 A16 14 0 0 0 76 22"], ["c", "f", "60 50 15"], ["p", "g", "M60 65 V97 M47 83 H73"]],
+  cars: [["c", "f", "51 69 20"], ["p", "g", "M65 55 L88 32 M73 31 H89 V47"]],
+  retail: [["p", "f", "M50 27 A33 33 0 1 1 50 93 A42 42 0 0 0 50 27 Z"]],
+  telecom: [["p", "g", "M41 27 C31 41 31 58 41 72 M79 27 C89 41 89 58 79 72 M35 49.5 H85 M60 31 V80"], ["c", "f", "60 88 7.5"]],
+  globe: [["c", "f", "60 60 30"], ["e", "t", "60 60 13 30"], ["p", "t", "M60 30 V90 M30 60 H90 M34 45 H86 M34 75 H86"], ["c", "g", "60 60 30"]],
+  coin: [["c", "f", "60 60 29"], ["c", "t", "60 60 22"], ["p", "g", "M53 53 H67 V67 H53 Z"]],
+  basket: [["p", "f", "M53 27 V47 A24 24 0 1 0 67 47 V27"], ["p", "g", "M48 27 H72"], ["p", "t", "M40 72 H80"]],
 };
-const BOAT_FILL = ["p|bk-f-white|M8 24 L52 24 L44 38 L16 38 Z","p|bk-f-white|M30 4 L42 24 L18 24 Z"];
-const BOAT_INK = ["p|bk-ln|M8 24 L52 24 L44 38 L16 38 Z","p|bk-ln|M30 4 L42 24 L18 24 Z","p|bk-ln bk-ln-thin bk-ln-soft|M30 8 L30 24"];
-const VIG_TODAY = { box: "0 0 760 410", kids: [["g","","wc","",["p|bk-f-sky|M740.9 166.7 C737.9 189.4 717.0 220.7 699.8 240.5 C682.6 260.3 664.7 272.9 637.6 285.5 C610.5 298.2 580.4 307.5 537.2 316.4 C494.0 325.3 421.9 338.3 378.4 338.7 C334.8 339.1 314.9 326.0 275.8 319.0 C236.7 312.0 176.8 312.8 143.9 296.7 C110.9 280.5 99.8 246.0 77.9 222.3 C56.0 198.6 15.4 174.8 12.2 154.5 C9.1 134.2 37.4 115.2 59.0 100.5 C80.6 85.7 108.0 78.5 141.6 66.0 C175.3 53.5 223.1 34.9 261.0 25.6 C298.9 16.2 330.1 12.2 369.2 10.1 C408.2 8.0 449.5 7.1 495.3 13.0 C541.2 18.9 607.2 30.1 644.3 45.3 C681.5 60.6 701.9 84.2 718.0 104.5 C734.1 124.7 744.0 144.1 740.9 166.7Z|.42","p|bk-f-sky|M692.0 142.0 C690.5 154.7 689.2 172.1 676.2 184.5 C663.2 196.9 636.6 209.6 614.2 216.4 C591.8 223.2 575.8 221.4 542.0 225.1 C508.3 228.8 447.4 239.5 411.8 238.6 C376.1 237.7 353.0 225.1 328.3 219.5 C303.5 213.8 285.2 211.9 263.0 204.8 C240.8 197.6 206.3 186.3 194.9 176.6 C183.6 167.0 198.0 159.2 194.9 147.0 C191.8 134.9 163.4 115.8 176.3 103.6 C189.2 91.5 243.2 82.0 272.4 74.1 C301.6 66.2 324.5 60.0 351.5 56.2 C378.5 52.4 407.5 53.6 434.3 51.2 C461.2 48.8 487.0 38.2 512.7 41.9 C538.4 45.5 560.0 62.1 588.8 73.1 C617.6 84.1 668.2 96.5 685.4 108.0 C702.6 119.5 693.6 129.2 692.0 142.0Z|.38",["g","bk-day-only","","",["c|bk-f-glow|612 92 44|.95","p|bk-f-white|M110 112 Q118 90 144 98 Q160 78 186 92 Q212 88 214 110 Q216 124 196 124 L124 124 Q104 124 110 112 Z|.95","p|bk-f-white|M352 76 Q360 60 378 66 Q390 52 408 62 Q426 60 426 76 Q426 86 412 86 L364 86 Q348 86 352 76 Z|.85"]],["g","bk-night-only","","",["p|bk-f-glow|M630 60 A40 40 0 1 0 654 124 A32 32 0 1 1 630 60 Z"]],"p|bk-f-meadow|M40 236 Q120 196 210 214 Q300 176 400 206 Q500 170 600 200 Q680 186 738 214 Q748 252 730 268 L46 272 Q28 256 40 236 Z|.55","p|bk-f-sea|M750.9 342.3 C750.1 350.4 707.5 356.9 686.9 363.3 C666.3 369.7 656.5 376.0 627.3 380.7 C598.2 385.4 549.9 388.7 512.2 391.5 C474.5 394.3 442.5 397.2 401.2 397.6 C360.0 398.0 304.0 396.8 264.5 394.1 C225.0 391.5 198.8 387.5 164.2 381.6 C129.7 375.8 80.5 366.2 57.0 358.9 C33.6 351.6 21.5 344.8 23.8 337.9 C26.0 330.9 50.2 324.7 70.4 317.3 C90.5 309.8 113.6 299.3 144.5 293.3 C175.5 287.3 211.8 283.7 256.0 281.3 C300.3 278.9 364.4 278.5 410.1 279.0 C455.8 279.5 491.9 281.6 530.2 284.3 C568.4 287.0 612.9 290.4 639.8 295.4 C666.7 300.4 673.2 306.6 691.8 314.4 C710.3 322.2 751.7 334.1 750.9 342.3Z|.72","p|bk-f-meadow|M18 296 Q70 240 150 246 Q232 250 286 286 Q300 304 290 318 L30 324 Q8 314 18 296 Z|.95","p|bk-f-sand|M560 300 Q600 270 652 276 Q700 282 716 302 Q700 314 640 314 Q580 314 560 300 Z|.9","p|bk-f-white|M92 222 L156 222 L156 252 L92 252 Z","p|bk-f-rose|M80 226 Q104 210 124 186 Q144 210 168 226 Z","p|bk-f-glow|M102 230 L116 230 L116 244 L102 244 Z","p|bk-f-sky|M132 232 L146 232 L146 252 L132 252 Z","c|bk-f-meadow|232 236 24","c|bk-f-meadow|220 226 15","p|bk-f-meadow bk-fronds|M676 236 Q656 226 640 236 M676 236 Q662 216 648 214 M676 236 Q684 214 700 210 M676 236 Q698 228 712 240 M676 236 Q690 244 694 258"]],["g","","ink","",["p|bk-ln bk-ln-thin bk-ln-soft|M40 236 Q120 196 210 214 Q300 176 400 206 Q500 170 600 200 Q680 186 738 214","p|bk-ln bk-ln-thin|M18 296 Q70 240 150 246 Q232 250 286 286","p|bk-ln bk-ln-thin|M92 224 L92 252 L156 252 L156 224 M80 226 Q104 210 124 186 Q144 210 168 226 Z M76 222 Q74 216 80 214 M172 222 Q174 216 168 214 M124 186 L124 178","p|bk-ln bk-ln-thin|M102 230 L116 230 L116 244 L102 244 Z M132 252 L132 232 L146 232 L146 252 M98 252 L98 272 M150 252 L150 272 M124 252 L124 270","p|bk-ln bk-ln-thin|M232 290 L232 258 M232 270 L244 258","p|bk-ln bk-ln-thin|M664 300 Q670 268 676 236","p|bk-ln bk-ln-thin|M676 236 Q656 226 640 236 M676 236 Q662 216 648 214 M676 236 Q684 214 700 210 M676 236 Q698 228 712 240 M676 236 Q690 244 694 258","p|bk-ln bk-ln-thin|M560 300 Q600 270 652 276 Q700 282 716 302","p|bk-ln bk-ln-thin bk-ln-soft|M520 66 q6 -6 12 0 q6 -6 12 0 M552 98 q5 -5 10 0 q5 -5 10 0 M486 112 q4 -4 8 0 q4 -4 8 0",["g","bk-night-only","","",["p|bk-ln bk-ln-thin|M470 50 l0 10 M465 55 l10 0 M300 120 l0 8 M296 124 l8 0 M700 170 l0 8 M696 174 l8 0 M230 52 l0 8 M226 56 l8 0 M540 150 l0 6 M537 153 l6 0"]]]],["g","bk-drift","","",["p|bk-ln bk-ln-white bk-wave|M70 334 Q100 326 130 334 T190 334 M318 356 Q348 348 378 356 T438 356 M520 332 Q550 324 580 332 T640 332 M180 376 Q210 368 240 376 T300 376 M560 372 Q590 364 620 372 T680 372"]],["g","","","translate(372 254) scale(1.95)",[["g","bk-bob","","",["e|bk-f-sea|30 41 22 3.2|.6",["g","","wc","",["p|bk-f-white|M8 24 L52 24 L44 38 L16 38 Z","p|bk-f-white|M30 4 L42 24 L18 24 Z"]],["g","","ink","",["p|bk-ln|M8 24 L52 24 L44 38 L16 38 Z","p|bk-ln|M30 4 L42 24 L18 24 Z","p|bk-ln bk-ln-thin bk-ln-soft|M30 8 L30 24"]]]]]]] };
-const VIG_CARS = { box: "0 0 760 380", kids: [["g","","wc","",["p|bk-f-sky|M710.2 139.7 C714.7 157.5 727.8 186.3 714.2 202.7 C700.5 219.1 658.2 224.9 628.4 238.1 C598.5 251.2 572.6 272.1 535.3 281.5 C497.9 290.9 451.6 296.2 404.2 294.5 C356.7 292.8 294.6 279.2 250.5 271.4 C206.4 263.6 174.1 258.1 139.7 247.7 C105.4 237.3 57.1 224.1 44.1 209.2 C31.2 194.4 56.2 178.6 61.9 158.5 C67.7 138.3 66.6 105.0 78.6 88.3 C90.6 71.6 107.7 70.6 133.9 58.1 C160.1 45.7 196.7 20.8 235.8 13.7 C275.0 6.6 321.0 14.5 368.6 15.7 C416.2 16.8 473.4 14.1 521.6 20.5 C569.9 26.9 630.5 41.6 658.2 54.1 C685.8 66.6 678.7 81.5 687.4 95.8 C696.1 110.1 705.8 121.9 710.2 139.7Z|.45",["g","bk-day-only","","",["c|bk-f-glow|618 86 38|.95","p|bk-f-white|M120 100 Q128 80 152 88 Q166 70 190 82 Q214 78 216 98 Q218 112 198 112 L132 112 Q114 112 120 100 Z|.9"]],["g","bk-night-only","","",["p|bk-f-glow|M636 56 A36 36 0 1 0 660 114 A28 28 0 1 1 636 56 Z"]],"p|bk-f-meadow|M40 222 Q130 168 240 196 Q330 150 430 190 Q520 158 620 186 Q700 172 736 204 Q744 236 728 250 L52 254 Q30 240 40 222 Z|.5","p|bk-f-meadow|M22 262 Q90 214 200 228 Q290 238 352 286 Q330 340 250 362 Q120 372 48 350 Q4 314 22 262 Z|.95","p|bk-f-meadow|M440 280 Q520 226 620 224 Q712 226 742 262 Q756 316 716 350 Q620 370 520 360 Q446 330 440 280 Z|.85","p|bk-f-sand|M236 370 C300 318 384 262 420 214 L446 214 C474 262 524 318 592 370 Q414 382 236 370 Z","c|bk-f-meadow|126 246 28","c|bk-f-meadow|115 235 17|.8","c|bk-f-meadow|668 232 22","c|bk-f-meadow|659 223 13|.8","c|bk-f-meadow|560 214 14","c|bk-f-meadow|554 208 8|.8","p|bk-f-white|M626 270 L688 270 L688 294 L626 294 Z"]],["g","","ink","",["p|bk-ln bk-ln-thin bk-ln-soft|M40 222 Q130 168 240 196 Q330 150 430 190 Q520 158 620 186 Q700 172 736 204","p|bk-ln bk-ln-thin|M22 262 Q90 214 200 228 Q290 238 352 286 M440 280 Q520 226 620 224 Q712 226 742 262","p|bk-ln bk-ln-thin|M236 372 C300 318 384 262 420 214 M446 214 C474 262 524 318 592 372","p|bk-ln bk-road|M414 372 C420 320 428 262 433 216","p|bk-ln|M126 300 L126 270 M668 278 L668 252 M560 236 L560 226 M640 330 L640 270","c|bk-ln bk-ln-thin|126 246 28","c|bk-ln bk-ln-thin|668 232 22","c|bk-ln bk-ln-thin bk-ln-soft|560 214 14","p|bk-ln bk-ln-thin|M626 270 L688 270 L688 294 L626 294 Z M636 282 L676 282","p|bk-ln bk-ln-thin bk-ln-soft|M520 60 q6 -6 12 0 q6 -6 12 0 M548 92 q5 -5 10 0 q5 -5 10 0",["g","bk-night-only","","",["p|bk-ln bk-ln-thin|M470 50 l0 10 M465 55 l10 0 M300 110 l0 8 M296 114 l8 0 M230 52 l0 8 M226 56 l8 0"]]]],["g","","","translate(330 186) scale(1.72)",[["g","","","",["e|bk-f-ink|60 93 46 4|.18",["g","","wc","",["p|bk-f-rose|M16 80 C16 70 22 64 31 63 L41 49 C44 45 48 43 54 43 L72 43 C79 43 83 46 87 51 L95 62 C103 63 106 69 106 76 L106 80 Z","p|bk-f-white|M47 61 L53 50 C54 48.5 55.5 48 57 48 L62 48 L62 61 Z","p|bk-f-white|M67 48 L73 48 C76 48 78 49.5 80 52 L86 61 L67 61 Z","c|bk-f-glow|100 70 3.5"]],["g","","ink","",["p|bk-ln|M16 80 C16 70 22 64 31 63 L41 49 C44 45 48 43 54 43 L72 43 C79 43 83 46 87 51 L95 62 C103 63 106 69 106 76 L106 80 Z","p|bk-ln bk-ln-thin|M47 61 L53 50 C54 48.5 55.5 48 57 48 L62 48 L62 61 Z M67 48 L73 48 C76 48 78 49.5 80 52 L86 61 L67 61 Z M64 64 L64 76","c|bk-f-ink|38 81 11","c|bk-f-ink|84 81 11","c|bk-f-white|38 81 4.2","c|bk-f-white|84 81 4.2"]]]]]]] };
-const VIG_LAND = { box: "0 0 760 380", wash: ["p|bk-f-sky|M710.2 139.7 C714.7 157.5 727.8 186.3 714.2 202.7 C700.5 219.1 658.2 224.9 628.4 238.1 C598.5 251.2 572.6 272.1 535.3 281.5 C497.9 290.9 451.6 296.2 404.2 294.5 C356.7 292.8 294.6 279.2 250.5 271.4 C206.4 263.6 174.1 258.1 139.7 247.7 C105.4 237.3 57.1 224.1 44.1 209.2 C31.2 194.4 56.2 178.6 61.9 158.5 C67.7 138.3 66.6 105.0 78.6 88.3 C90.6 71.6 107.7 70.6 133.9 58.1 C160.1 45.7 196.7 20.8 235.8 13.7 C275.0 6.6 321.0 14.5 368.6 15.7 C416.2 16.8 473.4 14.1 521.6 20.5 C569.9 26.9 630.5 41.6 658.2 54.1 C685.8 66.6 678.7 81.5 687.4 95.8 C696.1 110.1 705.8 121.9 710.2 139.7Z|.45",["g","bk-day-only","","",["c|bk-f-glow|618 86 38|.95","p|bk-f-white|M120 100 Q128 80 152 88 Q166 70 190 82 Q214 78 216 98 Q218 112 198 112 L132 112 Q114 112 120 100 Z|.9"]],["g","bk-night-only","","",["p|bk-f-glow|M636 56 A36 36 0 1 0 660 114 A28 28 0 1 1 636 56 Z"]],"p|bk-f-meadow|M40 222 Q130 168 240 196 Q330 150 430 190 Q520 158 620 186 Q700 172 736 204 Q744 236 728 250 L52 254 Q30 240 40 222 Z|.5","p|bk-f-meadow|M22 262 Q90 214 200 228 Q290 238 352 286 Q330 340 250 362 Q120 372 48 350 Q4 314 22 262 Z|.95","p|bk-f-meadow|M440 280 Q520 226 620 224 Q712 226 742 262 Q756 316 716 350 Q620 370 520 360 Q446 330 440 280 Z|.85","c|bk-f-meadow|126 246 28","c|bk-f-meadow|115 235 17|.8","c|bk-f-meadow|668 232 22","c|bk-f-meadow|659 223 13|.8"],
-  ink: ["p|bk-ln bk-ln-thin bk-ln-soft|M40 222 Q130 168 240 196 Q330 150 430 190 Q520 158 620 186 Q700 172 736 204","p|bk-ln bk-ln-thin|M22 262 Q90 214 200 228 Q290 238 352 286 M440 280 Q520 226 620 224 Q712 226 742 262","c|bk-ln bk-ln-thin|126 246 28","c|bk-ln bk-ln-thin|668 232 22","p|bk-ln bk-ln-thin bk-ln-soft|M520 60 q6 -6 12 0 q6 -6 12 0 M548 92 q5 -5 10 0 q5 -5 10 0",["g","bk-night-only","","",["p|bk-ln bk-ln-thin|M470 50 l0 10 M465 55 l10 0 M300 110 l0 8 M296 114 l8 0 M230 52 l0 8 M226 56 l8 0"]]] };
 
-// ------------------------------------------------------------------------------------------- painting inline pictures
+// ------------------------------------------------------------------------------------------- drawing helpers
 
-function paintLeaf(spec) {
-  const [kind, cls, geo, op] = spec.split("|");
-  let el;
-  if (kind === "p") el = h("path", { class: cls || null, d: geo });
-  else {
-    const n = geo.split(" ");
-    el = kind === "c" ? h("circle", { class: cls || null, cx: n[0], cy: n[1], r: n[2] })
-      : h("ellipse", { svg: true, class: cls || null, cx: n[0], cy: n[1], rx: n[2], ry: n[3] });
-  }
-  if (op) el.setAttribute("opacity", op);
-  return el;
+const svgEl = (tag, attrs, ...kids) => h(tag, { svg: true, ...attrs }, ...kids);
+const f1 = (n) => (Math.round(n * 10) / 10).toFixed(1);
+function shapeEl(kind, geo, cls, extra = {}) {
+  const n = String(geo).split(" ");
+  if (kind === "c") return svgEl("circle", { class: cls, cx: n[0], cy: n[1], r: n[2], ...extra });
+  if (kind === "e") return svgEl("ellipse", { class: cls, cx: n[0], cy: n[1], rx: n[2], ry: n[3], ...extra });
+  return svgEl("path", { class: cls, d: geo, ...extra });
 }
-function paint(node) {
-  if (typeof node === "string") return paintLeaf(node);
-  const [, cls, filter, transform, kids] = node;
-  const g = h("g", { class: cls || null, filter: filter ? `url(#${filter})` : null, transform: transform || null });
-  for (const k of kids) g.appendChild(paint(k));
+/** Rows of engraved hatching inside a circle, as one path. */
+function hatchInCircle(cx, cy, r, step) {
+  let d = "";
+  for (let y = cy - r + step / 2; y < cy + r; y += step) {
+    const half = Math.sqrt(Math.max(r * r - (y - cy) ** 2, 0));
+    if (half > 2) d += `M${f1(cx - half)} ${f1(y)}H${f1(cx + half)}`;
+  }
+  return d;
+}
+/** Tick marks round a ring, every third a little longer. */
+function ringTicks(cx, cy, r1, r2, n) {
+  let d = "";
+  for (let k = 0; k < n; k++) {
+    const a = (2 * Math.PI * k) / n;
+    const ra = r1 - (k % 3 === 0 ? 1.2 : 0);
+    d += `M${f1(cx + ra * Math.cos(a))} ${f1(cy + ra * Math.sin(a))}L${f1(cx + r2 * Math.cos(a))} ${f1(cy + r2 * Math.sin(a))}`;
+  }
+  return d;
+}
+/** One emblem in its seal (120 x 120), painted by classes so the night-sky pages repaint it. */
+function sealDrawing(id) {
+  const g = svgEl("g", { class: "bk-seal" },
+    shapeEl("c", "60 60 55", "bk-f-raised"),
+    svgEl("path", { class: "bk-ln bk-ln-hair bk-ln-lapis bk-ln-soft", d: hatchInCircle(60, 60, 49, 4) }),
+    shapeEl("c", "60 60 55", "bk-ln bk-ln-thin"),
+    shapeEl("c", "60 60 50", "bk-ln bk-ln-hair"),
+    svgEl("path", { class: "bk-ln bk-ln-hair", d: ringTicks(60, 60, 51.5, 54.2, 48) }));
+  const ops = GLYPHS[id] || [];
+  for (const [kind, , geo] of ops) g.append(shapeEl(kind, geo, "bk-ln bk-ln-halo"));
+  for (const [kind, role, geo] of ops) {
+    g.append(shapeEl(kind, geo, role === "f" ? "bk-f-raised bk-ln bk-ln-heavy" : role === "g" ? "bk-ln bk-ln-heavy" : "bk-ln"));
+  }
   return g;
 }
-const layer = (filter, kids, extra = {}) => paint(["g", extra.cls || "", filter, extra.t || "", kids]);
 
 // ------------------------------------------------------------------------------------------- picture files
 
@@ -268,7 +280,8 @@ export function picture(id, { size = 56, lazy = true } = {}) {
   return el;
 }
 
-/** The paper boat (decorative), bobbing unless bob is false. */
+/** The paper boat (decorative). It stands still: since 2.2 no bob is drawn (book.css), because every boat stands
+ * beside a figure or a control, inside the calm zone (style brief F2); bob keeps only the old wrapper (span.bk-bob). */
 export function boat({ bob = true, size = 46 } = {}) {
   const w = Number(size) > 0 ? Number(size) : 46;
   const hgt = (w * 46) / 60;
@@ -278,9 +291,10 @@ export function boat({ bob = true, size = 46 } = {}) {
   return el;
 }
 
-// ------------------------------------------------------------------------------------------- watercolour filters and vignettes
+// ------------------------------------------------------------------------------------------- the old watercolour filters, and the vignettes
 
-/** The two live filters (#wc watercolour, #ink wobbly outlines), as the mockups define them. */
+/** The two live filters (#wc watercolour, #ink wobbly outlines), kept for hosts that still draw with them; the
+ * almanac's own engravings use neither. */
 export function filterDefs() {
   const f = (tag, attrs, ...kids) => h(tag, { svg: true, ...attrs }, ...kids);
   return h("svg", { class: "bk-defs", "aria-hidden": "true", focusable: "false", width: "0", height: "0" },
@@ -312,27 +326,79 @@ export function mountDefs(doc = document) {
 const VIGNETTE_IDS = ["today", "cars", "financials", "energy", "staples", "health", "realestate", "industrials",
   "materials", "communication", "utilities", "discretionary", "technology", "retail", "telecom"];
 
-function vignetteSvg(id) {
-  const svg = (box) => h("svg", { viewBox: box, "aria-hidden": "true", focusable: "false", preserveAspectRatio: "xMidYMid meet" });
-  if (id === "today" || id === "cars") {
-    const v = id === "today" ? VIG_TODAY : VIG_CARS;
-    const s = svg(v.box);
-    for (const k of v.kids) s.appendChild(paint(k));
-    return s;
+const SPARKS = [[96, 64], [212, 40], [318, 96], [452, 50], [566, 88], [664, 44], [702, 146], [140, 152], [612, 172], [40, 108]];
+/** A small engraved star: a cross of hairlines with shorter diagonals. */
+const sparkPath = (pts, r = 6) => pts.map(([x, y]) =>
+  `M${x} ${y - r}V${y + r}M${x - r} ${y}H${x + r}M${x - r * 0.4} ${y - r * 0.4}L${x + r * 0.4} ${y + r * 0.4}M${x - r * 0.4} ${y + r * 0.4}L${x + r * 0.4} ${y - r * 0.4}`).join("");
+function rows(x1, x2, y1, y2, step) {
+  let d = "";
+  for (let y = y1; y <= y2; y += step) d += `M${x1} ${y}H${x2}`;
+  return d;
+}
+/** The plate every vignette is engraved on: a sky panel with hatching and a few stars, framed by a double rule. */
+function plateBack(svg, ground) {
+  svg.append(
+    svgEl("rect", { class: "bk-f-sky", x: "6", y: "6", width: "748", height: "368", rx: "4", opacity: ".55" }),
+    svgEl("path", { class: "bk-ln bk-ln-hair bk-ln-lapis bk-ln-faint", d: rows(18, 742, 20, 360, 8) }),
+    svgEl("path", { class: "bk-ln bk-ln-thin bk-ln-gold", d: sparkPath(SPARKS) }));
+  if (ground) svg.append(...ground());
+}
+function plateFrame(svg) {
+  svg.append(
+    svgEl("rect", { class: "bk-ln bk-ln-thin", x: "6", y: "6", width: "748", height: "368", rx: "4" }),
+    svgEl("rect", { class: "bk-ln bk-ln-hair", x: "14", y: "14", width: "732", height: "352", rx: "2" }));
+  for (const [x, y] of [[14, 14], [746, 14], [14, 366], [746, 366]]) {
+    svg.append(svgEl("circle", { class: "bk-f-raised", cx: x, cy: y, r: "4.5" }),
+      svgEl("circle", { class: "bk-ln bk-ln-hair", cx: x, cy: y, r: "4.5" }));
   }
-  const s = svg(VIG_LAND.box);
-  s.appendChild(layer("wc", VIG_LAND.wash));
-  s.appendChild(layer("ink", VIG_LAND.ink));
-  const spot = SPOT[id];
-  s.appendChild(paint(["g", "", "", "translate(272 128) scale(1.8)", [
-    "e|bk-f-ink|60 104 44 4.5|.16",
-    ["g", "", "wc", "", spot[0]],
-    ["g", "", "ink", "", spot[1]],
-  ]]));
-  return s;
+}
+const HILLS = "M6 300 Q120 266 236 286 T470 278 T754 292 V374 H6 Z";
+function hills() {
+  let marks = "";
+  for (let y = 312; y <= 366; y += 11) for (let x = 24 + ((y / 11) % 2) * 11; x < 740; x += 22) marks += `M${x} ${y}l9 -4`;
+  return [svgEl("path", { class: "bk-f-sand", d: HILLS }),
+    svgEl("path", { class: "bk-ln bk-ln-hair bk-ln-soft", d: marks }),
+    svgEl("path", { class: "bk-ln bk-ln-thin", d: "M6 300 Q120 266 236 286 T470 278 T754 292" })];
+}
+function boatDrawing(cls = "") {
+  return svgEl("g", { class: cls || null },
+    svgEl("path", { class: "bk-f-white", d: "M7 25 H53 L45 39 H15 Z M30 4 L43 25 H17 Z" }),
+    svgEl("path", { class: "bk-ln bk-ln-hair bk-ln-lapis", d: "M14 30 H46 M17 34 H43 M30 9 V25" }),
+    svgEl("path", { class: "bk-ln bk-ln-thin", d: "M7 25 H53 L45 39 H15 Z M30 4 L43 25 H17 Z" }));
 }
 
-/** The opening picture of a chapter or a field page: inline, painted by classes, with one sentence. */
+function vignetteSvg(id) {
+  const svg = svgEl("svg", { viewBox: "0 0 760 380", "aria-hidden": "true", focusable: "false", preserveAspectRatio: "xMidYMid meet" });
+  if (id === "today") {
+    plateBack(svg, () => [
+      svgEl("path", { class: "bk-f-glow", d: "M652 54 A32 32 0 1 0 652 114 A40 40 0 0 1 652 54 Z" }),
+      svgEl("path", { class: "bk-ln bk-ln-thin", d: "M652 54 A32 32 0 1 0 652 114 A40 40 0 0 1 652 54 Z" }),
+      svgEl("path", { class: "bk-f-sand", d: "M6 264 Q70 236 142 252 Q196 228 262 256 V266 H6 Z" }),
+      svgEl("path", { class: "bk-ln bk-ln-thin", d: "M6 264 Q70 236 142 252 Q196 228 262 256" }),
+      svgEl("path", { class: "bk-f-sea", d: "M6 262 H754 V374 H6 Z", opacity: ".45" }),
+      svgEl("path", { class: "bk-ln bk-ln-hair bk-ln-lapis bk-ln-faint", d: rows(10, 750, 268, 368, 6) }),
+      svgEl("path", { class: "bk-ln bk-ln-thin", d: "M6 262 H754" }),
+    ]);
+    let waves = "";
+    for (const [x0, y] of [[30, 296], [250, 318], [470, 296], [120, 344], [560, 340], [360, 364]]) {
+      waves += `M${x0} ${y} q15 -8 30 0 t30 0 t30 0 t30 0`;
+    }
+    svg.append(svgEl("g", { class: "bk-drift" }, svgEl("path", { class: "bk-ln bk-ln-thin bk-wave", d: waves })));
+    svg.append(svgEl("g", { transform: "translate(312 170) scale(2.3)" },
+      svgEl("g", { class: "bk-bob" }, svgEl("ellipse", { class: "bk-f-ink", cx: "30", cy: "41", rx: "22", ry: "2.6", opacity: ".16" }), boatDrawing())));
+    plateFrame(svg);
+    return svg;
+  }
+  plateBack(svg, hills);
+  svg.append(svgEl("ellipse", { class: "bk-f-ink", cx: "380", cy: "292", rx: "104", ry: "8", opacity: ".14" }));
+  const seal = sealDrawing(id);
+  seal.setAttribute("transform", "translate(284 82) scale(1.6)");
+  svg.append(seal);
+  plateFrame(svg);
+  return svg;
+}
+
+/** The opening picture of a chapter or a field page: an engraved plate, inline, painted by classes, with one sentence. */
 export function vignette(id, { label } = {}) {
   let key = id;
   if (!VIGNETTE_IDS.includes(key)) { warn(`vig:${id}`, `no vignette called ${JSON.stringify(id)}; drawing "today"`); key = "today"; }
@@ -340,6 +406,351 @@ export function vignette(id, { label } = {}) {
     "data-live-filter": "", "data-vignette": key });
   el.appendChild(vignetteSvg(key));
   return el;
+}
+
+// ------------------------------------------------------------------------------------------- the almanac (2.3)
+// Ornaments, plates, the tarot card of a dated step, the wheel of the heavens and the colophon. All decoration:
+// aria-hidden (a card's date excepted), faint, still where motion is stopped. None of them takes a holding, an
+// amount or a name: a card follows only a step's place in time, and the hosts keep the colophon and the wheel away
+// from every figure, holding, order, price, ceiling, button and form field (addendum d.C).
+
+/** The zodiac, Aries to Pisces, and the seven classical planets, each with U+FE0E (text, never an emoji). */
+export const ZODIAC = Object.freeze(["♈", "♉", "♊", "♋", "♌", "♍", "♎", "♏", "♐", "♑", "♒", "♓"].map((g) => g + "︎"));
+const PLANETS = ["☉", "☽", "☿", "♀", "♂", "♃", "♄"].map((g) => g + "︎");
+
+/** The Major Arcana I to XXI with each card's traditional planet, sign or element. Card X is drawn as "The Wheel" with
+ * a plain star: its planet, Jupiter, is one of the colophon's signs, which never sit beside a dated step. */
+export const ARCANA = Object.freeze([
+  ["I", "The Magician", "☿"], ["II", "The High Priestess", "☽"], ["III", "The Empress", "♀"], ["IV", "The Emperor", "♈"],
+  ["V", "The Hierophant", "♉"], ["VI", "The Lovers", "♊"], ["VII", "The Chariot", "♋"], ["VIII", "Strength", "♌"],
+  ["IX", "The Hermit", "♍"], ["X", "The Wheel", "✦"], ["XI", "Justice", "♎"], ["XII", "The Hanged Man", "\u{1F704}"],
+  ["XIII", "Death", "♏"], ["XIV", "Temperance", "♐"], ["XV", "The Devil", "♑"], ["XVI", "The Tower", "♂"],
+  ["XVII", "The Star", "♒"], ["XVIII", "The Moon", "♓"], ["XIX", "The Sun", "☉"], ["XX", "Judgement", "\u{1F702}"],
+  ["XXI", "The World", "♄"],
+].map(([numeral, name, glyph], i) => Object.freeze({ n: i + 1, numeral, name, glyph: glyph + "︎" })));
+
+/** The arcanum of a step's place in time (1 = the first step): I to XXI, then round again. Null for anything else. */
+export function arcanaFor(position) {
+  const p = Number(position);
+  if (!Number.isInteger(p) || p < 1) return null;
+  return ARCANA[(p - 1) % ARCANA.length];
+}
+
+/** The engraved art (WebP, no metadata) in app/img/art/: width and height as drawn. */
+export const ART = Object.freeze({
+  hero: Object.freeze([1344, 768]), alembic: Object.freeze([900, 616]), hourglass: Object.freeze([720, 720]),
+  starchart: Object.freeze([900, 616]), ace: Object.freeze([300, 394]),
+  "card-1": Object.freeze([300, 394]), "card-2": Object.freeze([300, 394]), "card-3": Object.freeze([300, 394]),
+  "card-4": Object.freeze([300, 394]), "card-5": Object.freeze([300, 394]), "card-6": Object.freeze([300, 394]),
+  "card-7": Object.freeze([300, 378]), "card-8": Object.freeze([300, 394]), "card-9": Object.freeze([300, 394]),
+  "card-10": Object.freeze([300, 394]), "card-11": Object.freeze([300, 394]), "card-12": Object.freeze([300, 394]),
+});
+/** The arcana with an engraved face: I to XII, so a plan's twelve order dates all carry art. */
+const ART_CARDS = 12;
+function artUrl(name) {
+  const here = import.meta.url;
+  let search = "";
+  try { search = new URL(here).search; } catch { /* keep no version */ }
+  return new URL(`../img/art/${name}.webp${search}`, here).href;
+}
+function artImg(name, cls, lazy) {
+  const [w, hh] = ART[name];
+  const img = h(`img${cls ? "." + cls : ""}`, { src: artUrl(name), alt: "", width: String(w), height: String(hh), decoding: "async",
+    loading: lazy ? "lazy" : null });
+  img.addEventListener("error", () => { img.hidden = true; });
+  return img;
+}
+
+/** Air, fire and earth: the three elements a heading's glyph steps through before it settles on its sign. */
+const STEP_GLYPHS = Object.freeze(["\u{1F701}", "\u{1F702}", "\u{1F703}"].map((g) => g + "︎"));
+
+/** A view's one zodiac glyph before its heading, from the view's fixed order (1 = the first view). Never from
+ * anything the view shows. step: the view's first opening in a session (the host knows it): an aria-hidden strip of
+ * air, fire and earth steps over the sign and leaves it (book.css, --d-glyph); the sign is the glyph's own text (in
+ * span.bk-glyph-sign when it steps), so with motion stopped it shows at once. */
+export function headGlyph(order, { step = false } = {}) {
+  const n = Number(order);
+  const el = h("span.bk-head-glyph.sym", { "aria-hidden": "true", "data-bk": "head-glyph" });
+  if (!Number.isInteger(n) || n < 1) { warn(`glyph:${order}`, `headGlyph needs a view's place, 1 or more (got ${JSON.stringify(order)})`); return el; }
+  const sign = ZODIAC[(n - 1) % 12];
+  if (!step) { el.textContent = sign; return el; }
+  el.classList.add("is-step");
+  el.append(h("span.bk-glyph-sign", sign),
+    h("span.bk-glyph-steps", h("span.bk-glyph-strip", STEP_GLYPHS.map((g) => h("span.bk-glyph", g)))));
+  return el;
+}
+
+/** A Roman numeral, I to MMMCMXCIX (null outside 1 to 3999). */
+function roman(n) {
+  if (!Number.isInteger(n) || n < 1 || n > 3999) return null;
+  const parts = [[1000, "M"], [900, "CM"], [500, "D"], [400, "CD"], [100, "C"], [90, "XC"], [50, "L"], [40, "XL"],
+    [10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"]];
+  let out = "";
+  for (const [v, s] of parts) while (n >= v) { out += s; n -= v; }
+  return out;
+}
+
+/** The Folio kicker over a view's heading: "Folio I" to "Folio XV", by the view's fixed place in the contents (the
+ * same order as its glyph), never by anything the view shows. Decoration: aria-hidden, a Cinzel label in gold. */
+export function folio(order) {
+  const n = Number(order);
+  const el = h("span.bk-folio", { "aria-hidden": "true", "data-bk": "folio" });
+  const r = roman(n);
+  if (!r) { warn(`folio:${order}`, `folio needs a view's place, 1 or more (got ${JSON.stringify(order)})`); return el; }
+  el.textContent = `Folio ${r}`;
+  return el;
+}
+
+/** An engraved double rule with a small gilt star at its centre (plain: the rule alone). Decorative. */
+export function starStop({ plain = false } = {}) {
+  return h(plain ? "div.bk-rule" : "div.bk-star-stop", { "aria-hidden": "true", "data-bk": "star-stop" });
+}
+
+const PLATE_SIZES = ["hero", "wide", "round", "small"];
+/** An engraved plate in a gold frame. No caption: decorative (aria-hidden, alt=""). With a caption: the caption is
+ * read, and alt is the short alt given (or none). Lazy unless lazy is false (the first screen's plate). */
+export function plate(props = {}) {
+  const { art, caption, alt = "", size, lazy = true, id } = props;
+  const decorative = !hasContent(caption);
+  const fig = h(`figure.bk-plate${PLATE_SIZES.includes(size) ? ".is-" + size : ""}`, { "data-bk": "plate", "data-art": String(art),
+    id: id || null, "aria-hidden": decorative ? "true" : null });
+  if (!Object.hasOwn(ART, String(art))) { warn(`art:${art}`, `no plate called ${JSON.stringify(art)}`); return fig; }
+  const img = artImg(String(art), "", lazy !== false);
+  if (!decorative && alt) img.setAttribute("alt", String(alt));
+  fig.append(h("div.bk-plate-frame", img));
+  if (!decorative) fig.append(put(h("figcaption.bk-plate-caption"), caption));
+  return fig;
+}
+
+/** The face of a card, engraved: numeral and glyph at the top, the name at the foot (on art, in dark bands). */
+function cardFace(a, useArt) {
+  const svg = svgEl("svg", { viewBox: "0 0 70 100", preserveAspectRatio: "none", focusable: "false" });
+  const name = a ? a.name.toUpperCase() : "";
+  const fit = name.length > 13 ? { textLength: "62", lengthAdjust: "spacingAndGlyphs" } : {};
+  if (useArt) {
+    svg.append(svgEl("rect", { class: "bk-card-band", x: "0", y: "0", width: "70", height: "16" }),
+      svgEl("rect", { class: "bk-card-band", x: "0", y: "83", width: "70", height: "17" }),
+      svgEl("text", { x: "35", y: "11.2", "text-anchor": "middle" },
+        svgEl("tspan", { class: "bk-card-num", "font-size": "8" }, a.numeral + " "),
+        svgEl("tspan", { class: "bk-card-glyph", "font-size": "8" }, a.glyph)),
+      svgEl("text", { class: "bk-card-name", x: "35", y: "93.6", "text-anchor": "middle", "font-size": "5.6", ...fit }, name),
+      svgEl("rect", { class: "bk-card-frame", x: "2.5", y: "2.5", width: "65", height: "95", rx: "2" }));
+    return svg;
+  }
+  svg.append(svgEl("rect", { class: "bk-card-frame", x: "2.5", y: "2.5", width: "65", height: "95", rx: "2" }),
+    svgEl("rect", { class: "bk-card-frame", x: "5", y: "5", width: "60", height: "90", rx: "1.5" }));
+  if (a) {
+    svg.append(svgEl("text", { class: "bk-card-num", x: "35", y: "17", "text-anchor": "middle", "font-size": "9" }, a.numeral),
+      svgEl("text", { class: "bk-card-glyph", x: "35", y: "52", "text-anchor": "middle", "dominant-baseline": "central", "font-size": "24" }, a.glyph),
+      svgEl("text", { class: "bk-card-name", x: "35", y: "87", "text-anchor": "middle", "font-size": "5.6", ...fit }, name));
+  }
+  return svg;
+}
+
+/** A dated step's tarot card (addendum d.B.4): the Major Arcana card of the step's place in time (position 1 = I), its
+ * planet or sign, and the date. Cards I to XII carry the engraved art unless art is false. The face is decorative;
+ * date (short words, shown) and full (the date in full words, read) are the host's. */
+export function tarotCard(props = {}) {
+  const { position, date, full, art = true, small = false, id } = props;
+  const a = arcanaFor(position);
+  if (!a) warn(`card:${position}`, `tarotCard needs a step's place in time, 1 or more (got ${JSON.stringify(position)})`);
+  const useArt = !!(a && art !== false && a.n <= ART_CARDS);
+  const face = h("span.bk-card-face", { "aria-hidden": "true" });
+  if (useArt) face.append(artImg(`card-${a.n}`, "", true));
+  face.append(cardFace(a, useArt));
+  const el = h(`div.bk-card${useArt ? ".is-art" : ""}${small ? ".is-small" : ""}`, { "data-bk": "tarot-card",
+    "data-arcana": a ? a.numeral : null, id: id || null }, face);
+  if (hasContent(date)) el.append(put(h("span.bk-card-date", { "aria-hidden": hasContent(full) ? "true" : null }), date));
+  if (hasContent(full)) el.append(hidden(String(full)));
+  return el;
+}
+
+/** The wheel of the heavens (addendum d.B.5): one SVG with the twelve signs, the seven classical planets, the
+ * philosopher's stone at its centre and the engraved ring. The ring turns once in four minutes, only without reduced
+ * motion and while nothing stops motion (spin false: it never turns). Decorative. */
+export function wheel({ spin = true, id } = {}) {
+  const base = newId(id);
+  const pt = (r, deg) => { const a = ((deg - 90) * Math.PI) / 180; return [200 + r * Math.cos(a), 200 + r * Math.sin(a)]; };
+  const svg = svgEl("svg", { class: "bk-wheel", viewBox: "0 0 400 400", "aria-hidden": "true", focusable: "false", "data-bk": "wheel" });
+  const ring = sub(base, "ring");
+  svg.append(svgEl("defs", {}, svgEl("path", { id: ring, d: "M200,200 m0,-178 a178,178 0 1,1 0,356 a178,178 0 1,1 0,-356" })));
+  const turn = svgEl("g", { class: spin === false ? "bk-wheel-ring" : "bk-wheel-ring bk-wheel-spin" },
+    svgEl("circle", { class: "bk-w-line", cx: "200", cy: "200", r: "192" }),
+    svgEl("circle", { class: "bk-w-thin", cx: "200", cy: "200", r: "188" }),
+    svgEl("circle", { class: "bk-w-line", cx: "200", cy: "200", r: "166" }),
+    svgEl("text", { class: "bk-w-ins" },
+      svgEl("textPath", { href: `#${ring}`, textLength: "1110", lengthAdjust: "spacing" }, `${FIXED.wheelRing} · ${FIXED.wheelRing} ·`)));
+  let spokes = "";
+  for (let k = 0; k < 12; k++) {
+    const [x1, y1] = pt(116, k * 30), [x2, y2] = pt(166, k * 30);
+    spokes += `M${f1(x1)} ${f1(y1)}L${f1(x2)} ${f1(y2)}`;
+    const [x, y] = pt(141, k * 30 + 15);
+    turn.append(svgEl("text", { class: "bk-w-sign", x: f1(x), y: f1(y) }, ZODIAC[k]));
+  }
+  for (let k = 0; k < 72; k++) {
+    const [x1, y1] = pt(k % 6 ? 160 : 156, k * 5), [x2, y2] = pt(166, k * 5);
+    spokes += `M${f1(x1)} ${f1(y1)}L${f1(x2)} ${f1(y2)}`;
+  }
+  turn.append(svgEl("path", { class: "bk-w-thin", d: spokes }));
+  svg.append(turn,
+    svgEl("circle", { class: "bk-w-line", cx: "200", cy: "200", r: "116" }),
+    svgEl("circle", { class: "bk-w-thin", cx: "200", cy: "200", r: "66" }));
+  PLANETS.forEach((g, k) => {
+    const [x, y] = pt(91, (k * 360) / 7);
+    svg.append(svgEl("text", { class: "bk-w-planet", x: f1(x), y: f1(y) }, g));
+  });
+  svg.append(...stoneShapes(58, 58));
+  return svg;
+}
+
+/** The philosopher's stone at the wheel's centre: a circle, a square, a triangle and a circle within, rx by ry (an
+ * upright stone is drawn a little taller than wide). */
+function stoneShapes(rx, ry) {
+  const kx = rx / 58, ky = ry / 58;
+  const s = 58 / Math.SQRT2;
+  const leg = Math.hypot(s, 2 * s);
+  const inr = (2 * s * 2 * s / 2) / ((2 * s + 2 * leg) / 2);
+  const X = (u) => f1(200 + u * kx), Y = (v) => f1(200 + v * ky);
+  const round = (r, cy) => (kx === ky
+    ? svgEl("circle", { class: "bk-w-stone", cx: "200", cy: Y(cy), r: f1(r * kx) })
+    : svgEl("ellipse", { class: "bk-w-stone", cx: "200", cy: Y(cy), rx: f1(r * kx), ry: f1(r * ky) }));
+  return [
+    round(58, 0),
+    svgEl("rect", { class: "bk-w-stone", x: X(-s), y: Y(-s), width: f1(2 * s * kx), height: f1(2 * s * ky) }),
+    svgEl("polygon", { class: "bk-w-stone", points: `${X(-s)},${Y(s)} ${X(s)},${Y(s)} 200,${Y(-s)}` }),
+    round(inr, s - inr)];
+}
+
+// ------------------------------------------------------------------------------------------- the hero box (2.2)
+// The head of Today's first screen in both apps (the glass almanac: docs/tt2/ADDENDUM-2026-10-28.md B; style brief
+// 3.0 and 3.1). A still night plate, the engraved wheel with its band of signs narrowed, and an empty disc over the
+// wheel's inner disc where app/js/hero.js may put its canvas. Decoration only: aria-hidden, no words, no figures, no
+// holding, nothing that refers to the page. The poster is complete without the canvas.
+
+/** Where the armillary of app/js/hero-gl.js stands at scene time 0, in the wheel's viewBox (docs/tt2/build/hero-api.md
+ * 6): the rings as ellipses [cx, cy, rx, ry, turn in degrees] (the meridian, the equator, the ecliptic), the seven
+ * beads [x, y, r] and the stone [rx, ry]. The poster's flat centre is drawn there, so the canvas thaws out of it. */
+const HERO_RINGS = Object.freeze([[192.6, 195.4, 99.1, 112.4, 31.8], [200, 205.2, 108.5, 30.4, 0], [200, 209.4, 108, 69.2, 0]]);
+const HERO_BEADS = Object.freeze([[200, 278.7, 8.4], [291.4, 246.3, 8], [301.2, 185.3, 7.1], [241.3, 145.5, 6.5],
+  [158.7, 145.5, 6.5], [98.8, 185.3, 7.1], [108.6, 246.3, 8]]);
+const HERO_STONE = Object.freeze([22.4, 25.1]);
+
+/** The hero's wheel: book.wheel's engraving with its band of signs narrowed. The inscription band stays between r 166
+ * and 188, its words on r 178 and never moving; the signs and ticks sit between r 140 and 166 and turn; the inner disc
+ * inside r 140 (70% of the wheel's width) holds the flat centre, the poster: the engraved rings, the seven planets on
+ * the beads' places and the stone, in g[data-hero-poster-centre]. */
+function heroWheel(base) {
+  const pt = (r, deg) => { const a = ((deg - 90) * Math.PI) / 180; return [200 + r * Math.cos(a), 200 + r * Math.sin(a)]; };
+  const svg = svgEl("svg", { class: "bk-wheel bk-hero-wheel", viewBox: "0 0 400 400", "aria-hidden": "true", focusable: "false",
+    "data-bk": "hero-wheel" });
+  const ring = sub(base, "ring");
+  svg.append(svgEl("defs", {}, svgEl("path", { id: ring, d: "M200,200 m0,-178 a178,178 0 1,1 0,356 a178,178 0 1,1 0,-356" })),
+    svgEl("circle", { class: "bk-w-line", cx: "200", cy: "200", r: "192" }),
+    svgEl("circle", { class: "bk-w-thin", cx: "200", cy: "200", r: "188" }),
+    svgEl("circle", { class: "bk-w-line", cx: "200", cy: "200", r: "166" }),
+    svgEl("text", { class: "bk-w-ins" },
+      svgEl("textPath", { href: `#${ring}`, textLength: "1110", lengthAdjust: "spacing" }, `${FIXED.wheelRing} · ${FIXED.wheelRing} ·`)),
+    svgEl("circle", { class: "bk-w-line", cx: "200", cy: "200", r: "140" }));
+  const turn = svgEl("g", { class: "bk-wheel-ring bk-wheel-spin" });
+  let spokes = "";
+  for (let k = 0; k < 12; k++) {
+    const [x1, y1] = pt(140, k * 30), [x2, y2] = pt(166, k * 30);
+    spokes += `M${f1(x1)} ${f1(y1)}L${f1(x2)} ${f1(y2)}`;
+    const [x, y] = pt(152.5, k * 30 + 15);
+    turn.append(svgEl("text", { class: "bk-w-sign", x: f1(x), y: f1(y) }, ZODIAC[k]));
+  }
+  for (let k = 0; k < 72; k++) {
+    if (k % 6 === 0) continue;   // a spoke stands there
+    const [x1, y1] = pt(161, k * 5), [x2, y2] = pt(166, k * 5);
+    spokes += `M${f1(x1)} ${f1(y1)}L${f1(x2)} ${f1(y2)}`;
+  }
+  turn.append(svgEl("path", { class: "bk-w-thin", d: spokes }));
+  const centre = svgEl("g", { class: "bk-hero-centre", "data-hero-poster-centre": "" },
+    ...HERO_RINGS.map(([cx, cy, rx, ry, deg]) => svgEl("ellipse", { class: "bk-w-orbit", cx: String(cx), cy: String(cy), rx: String(rx),
+      ry: String(ry), transform: deg ? `rotate(${deg} ${cx} ${cy})` : null })),
+    // each planet as large as its bead looks: the nearer ones larger
+    ...HERO_BEADS.map(([x, y, r], k) => svgEl("text", { class: "bk-w-planet", x: String(x), y: String(y),
+      style: { "--bk-planet": `${f1(2.05 * r)}px` } }, PLANETS[k])),
+    ...stoneShapes(...HERO_STONE));
+  svg.append(turn, centre);
+  return svg;
+}
+
+/**
+ * The hero box at the head of Today (both apps): div.bk-hero[data-hero][aria-hidden] holding the night plate (a
+ * still CSS field: plate mist round the wheel falling to plate ground, seven gilt specks), the corner brackets
+ * (book.css), the poster wheel and an empty div.bk-hero-disc[data-hero-disc] exactly over the wheel's inner disc
+ * (r < 140 of its 400 viewBox). app/js/hero.js puts its canvas in the disc and sets data-hero-state (off, loading,
+ * moving, still, paused) and data-hero-arrival (first, again) on the box; book.css plays the arrival from those, and
+ * stops the wheel's turn while the 3D one turns. Nothing here starts, fetches or times anything.
+ */
+export function heroBox({ id } = {}) {
+  const base = newId(id);
+  const stage = h("div.bk-hero-stage", heroWheel(base), h("div.bk-hero-disc", { "data-hero-disc": "" }));
+  return h("div.bk-hero", { "data-hero": "", "aria-hidden": "true", "data-bk": "hero-box", id: id || null }, stage);
+}
+
+/** One engraved word under a colophon piece: a drawing (svg text), never page text. */
+function engraved(word) {
+  const w = Math.round([...word].length * 8.4 + 6);
+  return svgEl("svg", { class: "bk-engraved", viewBox: `0 0 ${w} 14`, width: String(w), height: "14", focusable: "false" },
+    svgEl("text", { x: String(w / 2), y: "10.5" }, word));
+}
+/** The sigil of the colophon's phrase: its vowels and repeated letters struck out leave L V T R N F, drawn as one seal. */
+function sigil() {
+  return svgEl("svg", { class: "bk-sigil", viewBox: "0 0 100 100", fill: "none", stroke: "currentColor", "stroke-width": "2.2",
+    "stroke-linecap": "round", "stroke-linejoin": "round", focusable: "false" },
+  svgEl("circle", { cx: "50", cy: "50", r: "46", "stroke-width": "1" }),
+  svgEl("circle", { cx: "50", cy: "50", r: "42", "stroke-width": "0.6" }),
+  svgEl("path", { d: "M50 16 V84 M34 84 H66 M30 24 L50 54 L70 24 M36 16 H64 M50 32 C76 32 76 56 50 56 L72 80 M30 70 V46 L44 62 M50 44 H63" }),
+  svgEl("circle", { cx: "50", cy: "11", r: "2.4" }));
+}
+/** The Ace of Pentacles, drawn: shown only when the engraved art cannot load. */
+function aceDrawn() {
+  const P = (r, deg) => { const a = ((deg - 90) * Math.PI) / 180; return [35 + r * Math.cos(a), 52 + r * Math.sin(a)]; };
+  const pent = [0, 144, 288, 72, 216].map((d) => P(15, d).map(f1).join(",")).join(" ");
+  let rays = "";
+  for (let k = 0; k < 12; k++) {
+    const a = (k * Math.PI) / 6;
+    rays += `M${f1(35 + 24 * Math.cos(a))} ${f1(52 + 24 * Math.sin(a))}L${f1(35 + 29 * Math.cos(a))} ${f1(52 + 29 * Math.sin(a))}`;
+  }
+  return svgEl("svg", { class: "bk-ace-drawn", viewBox: "0 0 70 104", fill: "none", stroke: "currentColor", focusable: "false", hidden: "" },
+    svgEl("rect", { x: "1", y: "1", width: "68", height: "102", rx: "5", "stroke-width": "1.2" }),
+    svgEl("rect", { x: "5", y: "5", width: "60", height: "94", rx: "3", "stroke-width": "0.6" }),
+    svgEl("circle", { cx: "35", cy: "52", r: "20", "stroke-width": "1.4" }),
+    svgEl("polygon", { points: pent, "stroke-width": "1.1" }),
+    svgEl("path", { d: rays, "stroke-width": "0.8" }),
+    svgEl("path", { d: "M22 88 Q35 80 48 88", "stroke-width": "0.8" }));
+}
+/** The magic square of Jupiter (Agrippa's 4 x 4: every row, column and diagonal sums to 34), as a faint watermark. */
+const KAMEA = [[4, 14, 15, 1], [9, 7, 6, 12], [5, 11, 10, 8], [16, 2, 3, 13]];
+function kamea() {
+  const svg = svgEl("svg", { class: "bk-watermark", viewBox: "0 0 200 200", fill: "none", stroke: "currentColor", focusable: "false" },
+    svgEl("circle", { cx: "100", cy: "100", r: "96", "stroke-width": "1.5" }),
+    svgEl("circle", { cx: "100", cy: "100", r: "88", "stroke-width": "0.8" }));
+  let grid = "";
+  for (let i = 0; i < 5; i++) grid += `M${44 + i * 28} 44V156M44 ${44 + i * 28}H156`;
+  svg.append(svgEl("path", { d: grid, "stroke-width": "1" }));
+  KAMEA.forEach((row, r) => row.forEach((v, c) => {
+    svg.append(svgEl("text", { x: String(58 + c * 28), y: String(63 + r * 28), stroke: "none" }, String(v)));
+  }));
+  return svg;
+}
+
+/** The colophon (addendum d.C): the Ace of Pentacles, the sigil with 10¹² under it and Jupiter's glyph, with the magic
+ * square of Jupiter as a faint watermark behind them. Decoration only: aria-hidden, still, never read aloud. The host
+ * puts it in its footer, away from every figure, holding, order, price, button and form field. */
+export function colophon() {
+  const ace = artImg("ace", "bk-ace", true);
+  const drawn = aceDrawn();
+  ace.addEventListener("error", () => { drawn.removeAttribute("hidden"); });
+  const jove = svgEl("svg", { class: "bk-jove", viewBox: "0 0 40 40", focusable: "false" },
+    svgEl("text", { x: "20", y: "21", "font-size": "28" }, PLANETS[5]));
+  return h("div.bk-colophon", { "aria-hidden": "true", "data-bk": "colophon" },
+    kamea(),
+    h("div.bk-colophon-piece", ace, drawn, engraved("ACE OF PENTACLES")),
+    h("div.bk-colophon-piece", sigil(), engraved("10¹²")),
+    h("div.bk-colophon-piece", jove, engraved("JUPITER")));
 }
 
 // ------------------------------------------------------------------------------------------- buttons
@@ -752,7 +1163,8 @@ export function fold(props = {}) {
 
 const TONES = ["next", "sky", "meadow", "sand", "lilac", "rose", "marigold"];
 
-/** A watercolour panel. Text inside keeps the wash rule; live adds the #wc filter (the next-step panel only). */
+/** A tinted sheet in an engraved frame. Text inside keeps the wash rule; live marks the next-step panel
+ * (data-live-filter; the almanac draws it without a filter). */
 export function washPanel(props = {}) {
   const { tone = "next", live = false, as = "div", labelledBy, children } = props;
   let t = tone;
@@ -766,9 +1178,10 @@ export function washPanel(props = {}) {
 
 /** The chapter heading on Today and the title block of a field page. */
 export function openingHead(props = {}) {
-  const { kicker, title, scale = "chapter", level = 1, lines = [], after, vignette: pic, id } = props;
+  const { kicker, title, scale = "chapter", level = 1, lines = [], after, vignette: pic, id, glyph } = props;
   const hd = h(`h${level === 2 ? 2 : 1}.${scale === "page" ? "bk-title-page" : "bk-title-chapter"}`, { id: id || null },
-    kicker ? [h("span.bk-kicker", kicker), hidden(": ")] : null, put(h("span.bk-title-main"), title));
+    kicker ? [h("span.bk-kicker", kicker), hidden(": ")] : null,
+    put(h("span.bk-title-main"), [glyph != null ? headGlyph(glyph) : null, title]));
   const text = h("div.bk-opening-text", hd);
   for (const l of lines || []) text.append(put(h("p.bk-lede"), l));
   if (hasContent(after)) text.append(put(h("div.bk-opening-after"), after));
@@ -777,9 +1190,10 @@ export function openingHead(props = {}) {
   return el;
 }
 
-/** A section heading with an optional intro line. */
-export function sectionHead({ title, level = 2, intro, id } = {}) {
+/** A section heading with an optional intro line; glyph (a view's place) puts its zodiac glyph before the title. */
+export function sectionHead({ title, level = 2, intro, id, glyph } = {}) {
   const hd = h(level === 3 ? "h3.bk-h3" : "h2.bk-h2", { id: id || null });
+  if (glyph != null) hd.append(headGlyph(glyph));
   put(hd, title);
   return h("div.bk-section-head", { "data-bk": "section-head" }, hd, hasContent(intro) ? put(h("p.bk-soft"), intro) : null);
 }
@@ -1036,7 +1450,7 @@ export function chapterPage(props = {}) {
   const w = word || FIXED.chapter[s];
   const inner = [
     s === "done" ? h("span.bk-chap-deco", picture("star", { size: 32, lazy: false })) : null,
-    s === "now" ? h("span.bk-chap-deco.is-boat", boat({ bob: true, size: 40 })) : null,
+    s === "now" ? h("span.bk-chap-deco.is-boat", boat({ bob: false, size: 40 })) : null,
     h("span.bk-chap-month", { "aria-hidden": "true" }, month),
     h("span.bk-chap-amount.num", { "aria-hidden": "true" }, amount),
     h("span.bk-chap-word", { "aria-hidden": "true" }, w),
@@ -1086,7 +1500,7 @@ export function gauge(props = {}) {
   const water = h("span.bk-gauge-water");
   const add = h("span.bk-gauge-adding");
   const bar = h("div.bk-gauge-bar", { role: "img", "data-live-filter": "" }, water, add);
-  const bt = h("span.bk-gauge-boat", boat({ bob: true, size: 48 }));
+  const bt = h("span.bk-gauge-boat", boat({ bob: false, size: 48 }));
   const ticks = h("div.bk-gauge-ticks", { "aria-hidden": "true" });
   const el = h("div.bk-gauge.bk-wash.bk-wash-sky", { "data-bk": "gauge" }, top, h("div.bk-gauge-wrap", bt, bar), ticks);
   const draw = () => {
@@ -1315,7 +1729,7 @@ export function hundredChart(props = {}) {
         h("b.num", baht(world[n - 1])), " ", h("span", labels.worldEnd));
       marks.append(endWorld);
     }
-    marks.append(h("span.bk-chart-boat", { style: { top: `${Ypct(mix[n - 1])}%` } }, boat({ bob: true, size: 40 })));
+    marks.append(h("span.bk-chart-boat", { style: { top: `${Ypct(mix[n - 1])}%` } }, boat({ bob: false, size: 40 })));
     const spread = () => {
       if (!endWorld) return;
       const ph = plot.clientHeight || 260;
@@ -1410,7 +1824,7 @@ export function compareRows(props = {}) {
 
 // ------------------------------------------------------------------------------------------- the frame and the dock
 
-/** The brand: the boat (still), the name in hand lettering and the subtitle. */
+/** The brand: the boat (still), the name in display type and the subtitle in a Cinzel label. */
 export function brandMark({ name = "Tide Table", sub, href } = {}) {
   const kids = [boat({ bob: false, size: 52 }), h("span.bk-brand-text", h("span.bk-brand-name", name), hasContent(sub) ? h("span.bk-brand-sub", sub) : null)];
   return href ? h("a.bk-brand", { href, "data-bk": "brand-mark" }, kids) : h("span.bk-brand", { "data-bk": "brand-mark" }, kids);
@@ -1437,7 +1851,12 @@ export function contentsColumn(props = {}) {
   const el = h("aside.bk-rail", { "data-bk": "contents-column" }, brandMark(brand),
     h("nav.bk-contents-nav", { "aria-label": title }, h("p.bk-contents-title", { "aria-hidden": "true" }, title), ul),
     hasContent(foot) ? put(h("div.bk-rail-foot"), foot) : null);
-  el.bk = { setCurrent };
+  // the current row stays in sight of the sticky Still pictures band; under 1024 px there is no column, and asking would only force a layout
+  el.bk = { setCurrent: (cid) => {
+    setCurrent(cid);
+    const a = map.get(cid), w = el.ownerDocument && el.ownerDocument.defaultView;
+    if (a && a.scrollIntoView && w && w.matchMedia && w.matchMedia("(min-width: 1024px)").matches) a.scrollIntoView({ block: "nearest" });
+  } };
   return el;
 }
 
@@ -1497,6 +1916,13 @@ function keepFocusClear(doc) {
     const el = e.target, win = doc.defaultView;
     if (!win || !el || el.nodeType !== 1 || el === doc.body || el === doc.documentElement) return;
     try { if (!el.matches(":focus-visible")) return; } catch { /* an old engine: check it anyway */ }
+    // the browser leaves a control cut at the edge of a sideways strip or table, ring and all, unless it lies wholly outside
+    for (let p = el.parentElement; p && p !== doc.body; p = p.parentElement) {
+      if (!(p.scrollWidth > p.clientWidth + 1) || !/auto|scroll/.test(win.getComputedStyle(p).overflowX)) continue;
+      const q = p.getBoundingClientRect(), b = el.getBoundingClientRect();
+      p.scrollLeft += b.right + FOCUS_ROOM > q.right ? b.right + FOCUS_ROOM - q.right : b.left - FOCUS_ROOM < q.left ? b.left - FOCUS_ROOM - q.left : 0;
+      break;
+    }
     const vh = win.innerHeight;
     const r = el.getBoundingClientRect();
     if (r.height <= 0 || r.width <= 0 || r.top >= vh) return;
@@ -1520,13 +1946,24 @@ function keepFocusClear(doc) {
 
 // The shown dock's height on the page (html's --bk-dock-h), so book.css keeps that much room under a focused
 // control when the browser scrolls it into view (WCAG 2.4.11). A hidden or removed dock sets 0px if it was the one.
-let dockRoomFrom = null;
+// A new value on html restyles every element of the page, so it is written when the page is idle and only if it
+// changed: never in the frame that draws a view, where the dock's first size arrives (style brief F9: opening the
+// friends' Fields took up to 179 ms at 4x CPU when the two met). A browser without idle callbacks writes it at once.
+let dockRoomFrom = null, dockRoomWait = false;
 function keepDockRoom(el) {
   const root = el.ownerDocument && el.ownerDocument.documentElement;
   if (!root) return;
   const tall = el.isConnected ? Math.ceil(el.getBoundingClientRect().height) : 0;
-  if (tall > 0) { dockRoomFrom = el; root.style.setProperty("--bk-dock-h", `${tall}px`); }
-  else if (dockRoomFrom === el) { dockRoomFrom = null; root.style.setProperty("--bk-dock-h", "0px"); }
+  if (tall > 0) dockRoomFrom = el;
+  else if (dockRoomFrom === el) dockRoomFrom = null;
+  else return;
+  const write = () => {
+    dockRoomWait = false;
+    const d = dockRoomFrom, v = d && d.isConnected ? `${Math.ceil(d.getBoundingClientRect().height)}px` : "0px";
+    if (root.style.getPropertyValue("--bk-dock-h") !== v) root.style.setProperty("--bk-dock-h", v);
+  };
+  if (typeof requestIdleCallback !== "function") write();
+  else if (!dockRoomWait) { dockRoomWait = true; requestIdleCallback(write, { timeout: 600 }); }
 }
 
 // ------------------------------------------------------------------------------------------- motion helpers

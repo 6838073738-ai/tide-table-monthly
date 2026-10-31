@@ -34,7 +34,7 @@
 import {
   scaleAmounts, fundingMonthOf, planShares, ownOrderId, ownTransferId, ownIdMonth, fmtMoney, PlanFitError,
   DEFAULT_MIN_ORDER_USD, MIX_TENTHS_MAX,
-} from "./scale.js?v=2.1.0";
+} from "./scale.js?v=2.2.0";
 
 // ---------------------------------------------------------------- what is locked
 

@@ -13,9 +13,9 @@
 import {
   app, h, icon, toast, svg, L, S, now, today, ost, isDone, instById, rule, schedule, fM, long, short, monthName, bkkTime,
   pill, card, cardHead, viewHead, field, ruleQuote, commit, confirmDialog, plural, prepNotNeeded, fieldMonthsOn, joinedPlan, tickerOf,
-} from "../core.js?v=2.1.0";
-import { nameEl, nameText } from "./naming.js?v=2.1.0";
-import { notBought, notBoughtMonth } from "./mix.js?v=2.1.0";
+} from "../core.js?v=2.2.0";
+import { nameEl, nameText } from "./naming.js?v=2.2.0";
+import { notBought, notBoughtMonth } from "./mix.js?v=2.2.0";
 
 const WORDS = [
   ["Index fund", "A fund that holds many companies at once by following a market index. VWRA holds thousands of companies around the world; XDEW, EIMI and the quantum fund (QNTM) are narrower ones."],

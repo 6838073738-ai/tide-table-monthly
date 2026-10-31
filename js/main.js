@@ -1,7 +1,7 @@
 // Tide Table · Monthly 2.1: the entry point. It loads the base plan (data/base-plan.json) and the open data's
 // index (data/index.json, through datafiles.js), scales the plan to the friend's amounts, mix and fields
 // (months.js, split.js), and owns the router (#/today, #/fields, #/field/<id>[/<company>], #/company/<id>,
-// #/stocks, #/split, #/year, #/money, #/holdings, #/rules, #/settings, #/setup, #/mix), the storybook frame
+// #/stocks, #/growth, #/split, #/year, #/money, #/holdings, #/rules, #/settings, #/setup, #/mix), the storybook frame
 // (contents column, top bar, tab bar, footer; book.js), the Bangkok clock, price freshness, the older-tab banner,
 // the theme and Still pictures. Views are in js/views/, shared helpers in js/core.js. Everything the friend enters
 // stays in this browser (store.js).
@@ -11,41 +11,51 @@
 // started month), reads the upcoming list's entry for it (lock.js loadLockEntry: data/upcoming.json when the site
 // has it, else the bundled data/upcoming-curated.json) and saves its first trading day once the list shows it
 // (docs/tt2/build/lock-api.md 4). The Stocks page (views/stocks.js) is a tab.
+//
+// 2.2 (docs/tt2/ADDENDUM-2026-10-27c.md D.3): the Growth page (views/growth.js, the tracker "on time, never sold") is a
+// tab and a page of the contents column, with a short card on Today. With the open data the bar has seven tabs, so a
+// phone folds it earlier than 2.1's bar of six (moreTab, css/growth.css): under GROWTH_FOLD_PX it keeps five tabs and
+// "More", under 360 px four and "More". Coin history answers (prices.js) draw the pages that use them again. The page's
+// section and its stylesheet (css/growth.css) are added here when index.html does not have them.
 
 import {
   app, hooks, h, clear, ui, L, store, prices, $, $$, S, today, initNow, now, saveUi, errorState, modal, ago,
   sourceLink, M, amountWords, mixIsOwn, confirmDialog, toast, long, universeOn, hasFieldMonths,
-  commitPlanChange, dayShort, pre,
-} from "./core.js?v=2.1.0";
-import * as scale from "./scale.js?v=2.1.0";
-import * as book from "./book.js?v=2.1.0";
-import * as D from "./datafiles.js?v=2.1.0";
-import * as FU from "./fieldsui.js?v=2.1.0";
-import { fieldName, isFieldId } from "./fields-catalog.js?v=2.1.0";
-import { THEME_KEY, STILL_KEY, cleanPlan, validateImport, withoutUnbought } from "./store.js?v=2.1.0";
-import * as LK from "./lock.js?v=2.1.0";
-import { renderSetup } from "./views/setup.js?v=2.1.0";
-import { renderToday, stopTodayTicker } from "./views/today.js?v=2.1.0";
-import { renderYear } from "./views/year.js?v=2.1.0";
-import { renderMoney } from "./views/money.js?v=2.1.0";
-import { renderHoldings } from "./views/holdings.js?v=2.1.0";
-import { renderRules } from "./views/rules.js?v=2.1.0";
-import { renderSettings } from "./views/settings.js?v=2.1.0";
-import { renderMix } from "./views/mix.js?v=2.1.0";
-import { renderFields, configureFieldsUi, upcomingDoc } from "./views/fields.js?v=2.1.0";
-import { renderField } from "./views/field.js?v=2.1.0";
-import { renderCompany } from "./views/company.js?v=2.1.0";
-import { renderSplit } from "./views/split.js?v=2.1.0";
-import { renderStocks } from "./views/stocks.js?v=2.1.0";
-import { resetDraft } from "./views/draft.js?v=2.1.0";
+  commitPlanChange, dayShort, pre, bkkTime,
+} from "./core.js?v=2.2.0";
+import * as scale from "./scale.js?v=2.2.0";
+import * as book from "./book.js?v=2.2.0";
+import * as D from "./datafiles.js?v=2.2.0";
+import * as FU from "./fieldsui.js?v=2.2.0";
+import { fieldName, isFieldId } from "./fields-catalog.js?v=2.2.0";
+import { THEME_KEY, STILL_KEY, cleanPlan, validateImport, withoutUnbought } from "./store.js?v=2.2.0";
+import * as LK from "./lock.js?v=2.2.0";
+import { renderSetup } from "./views/setup.js?v=2.2.0";
+import { renderToday, stopTodayTicker } from "./views/today.js?v=2.2.0";
+import { renderYear } from "./views/year.js?v=2.2.0";
+import { renderMoney } from "./views/money.js?v=2.2.0";
+import { renderHoldings } from "./views/holdings.js?v=2.2.0";
+import { renderRules } from "./views/rules.js?v=2.2.0";
+import { renderSettings } from "./views/settings.js?v=2.2.0";
+import { renderMix } from "./views/mix.js?v=2.2.0";
+import { renderFields, configureFieldsUi, upcomingDoc } from "./views/fields.js?v=2.2.0";
+import { renderField } from "./views/field.js?v=2.2.0";
+import { renderCompany } from "./views/company.js?v=2.2.0";
+import { renderSplit } from "./views/split.js?v=2.2.0";
+import { renderStocks } from "./views/stocks.js?v=2.2.0";
+import { renderGrowth, growthNow } from "./views/growth.js?v=2.2.0";
+import { resetDraft } from "./views/draft.js?v=2.2.0";
+import { markHead, withColophon, unmountHero } from "./views/almanac.js?v=2.2.0";
 
 const BASE_TITLE = "Tide Table · Monthly";
 const VIEWS = [
-  { id: "today", title: "Today", icon: "today", deps: ["state", "crypto", "fx", "time", "theme", "data", "lock"], render: renderToday, onHide: stopTodayTicker },
+  { id: "today", title: "Today", icon: "today", deps: ["state", "crypto", "fx", "time", "theme", "data", "lock", "history"], render: renderToday,
+    onHide: () => { stopTodayTicker(); unmountHero(); } },
   { id: "fields", title: "Fields", icon: "fields", deps: ["data"], render: renderFields, fields: true },
   { id: "field", title: "A field", icon: "fields", deps: ["data"], render: renderField, fields: true, nav: "fields", group: "hidden" },
   { id: "company", title: "A company", icon: "fields", deps: ["data"], render: renderCompany, fields: true, nav: "fields", group: "hidden" },
   { id: "stocks", title: "Stocks", icon: "market", deps: ["state", "data", "time", "lock"], render: renderStocks },
+  { id: "growth", title: "Growth", icon: "growth", deps: ["state", "crypto", "fx", "time", "lock", "history"], render: renderGrowth },
   { id: "split", title: "My split", short: "Split", icon: "split", deps: ["state", "data", "fx", "lock"], render: renderSplit, fields: true },
   { id: "year", title: "My year", short: "Year", icon: "year", deps: ["state", "time", "data", "lock"], render: renderYear },
   { id: "money", title: "Money", icon: "funding", deps: ["state", "fx", "time", "lock"], render: renderMoney },
@@ -131,12 +141,23 @@ function invalidate(dep) {
   queueRender();
 }
 let renderQueued = false;
+let waitsFor = null; // the field being typed in that a redraw waits for (see queueRender)
 function queueRender() {
   if (renderQueued) return;
   renderQueued = true;
   setTimeout(() => {
     renderQueued = false;
-    if (app.active && dirty.has(app.active)) renderView(app.active);
+    if (!app.active || !dirty.has(app.active)) return;
+    // A price still being typed on the order desk (views/today.js marks it data-edited) is never drawn away under the
+    // friend's fingers: the browser would save the half-typed number as the field left the page (review finding
+    // RR-01). The view is drawn once the field is left, which saves what it holds.
+    const ae = document.activeElement;
+    const sec = sectionEl(app.active);
+    if (ae && ae.dataset && ae.dataset.edited && sec && sec.contains(ae)) {
+      if (waitsFor !== ae) { waitsFor = ae; ae.addEventListener("blur", () => { waitsFor = null; queueRender(); }, { once: true }); }
+      return;
+    }
+    renderView(app.active);
   }, 30);
 }
 
@@ -146,7 +167,18 @@ function teardown(id) {
   app.after[id] = [];
 }
 
-function renderView(id, { entering = false } = {}) {
+// Each view section's height as last laid out (a ResizeObserver, so reading it forces nothing). A redraw keeps it as
+// the section's min-height while the view is drawn again. Reading offsetHeight there laid the old view out only to
+// clear it: about 90 ms at 4x CPU on a phone when coin data redrew Today at start-up (brief F9).
+const viewHeights = new WeakMap();
+const heightWatch = typeof ResizeObserver === "function" ? new ResizeObserver((es) => {
+  for (const e of es) {
+    const b = e.borderBoxSize && (e.borderBoxSize[0] || e.borderBoxSize);
+    viewHeights.set(e.target, b ? b.blockSize : e.contentRect.height);
+  }
+}) : null;
+
+function renderView(id, { entering = false, focusHead = false } = {}) {
   const v = byId[id];
   const el = sectionEl(id);
   if (!v || !el) return;
@@ -160,10 +192,14 @@ function renderView(id, { entering = false } = {}) {
   try { if (fk && typeof ae.selectionStart === "number") caret = [ae.selectionStart, ae.selectionEnd]; } catch { /* not a text field */ }
   const drafts = {};
   for (const d of $$("[data-keep]", el)) drafts[d.getAttribute("data-fk")] = d.value;
-  el.style.minHeight = el.offsetHeight + "px";
+  el.style.minHeight = (heightWatch ? viewHeights.get(el) || 0 : el.offsetHeight) + "px";
 
   teardown(id);
-  clear(el);
+  // Today's hero box stays on the page while the view is drawn again (views/almanac.js keeps it): taken off and put
+  // back, its canvas's thaw was cut to a one-frame pop when coin prices drew Today again (book.css transitions; style
+  // brief 3.1)
+  const kept = keptHero(el);
+  if (kept) { while (kept.nextSibling) kept.nextSibling.remove(); } else clear(el);
   // An opening plays when a view opens, not each time it is drawn again (prices, a save, the clock).
   el.classList.toggle("is-settled", !entering);
   app.renderingId = id;
@@ -171,14 +207,20 @@ function renderView(id, { entering = false } = {}) {
   try {
     if (id !== "setup" && !app.plan) throw new Error("No plan yet");
     const out = v.render(el);
-    if (out) el.append(...[].concat(out).filter(Boolean));
+    let nodes = out ? [].concat(out).filter(Boolean) : [];
+    if (kept) { if (nodes[0] === kept) nodes = nodes.slice(1); else kept.remove(); }
+    putView(el, id, nodes, focusHead || headFocused);
   } catch (e) {
     console.warn(e);
+    if (kept && kept.isConnected) kept.remove();
     el.append(errorState("This page hit a problem. The rest of Tide Table still works.", e));
   }
   app.entering = false;
 
   $$(".rise", el).forEach((c, i) => c.style.setProperty("--i", Math.min(i, 14)));
+  // The almanac: the page's zodiac glyph before its heading's words and its Folio kicker over it, by its fixed place in
+  // the contents; the glyph steps to its sign on the page's first opening in a session (views/almanac.js)
+  markHead(id, el, { entering });
   // The view's heading takes the focus when the view opens (route()), so it can always be focused.
   const head = el.querySelector("#h-" + id);
   if (head && !head.hasAttribute("tabindex")) head.setAttribute("tabindex", "-1");
@@ -192,10 +234,33 @@ function renderView(id, { entering = false } = {}) {
     if (t) { t.focus({ preventScroll: true }); if (caret) try { t.setSelectionRange(caret[0], caret[1]); } catch { /* ignore */ } }
   } else if (headFocused) {
     const hd = el.querySelector("#h-" + id);
-    if (hd) hd.focus({ preventScroll: true });
+    if (hd && hd !== document.activeElement) hd.focus({ preventScroll: true });
   }
   app.renderingId = null;
   setTimeout(() => { el.style.minHeight = ""; }, 80);
+}
+
+/**
+ * Put a view's nodes in place. When its heading is to have the focus (route() opens the view, or a redraw of a view
+ * whose heading had it), the heading takes it as soon as it is on the page, and the rest of the view follows: focus()
+ * works out the page's style and layout at once, so with the whole new view in place it put all of them in the
+ * drawing's task, a long task on a slow phone (brief F9, the qa_growth.py G14 method). Now they come with the next
+ * frame, and the focus still moves in this task. A view whose heading is not one of its nodes is put in place whole.
+ */
+function putView(el, id, nodes, focusHead) {
+  const k = focusHead ? nodes.findIndex((n) => n.id === "h-" + id || (n.querySelector && n.querySelector("#h-" + id))) : -1;
+  if (k < 0) { el.append(...nodes); return; }
+  el.append(...nodes.slice(0, k + 1));
+  const hd = el.querySelector("#h-" + id);
+  if (!hd.hasAttribute("tabindex")) hd.setAttribute("tabindex", "-1");
+  hd.focus({ preventScroll: true });
+  el.append(...nodes.slice(k + 1));
+}
+
+/** Today's hero box, when it heads the section (book.heroBox, kept by views/almanac.js): it stays through a redraw. */
+function keptHero(el) {
+  const f = el.firstChild;
+  return f && f.nodeType === 1 && f.hasAttribute("data-hero") ? f : null;
 }
 
 // ---------------------------------------------------------------- router
@@ -228,7 +293,80 @@ function viewTitle(id, r) {
   return byId[id] ? byId[id].title : BASE_TITLE;
 }
 
-function route({ initial = false, force = false, focus = !initial } = {}) {
+// ---------------------------------------------------------------- the frost veil (2.2; style brief 3.0)
+
+let veiled = null;
+/** Name a view's opening heading for the frost veil (book.css vt-head), one at a time: the heading itself, never its
+ *  header, which may hold a button or a figure; and only when no figure or control is within the calm zone round it
+ *  (F2), so a view whose heading sits by a figure simply switches. */
+function veilHead(id) {
+  if (veiled) { veiled.style.viewTransitionName = ""; veiled = null; }
+  const sec = id && sectionEl(id);
+  const hd = sec && (sec.querySelector("#h-" + id) || sec.querySelector("h1, h2"));
+  if (hd && calmAround(hd, sec)) { hd.style.viewTransitionName = "vt-head"; veiled = hd; }
+}
+/** Lay a view out now (reading one box forces the page's style and layout), so the next task's measures are cheap. */
+function layOut(id) {
+  const sec = id && sectionEl(id);
+  if (sec) sec.getBoundingClientRect();
+}
+// The calm zone (style brief F2): a figure (a currency sign before digits, a percentage, an amount in USD or THB) or a
+// control within 24 px (32 px from 760 px) of the heading, plus the 6 px the new one rises, keeps that heading still.
+const VEIL_FIGURE = /[$฿€£¥]\s?[\d.,]*\d|\d[\d,.]*\s?%|\d[\d,.]*\s?(?:USD|THB)\b/;
+const VEIL_CONTROL = "button, input, select, textarea, summary, a.bk-btn, [role='button'], [role='switch'], [role='slider']";
+function calmAround(hd, sec) {
+  const r = hd.getBoundingClientRect();
+  if (!r.height) return false;
+  const gap = (innerWidth >= 760 ? 32 : 24) + 6;
+  for (const el of sec.querySelectorAll("*")) {
+    if (hd.contains(el) || el.contains(hd)) continue;
+    const q = el.getBoundingClientRect();
+    if (!q.height || q.bottom < r.top - gap || q.top > r.bottom + gap) continue;
+    if (Math.hypot(Math.max(0, q.left - r.right, r.left - q.right), Math.max(0, q.top - r.bottom, r.top - q.bottom)) >= gap) continue;
+    if (el.matches(VEIL_CONTROL)) return false;
+    let own = "";
+    for (const n of el.childNodes) if (n.nodeType === 3) own += n.data;
+    if (VEIL_FIGURE.test(own)) return false;
+  }
+  return true;
+}
+/** The veil runs only where the browser has view transitions and nothing stops motion (Still pictures, a hidden tab,
+ *  reduced motion): otherwise the view simply switches, as before. */
+const canVeil = () => typeof document.startViewTransition === "function" && !book.motionStopped();
+
+/**
+ * Open the view the hash asks for. A change of view (or of a field or company page) goes behind the frost veil: the
+ * page swaps at once, every figure and button with it, and only the opening heading clears and settles (book.css).
+ * The view is drawn inside the transition's callback, from the hash as it is then.
+ */
+function route(opts = {}) {
+  const r = currentRoute();
+  const prev = app.active;
+  const changes = !!prev && (prev !== r.view || r.key !== app.routeKey);
+  if (!opts.initial && changes && canVeil()) {
+    veilHead(prev);
+    try {
+      // The new heading's calm zone is measured in tasks of its own, still before the new state is captured (the
+      // transition waits for the promise): one task lays the new view out, the next measures round its heading.
+      // Measuring in the drawing's task would force the whole view's style and layout into it (style brief F9:
+      // 166 ms at 4x CPU going back to the friends' Today).
+      const vt = document.startViewTransition(() => {
+        routeNow(opts);
+        return new Promise((done) => setTimeout(() => {
+          layOut(app.active);
+          setTimeout(() => { veilHead(app.active); done(); }, 0);
+        }, 0));
+      });
+      for (const p of [vt.ready, vt.finished, vt.updateCallbackDone]) if (p && p.catch) p.catch(() => { /* skipped: the view is drawn all the same */ });
+      return;
+    } catch (e) {
+      console.warn(e);
+    }
+  }
+  routeNow(opts);
+}
+
+function routeNow({ initial = false, force = false, focus = !initial } = {}) {
   const r = currentRoute();
   const id = r.view;
   const prev = app.active;
@@ -249,14 +387,16 @@ function route({ initial = false, force = false, focus = !initial } = {}) {
   const el = sectionEl(id);
   el.setAttribute("aria-labelledby", "h-" + id);
   el.classList.add("view", "view-" + id);
-  renderView(id, { entering: moved || initial });
+  // the view's heading takes the focus as soon as it is on the page (putView), before the rest of the view
+  renderView(id, { entering: moved || initial, focusHead: !!(focus && (moved || force)) });
   const title = viewTitle(id, r);
   document.title = id === "today" || id === "setup" ? BASE_TITLE : `${title} · ${BASE_TITLE}`;
   setActiveNav(id);
   if (focus && (moved || force)) {
     window.scrollTo(0, 0);
     const hd = el.querySelector("#h-" + id) || el.querySelector("h1, h2");
-    if (hd) { if (!hd.hasAttribute("tabindex")) hd.setAttribute("tabindex", "-1"); hd.focus({ preventScroll: true }); }
+    if (hd && hd === document.activeElement) { /* focused already, by putView */ }
+    else if (hd) { if (!hd.hasAttribute("tabindex")) hd.setAttribute("tabindex", "-1"); hd.focus({ preventScroll: true }); }
     else { const m = $("#main"); if (m) m.focus({ preventScroll: true }); }
   }
 }
@@ -285,47 +425,67 @@ function skipToContent(e) {
 const chrome = { rail: null, topbar: null, tabbar: null };
 
 /**
- * The tabs (brief G10, spec 8.2, addendum D.1): every tab labelled. With the open data's list, Today · Fields ·
- * Stocks · My split · My year · Settings; else Today · Stocks · My year · Settings. On a phone a bar of six uses the
- * short words (Split, Year) and a narrower picture (friends.css), so from 360 px each word stays on one line; under
- * 360 px the brief's pattern for a full bar takes over (moreTab): the first four tabs, then "More".
+ * The tabs (brief G10, spec 8.2, addendum b.D.1, c.D.3): every tab labelled. With the open data's list, Today · Fields
+ * · Stocks · Growth · My split · My year · Settings; else Today · Stocks · Growth · My year · Settings. On a phone a
+ * full bar uses the short words (Split, Year) and a narrower picture (friends.css, growth.css). A bar of seven keeps
+ * its first five tabs and "More" under GROWTH_FOLD_PX, and every bar of more than five its first four and "More"
+ * under 360 px (moreTab), so each word stays on one line.
  */
 function tabItems() {
-  const ids = fieldsOffered() ? ["today", "fields", "stocks", "split", "year", "settings"] : ["today", "stocks", "year", "settings"];
+  const ids = fieldsOffered() ? ["today", "fields", "stocks", "growth", "split", "year", "settings"] : ["today", "stocks", "growth", "year", "settings"];
   return ids.map((id) => ({ id, label: byId[id].title, short: byId[id].short || byId[id].title, href: "#/" + id, icon: byId[id].icon }));
 }
 /** The contents column lists every view a friend can open. */
 function railItems() {
-  const ids = fieldsOffered() ? ["today", "fields", "stocks", "split", "year", "money", "holdings", "rules", "settings"]
-    : ["today", "stocks", "year", "money", "holdings", "rules", "settings"];
+  const ids = fieldsOffered() ? ["today", "fields", "stocks", "growth", "split", "year", "money", "holdings", "rules", "settings"]
+    : ["today", "stocks", "growth", "year", "money", "holdings", "rules", "settings"];
   return ids.map((id) => ({ id, label: byId[id].title, href: "#/" + id, icon: byId[id].icon }));
 }
 const navIdOf = (id) => (byId[id] && byId[id].nav) || id;
 
-/** The tabs a bar of six shows on the narrowest phones (under 360 px, friends.css); the rest are under "More". */
+/** The tabs a full bar shows on the narrowest phones (under 360 px, friends.css); the rest are under "More". */
 const TABS_NARROW = 4;
+/** The tabs a bar of seven shows from 360 px to GROWTH_FOLD_PX (growth.css); the rest are under "More". */
+const TABS_SEVEN = 5;
+/** The width under which a bar of seven folds (growth.css says the same in its media query). */
+const GROWTH_FOLD_PX = 480;
 /**
- * A bar of more than five tabs: the tabs after the fourth get .ttm-tab-fold, and a "More" button (.ttm-tab-more)
- * opens a sheet with them and every other page of the contents column. friends.css shows the button and hides the
- * folded tabs under 360 px only, so wider phones keep every tab in the bar. Today is always first and never folded.
+ * A bar of more than five tabs: the tabs after the fourth get .ttm-tab-fold and, in a bar of seven, the tabs after
+ * the fifth also .ttm-tab-fold7; a "More" button (.ttm-tab-more) opens a sheet with the folded tabs and every other
+ * page of the contents column. friends.css shows the button and hides .ttm-tab-fold under 360 px; growth.css shows it
+ * and hides .ttm-tab-fold7 in a bar of seven under GROWTH_FOLD_PX, so wider phones keep every tab in the bar. Today
+ * is always first and never folded.
  */
 function moreTab(tabs, items) {
   if (items.length <= 5) return;
-  const folded = items.slice(TABS_NARROW).map((x) => x.id);
-  for (const id of folded) {
-    const a = tabs.querySelector(`a.bk-tab[data-view="${CSS.escape(id)}"]`);
-    if (a) a.classList.add("ttm-tab-fold");
-  }
+  items.forEach((x, k) => {
+    const a = tabs.querySelector(`a.bk-tab[data-view="${CSS.escape(x.id)}"]`);
+    if (!a) return;
+    if (k >= TABS_NARROW) a.classList.add("ttm-tab-fold");
+    if (items.length >= 7 && k >= TABS_SEVEN) a.classList.add("ttm-tab-fold7");
+  });
   const more = h("button.bk-tab.ttm-tab-more", { type: "button", "aria-haspopup": "dialog", "data-fk": "tab-more", on: { click: () => openMore(items) } },
     h("span.bk-tab-icon", book.lineIcon("more")), h("span.bk-tab-long", "More"));
   tabs.append(more);
   chrome.more = more;
   chrome.moreIds = new Set(items.slice(0, TABS_NARROW).map((x) => x.id));
+  chrome.moreIds7 = new Set(items.slice(0, TABS_SEVEN).map((x) => x.id));
+}
+
+/** The tabs the bar shows at this width (a folded tab is display: none). */
+function shownTabIds(items) {
+  const bar = chrome.tabbar;
+  const out = new Set();
+  for (const x of items) {
+    const a = bar && bar.querySelector(`a.bk-tab[data-view="${CSS.escape(x.id)}"]`);
+    if (a && getComputedStyle(a).display !== "none") out.add(x.id);
+  }
+  return out.size ? out : new Set(items.slice(0, TABS_NARROW).map((x) => x.id));
 }
 
 /** The sheet behind "More": the folded tabs, then the other pages of the contents column, each one link. */
 function openMore(items) {
-  const shown = new Set(items.slice(0, TABS_NARROW).map((x) => x.id));
+  const shown = shownTabIds(items);
   const rest = railItems().filter((x) => !shown.has(x.id));
   const m = modal({
     title: "More", cls: ".sheet.ttm-more",
@@ -406,19 +566,33 @@ function renderBrand() {
 function setActiveNav(id) {
   const n = navIdOf(id);
   for (const k of ["rail", "tabbar"]) if (chrome[k] && chrome[k].bk && chrome[k].bk.setCurrent) chrome[k].bk.setCurrent(n);
-  // "More" is the current tab on the narrowest phones when the page is one of its own (friends.css shows it there)
-  if (chrome.more) chrome.more.classList.toggle("is-current", !chrome.moreIds.has(n));
+  // "More" is the current tab on the narrowest phones when the page is one of its own (friends.css shows it there);
+  // in a bar of seven, under GROWTH_FOLD_PX, when the page is not one of its first five (growth.css)
+  if (chrome.more) {
+    chrome.more.classList.toggle("is-current", !chrome.moreIds.has(n));
+    chrome.more.classList.toggle("is-current7", !(chrome.moreIds7 || chrome.moreIds).has(n));
+  }
 }
+
+// ---------------------------------------------------------------- the observatory line (2.2; style brief 3.1)
+// The status strip as an instrument line under the top bar (book.css .bk-obs): Cinzel labels and Plex figures, an
+// engraved + between the readings. Only facts the app has: the Bangkok clock, the coin prices' age, the day the open
+// data was rebuilt, and whether the records are saved. It changes once a minute at most, and nothing in it moves.
+
+/** One reading of the line: a label, then its figure or its words. */
+const obsItem = (label, fig, word, cls = "") => h(`span.bk-obs-item${cls}`, label ? h("span.bk-obs-label", label) : null,
+  label && (fig || word) ? " " : null, fig ? h("span.bk-obs-fig", fig) : null, fig && word ? " " : null, word ? h("span.bk-obs-word", word) : null);
 
 function tickClock() {
   const el = $("[data-clock]");
   if (!el) return;
   const d = new Date(now());
-  const t = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Bangkok", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(d);
+  const t = bkkTime(d.getTime());
   const day = dayShort(L.bkkDate(now()));
   if (el._t === t + day) return;
   el._t = t + day;
-  clear(el).append(h("span.clock-day", day), h("span.clock-time.num", ` ${t}`), h("span.clock-tz", " Bangkok time"));
+  el.classList.add("bk-obs-item");
+  clear(el).append(h("span.bk-obs-label", "Bangkok"), " ", h("span.bk-obs-fig", `${day} ${t}`));
   el.setAttribute("aria-label", `Bangkok time ${day}, ${t}`);
 }
 
@@ -429,15 +603,21 @@ function renderFresh() {
   const d = prices.data;
   // A plan that buys no coins asks CoinGecko nothing (spec 8.9), so there is no coin line to show.
   if (app.plan && prices.watchesCoins()) {
-    let text;
-    if (d.off) text = "Live prices off";
-    else if (!d.cryptoAt) text = d.cryptoStatus === "error" ? "Coin prices offline" : "Loading coin prices";
-    else text = "Coin prices " + ago(d.cryptoAt);
-    kids.push(h("span.fresh-text", text));
-    if (d.cryptoStatus === "error" && d.cryptoAt) kids.push(h("span.fresh-text", " · the last known ones"));
+    if (d.off) kids.push(obsItem("Live prices", null, "off"));
+    else if (!d.cryptoAt) kids.push(obsItem("Coin prices", null, d.cryptoStatus === "error" ? "offline" : "loading"));
+    else {
+      // an age is a figure with its unit ("5 min") in Plex, and "ago" a word; "just now" stays all words (addendum
+      // d.B.2: Plex for figures only)
+      const a = ago(d.cryptoAt), err = d.cryptoStatus === "error" ? "· the last known ones" : null, m = /^(.*\d.*?) ago$/.exec(a);
+      kids.push(m ? obsItem("Coin prices", m[1], err ? `ago ${err}` : "ago")
+        : /\d/.test(a) ? obsItem("Coin prices", a, err) : obsItem("Coin prices", null, err ? `${a} ${err}` : a));
+    }
   }
-  if (store.saveError || !store.available) kids.push(h("button.save.is-error", { type: "button", "data-fk": "save-error", title: String((store.saveError && store.saveError.message) || "Storage is blocked"), on: { click: () => hooks.go("settings") } }, "Not saved"));
-  else if (saveUi.state === "saved" && Date.now() - saveUi.at < 8000) kids.push(h("span.save.is-saved", " · Saved in this browser"));
+  // the day the open data was rebuilt, when the site has it (data/index.json)
+  const facts = app.data && app.data.status === "ok" && app.data.index ? FU.bangkokParts(app.data.index.asOf) : null;
+  if (facts) kids.push(obsItem("Facts", `${dayShort(facts.date)} ${facts.time}`, null, ".is-facts"));
+  if (store.saveError || !store.available) kids.push(h("span.bk-obs-item", h("button.save.is-error", { type: "button", "data-fk": "save-error", title: String((store.saveError && store.saveError.message) || "Storage is blocked"), on: { click: () => hooks.go("settings") } }, "Not saved")));
+  else if (saveUi.state === "saved" && Date.now() - saveUi.at < 8000) kids.push(obsItem(null, null, "Saved in this browser", ".save.is-saved"));
   clear(host).append(...kids);
 }
 hooks.renderFresh = () => { renderFresh(); setTimeout(renderFresh, 8200); };
@@ -519,6 +699,8 @@ function renderFoot() {
     `${m.sourceDoc}${app.plan ? "" : " (an example until you choose your amount)"} · dated ${long(m.docDate)} · Everything you enter stays in this browser.`,
     [!app.plan || prices.watchesCoins() ? [sourceLink(prices.SOURCES.crypto), " · "] : null, sourceLink(prices.SOURCES.fx), " · Stock and fund prices are the ones you type."],
   ] });
+  // The almanac: the colophon in a cell of its own beside the fixed disclaimer, the other lines under it (views/almanac.js)
+  withColophon(next);
   next.setAttribute("data-foot", "");
   f.replaceWith(next);
 }
@@ -664,6 +846,39 @@ function lockTradeWords(L) {
     : `${lead} That is after the months this plan has left, so its 10% stays with VWRA.`;
 }
 
+// ---------------------------------------------------------------- 2.2: the Growth page's section and styles
+
+/** A section for every view, in main, for a page whose index.html has none for it yet (the Growth page, 2.2). */
+function ensureSections() {
+  const main = $("#main");
+  if (!main) return;
+  const boot = main.querySelector("[data-boot]");
+  for (const v of VIEWS) {
+    if (sectionEl(v.id)) continue;
+    const sec = h("section", { "data-view": v.id, hidden: true });
+    if (boot) main.insertBefore(sec, boot); else main.append(sec);
+  }
+}
+
+/**
+ * The Growth page's stylesheet (css/growth.css: its figures, chart and table, Today's card, and the fold of a bar of
+ * seven tabs), with this module's own version query, linked once after the page's own stylesheets when index.html
+ * does not link it. Resolves when it has loaded, failed, or after 2 s, so the frame is drawn with it where it can be.
+ */
+function growthStyles() {
+  if (document.querySelector('link[rel="stylesheet"][href*="css/growth.css"]')) return Promise.resolve();
+  const href = new URL("../css/growth.css", import.meta.url);
+  href.search = new URL(import.meta.url).search;
+  const link = h("link", { rel: "stylesheet", href: href.href, "data-growth-css": "" });
+  return new Promise((resolve) => {
+    const done = () => resolve();
+    link.addEventListener("load", done, { once: true });
+    link.addEventListener("error", done, { once: true });
+    setTimeout(done, 2000);
+    document.head.append(link);
+  });
+}
+
 /** The app's version from this module's own version query (the build adds it); this code is 2.0 at least. */
 function appVersion() {
   const v = new URL(import.meta.url).searchParams.get("v");
@@ -676,6 +891,9 @@ async function init() {
   initNow();
   book.watchTab();
   book.mountDefs();
+  ensureSections();
+  if (heightWatch) for (const sec of $$("main [data-view]")) heightWatch.observe(sec);
+  const stylesP = growthStyles();
   store.load();
   applyTheme(S().settings.theme);
   book.applyStill(stillOn());
@@ -696,6 +914,7 @@ async function init() {
     return;
   }
   app.data = await indexP;
+  await stylesP;
   // The lock before the first render, so the friend never sees the plan without it (lock-api.md 4.2), and the
   // upcoming entry, so its first lines carry their dates.
   ensureLock();
@@ -720,17 +939,25 @@ async function init() {
     renderBrand();
     invalidate("state");
   });
-  let lastFx = "", lastCrypto = "";
+  let lastFx = "", lastCrypto = "", lastHistory = "";
   prices.subscribe((d) => {
     const fx = `${d.fxStatus}|${d.fx ? d.fx.rate : ""}`;
     if (fx !== lastFx) { lastFx = fx; invalidate("fx"); if (app.active !== "setup") renderFoot(); }
     const cr = `${d.cryptoStatus}|${d.cryptoAt}`;
     if (cr !== lastCrypto) { lastCrypto = cr; invalidate("crypto"); }
+    // 2.2: a coin's price on an order date came (or its history failed): the pages that show growth draw again, once
+    // for each batch of answers (one comes every 12 s, and drawing Today again for each took the order desk from under
+    // the friend; review finding RR-01) and when the history stops or starts answering
+    const hi = `${d.history.waiting ? "wait" : d.history.v}|${d.history.status}`;
+    if (hi !== lastHistory) { lastHistory = hi; invalidate("history"); }
     renderFresh();
   });
 
   buildChrome();
   renderFoot();
+  // the status strip is the observatory line (book.css .bk-obs)
+  const strip = $(".ttm-strip");
+  if (strip) strip.classList.add("bk-obs");
   tickClock();
   renderFresh();
   setInterval(tickClock, 1000);
@@ -761,6 +988,9 @@ async function init() {
     store, scale, months: M, prices, app, logic: L, ui, now, today, invalidate, data: D, fieldsui: FU, lock: LK,
     get plan() { return app.plan; },
     get lockEntry() { return app.lockEntry || null; },
+    // 2.2: the growth tracker's figures as the pages show them, and the width under which a bar of seven folds
+    growth: () => growthNow(),
+    growthFoldPx: GROWTH_FOLD_PX,
     render: (id) => renderView(id || app.active),
     go: (id) => hooks.go(id),
   };

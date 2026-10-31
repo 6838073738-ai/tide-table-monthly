@@ -10,13 +10,13 @@ import {
   fM, fUsd, fThb, fNum, long, short, inDays, monthName, parseNum, plural, pill, pre, joinedBudgetUsd, howOf,
   card, cardHead, viewHead, disclosure, field, commit, modal, confirmDialog, sourceLink,
   M, commitPlanChange, explain, openMonthIds, monthOf, amountWords, resolvedMonths,
-} from "../core.js?v=2.1.0";
-import { ownIdMonth, MIN_MONTHLY_USD, MAX_MONTHLY_USD } from "../scale.js?v=2.1.0";
-import { moneyWarnings } from "./today.js?v=2.1.0";
-import { monthAmountLink, monthWordOf, ordersWords, placedWarning, paidBy, listAnd, fill } from "./amounts.js?v=2.1.0";
-import * as book from "../book.js?v=2.1.0";
-import * as LK from "../lock.js?v=2.1.0";
-import { lockNow, lockDateLine, lockMonthWords, lockShareWords } from "./naming.js?v=2.1.0";
+} from "../core.js?v=2.2.0";
+import { ownIdMonth, MIN_MONTHLY_USD, MAX_MONTHLY_USD } from "../scale.js?v=2.2.0";
+import { moneyWarnings } from "./today.js?v=2.2.0";
+import { monthAmountLink, monthWordOf, ordersWords, placedWarning, paidBy, listAnd, fill } from "./amounts.js?v=2.2.0";
+import * as book from "../book.js?v=2.2.0";
+import * as LK from "../lock.js?v=2.2.0";
+import { lockNow, lockDateLine, lockMonthWords, lockShareWords } from "./naming.js?v=2.2.0";
 
 const DEST = { SwissBorg: "SwissBorg", IBKR: "Interactive Brokers" };
 const dest = (to) => DEST[to] || to;

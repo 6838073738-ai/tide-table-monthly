@@ -4,7 +4,7 @@
 
 /* ---------------------------------------------------------------- the page's opening lines */
 .mx-intro { display: flex; flex-direction: column; gap: 10px; max-width: 82ch; }
-.mx-every { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 12px; background: var(--sky-soft); color: var(--text); font-size: var(--t-small); line-height: 1.5; }
+.mx-every { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: var(--r-tile); background: var(--sky-soft); color: var(--text); font-size: var(--t-small); line-height: 1.5; }
 .mx-every .ico { width: 18px; height: 18px; color: var(--sky); margin-top: 2px; flex: none; }
 .mx-disc { display: flex; gap: 10px; align-items: flex-start; font-size: var(--t-small); color: var(--text-2); line-height: 1.5; }
 .mx-disc .ico { width: 16px; height: 16px; color: var(--sky); margin-top: 2px; flex: none; }
@@ -37,20 +37,20 @@
 .mx-note { font-size: var(--t-small); color: var(--text-2); line-height: 1.5; max-width: 76ch; }
 .mx-errs:empty { display: none; }
 .mx-errs .err-list { font-size: var(--t-small); line-height: 1.5; }
-.mx-placed { padding: 10px 12px; border-radius: 10px; background: var(--amber-soft); color: var(--text); font-size: var(--t-small); line-height: 1.5; }
+.mx-placed { padding: 10px 12px; border-radius: var(--r-tile); background: var(--amber-soft); color: var(--text); font-size: var(--t-small); line-height: 1.5; }
 .mx-placed[hidden], .mx-edit .field-hint[hidden] { display: none; }
 .mx-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 
 /* ---------------------------------------------------------------- your year at your amounts */
 .mx-year-body { display: flex; flex-direction: column; gap: 14px; }
 .mx-bar, .mx-set-bar { display: flex; flex-direction: column; gap: 8px; }
-.mx-month { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--line); font-size: var(--t-small); line-height: 1.5; color: var(--text); }
+.mx-month { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border-radius: var(--r-tile); background: var(--surface-2); border: 1px solid var(--line); font-size: var(--t-small); line-height: 1.5; color: var(--text); }
 .mx-month .eyebrow, .mx-month .muted { color: var(--text-2); }
-.mx-roll { display: flex; gap: 8px; align-items: flex-start; padding: 8px 10px; border-radius: 8px; background: var(--sky-soft); color: var(--text); font-size: var(--t-small); line-height: 1.45; }
+.mx-roll { display: flex; gap: 8px; align-items: flex-start; padding: 8px 10px; border-radius: var(--r-tile); background: var(--sky-soft); color: var(--text); font-size: var(--t-small); line-height: 1.45; }
 .mx-roll .ico { width: 15px; height: 15px; color: var(--sky); margin-top: 2px; flex: none; }
 .mx-sub { font-family: var(--font-ui); font-size: var(--t-small); font-weight: 600; text-transform: none; color: var(--muted); margin-bottom: -6px !important; }
 .mx-strip { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 6px; }
-.mx-cell { display: flex; flex-direction: column; gap: 1px; padding: 7px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); min-width: 0; }
+.mx-cell { display: flex; flex-direction: column; gap: 1px; padding: 7px 8px; border-radius: var(--r-tile); border: 1px solid var(--line); background: var(--surface); min-width: 0; }
 .mx-cell.is-own { border-color: color-mix(in srgb, var(--sky) 55%, transparent); background: var(--sky-soft); }
 .mx-cell-m { font-size: var(--t-small); font-weight: 600; text-transform: none; color: var(--text-2); }
 .mx-cell-v { font-size: var(--t-small); font-weight: 600; color: var(--text); overflow-wrap: anywhere; }

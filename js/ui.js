@@ -110,8 +110,9 @@ export function sparkline(values, opts = {}) {
 }
 
 /**
- * Donut chart. segments: [{label, value, color}] → SVG with animated arcs (CSS transition on
- * stroke-dasharray). Returns {el, update(segments)}.
+ * Donut chart. segments: [{label, value, color}] → SVG whose arcs are drawn at their shares at once, on every draw:
+ * a chart never sweeps from empty round the figure in its centre (style brief F2, F3; a price refresh draws the
+ * friends' Holdings again). Returns {el, update(segments)}.
  */
 export function donut(segments, { size = 220, thickness = 26, label = "Allocation", center } = {}) {
   const r = (size - thickness) / 2, c = 2 * Math.PI * r;
@@ -125,18 +126,15 @@ export function donut(segments, { size = 220, thickness = 26, label = "Allocatio
     clear(g);
     const total = segs.reduce((a, s) => a + Math.max(0, s.value), 0) || 1;
     let acc = 0;
-    segs.forEach((s, i) => {
+    segs.forEach((s) => {
       const len = (Math.max(0, s.value) / total) * c;
       const arc = h("circle.donut-seg", {
         cx: size / 2, cy: size / 2, r, fill: "none", "stroke-width": thickness,
-        stroke: s.color, "stroke-dasharray": `0 ${c}`, "stroke-dashoffset": -acc,
-        style: { "--i": i }, tabindex: 0, "data-fk": `seg-${s.key || s.label}`, "aria-label": `${s.label}: ${(s.value / total * 100).toFixed(1)}%`,
+        stroke: s.color, "stroke-dasharray": `${Math.max(0, len - (segs.length > 1 ? 1.5 : 0))} ${c}`, "stroke-dashoffset": -acc,
+        tabindex: 0, "data-fk": `seg-${s.key || s.label}`, "aria-label": `${s.label}: ${(s.value / total * 100).toFixed(1)}%`,
       });
       arc.appendChild(h("title", {}, `${s.label}: ${(s.value / total * 100).toFixed(1)}%`));
       g.appendChild(arc);
-      const target = `${Math.max(0, len - (segs.length > 1 ? 1.5 : 0))} ${c}`;
-      if (reducedMotion()) arc.setAttribute("stroke-dasharray", target);
-      else setTimeout(() => arc.setAttribute("stroke-dasharray", target), 30 + i * 45);
       acc += len;
     });
     clear(centerG);
@@ -182,16 +180,15 @@ export function gauge({ min = 0, max = 100, value = null, label = "", bands = []
   return { el: svg, set };
 }
 
-/** Horizontal headroom bar: where price sits relative to the ceiling. pct = (ceiling-price)/ceiling*100. */
+/**
+ * Horizontal headroom bar: where price sits relative to the ceiling. pct = (ceiling-price)/ceiling*100. The bar and its
+ * mark stand at the price at once: a reading never grows into place beside a price and its ceiling (style brief F2, F3).
+ */
 export function headroomBar(pct, { label = "Headroom to ceiling" } = {}) {
   const wrap = h("div.headroom", { role: "img", "aria-label": `${label}: ${Number.isFinite(pct) ? pct.toFixed(1) + "%" : "n/a"}` });
-  const fill = h("div.headroom-fill");
-  const mark = h("div.headroom-mark");
-  wrap.append(h("div.headroom-track", fill, mark));
   const p = Number.isFinite(pct) ? Math.max(-20, Math.min(40, pct)) : null;
   const pos = p == null ? 50 : ((40 - p) / 60) * 100; // 0% headroom sits at 66.7% of the track
-  requestAnimationFrame(() => { fill.style.width = pos + "%"; mark.style.left = pos + "%"; });
-  setTimeout(() => { fill.style.width = pos + "%"; mark.style.left = pos + "%"; }, 60);
+  wrap.append(h("div.headroom-track", h("div.headroom-fill", { style: { width: pos + "%" } }), h("div.headroom-mark", { style: { left: pos + "%" } })));
   wrap.classList.toggle("is-over", p != null && p < 0);
   return wrap;
 }
@@ -263,8 +260,17 @@ export function marketStatus(venue, now = new Date()) {
   return { open: false, label: "closed" };
 }
 
+/** An en-GB Intl.DateTimeFormat for one set of options, built on first use and kept: building one costs far more than
+ *  formatting with it, and a page formats hundreds of dates per draw (a slow phone's long tasks, brief F9). */
+const dtfKept = new Map();
+function dtfOf(key, opts) {
+  let f = dtfKept.get(key);
+  if (!f) { f = new Intl.DateTimeFormat("en-GB", opts); dtfKept.set(key, f); }
+  return f;
+}
+
 export function bkkClock(now = new Date()) {
-  return new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Bangkok", weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(now);
+  return dtfOf("clock", { timeZone: "Asia/Bangkok", weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(now);
 }
 
 /** "YYYY-MM-DD" -> a UTC Date, or null for anything else (a bad imported date shows "—", never throws). */
@@ -276,11 +282,11 @@ function isoDay(dateStr) {
 }
 export function fmtDateLong(dateStr) {
   const t = isoDay(dateStr);
-  return t ? new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(t) : "—";
+  return t ? dtfOf("long", { weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(t) : "—";
 }
 export function fmtDateShort(dateStr) {
   const t = isoDay(dateStr);
-  return t ? new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(t) : "—";
+  return t ? dtfOf("short", { day: "numeric", month: "short", timeZone: "UTC" }).format(t) : "—";
 }
 
 // ---------- words for dates, money and shares (the storybook's formats; pure, no clock unless passed in) ----------

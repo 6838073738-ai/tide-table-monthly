@@ -3,13 +3,13 @@
 // the field and company pages (views/field.js, views/company.js): the Choose toggle, Add to my list / On my
 // list (into this tab's draft, views/draft.js), the not-addable line, and the notes of spec Appendix C.
 
-import { app, h, ui, toast, onCleanup, hooks, universeOn } from "../core.js?v=2.1.0";
-import * as book from "../book.js?v=2.1.0";
-import * as FU from "../fieldsui.js?v=2.1.0";
-import * as D from "../datafiles.js?v=2.1.0";
-import { fieldName } from "../fields-catalog.js?v=2.1.0";
-import * as draft from "./draft.js?v=2.1.0";
-import { isLockedListing, lockedInPlanWords } from "./naming.js?v=2.1.0";
+import { app, h, ui, toast, onCleanup, hooks, universeOn } from "../core.js?v=2.2.0";
+import * as book from "../book.js?v=2.2.0";
+import * as FU from "../fieldsui.js?v=2.2.0";
+import * as D from "../datafiles.js?v=2.2.0";
+import { fieldName } from "../fields-catalog.js?v=2.2.0";
+import * as draft from "./draft.js?v=2.2.0";
+import { isLockedListing, lockedInPlanWords } from "./naming.js?v=2.2.0";
 
 /** Appendix C and upcoming-api.md 9: the friends' own fixed copy. */
 export const WORDS = Object.freeze({

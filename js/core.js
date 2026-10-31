@@ -8,12 +8,12 @@
 // A friend's amounts and mix can differ by month (months.js). Every change to them goes through one path,
 // commitPlanChange, which refuses any change that would alter a month the friend's records fix.
 
-import * as ui from "./ui.js?v=2.1.0";
-import * as L from "./logic-core.js?v=2.1.0";
-import { fmtMoney, fmtBaht, beforeJoin } from "./scale.js?v=2.1.0";
-import { store, hasLogged, withDefaults } from "./store.js?v=2.1.0";
-import { prices } from "./prices.js?v=2.1.0";
-import * as M from "./months.js?v=2.1.0";
+import * as ui from "./ui.js?v=2.2.0";
+import * as L from "./logic-core.js?v=2.2.0";
+import { fmtMoney, fmtBaht, beforeJoin } from "./scale.js?v=2.2.0";
+import { store, hasLogged, withDefaults } from "./store.js?v=2.2.0";
+import { prices } from "./prices.js?v=2.2.0";
+import * as M from "./months.js?v=2.2.0";
 
 export const { h, clear, icon, pill, toast } = ui;
 export { ui, L, store, prices, M };
@@ -230,7 +230,13 @@ export function joinedPlan() {
   return viewMemo.view;
 }
 
-export const schedule = () => L.buildSchedule(app.plan, {});
+let schedMemo = { plan: null, sch: null };
+/** The plan's dates and orders on them (logic buildSchedule), worked out once per app.plan as joinedPlan is: Today
+ *  alone asked for them dozens of times per drawing (a slow phone's long tasks, brief F9). Read it only; it is shared. */
+export const schedule = () => {
+  if (schedMemo.plan !== app.plan || !schedMemo.sch) schedMemo = { plan: app.plan, sch: L.buildSchedule(app.plan, {}) };
+  return schedMemo.sch;
+};
 /** The dollar-baht rate for baht figures: live (Frankfurter) when known, else the plan's. */
 export const fxInfo = () => prices.fxRate(app.plan.meta.planFx);
 /** Every transfer, with what was sent; one from before the friend joined is $0 and marked preJoin. */
@@ -309,8 +315,16 @@ export function parseNum(v) {
   const s = String(v).replace(/[,\s฿$]/g, "");
   return s === "" ? NaN : Number(s);
 }
+/** An en-GB Intl.DateTimeFormat for one set of options, built on first use and kept: building one costs far more than
+ *  formatting with it, and Today formats hundreds of dates per draw (a slow phone's long tasks, brief F9). */
+const dtfKept = new Map();
+export function dtfOf(key, opts) {
+  let f = dtfKept.get(key);
+  if (!f) { f = new Intl.DateTimeFormat("en-GB", opts); dtfKept.set(key, f); }
+  return f;
+}
 export function bkkTime(ms) {
-  return new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Bangkok", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(ms));
+  return dtfOf("bkk-time", { timeZone: "Asia/Bangkok", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(ms));
 }
 export const timeLabel = (o) => (o.time === "any" ? "Any time" : o.time);
 export function fmtQty(i, q) {
@@ -330,18 +344,20 @@ export function qtyWords(i, q) {
 export function monthName(iso, shortForm = false, noYear = false) {
   if (!iso) return "—";
   const d = new Date(iso + "T12:00:00Z");
-  if (noYear) return d.toLocaleString("en-GB", { month: "long", timeZone: "UTC" });
-  return d.toLocaleString("en-GB", shortForm ? { month: "short", timeZone: "UTC" } : { month: "long", year: "numeric", timeZone: "UTC" });
+  // the same words as d.toLocaleString("en-GB", options), from formatters kept between calls ("Invalid Date" too)
+  if (!Number.isFinite(d.getTime())) return "Invalid Date";
+  if (noYear) return dtfOf("month", { month: "long", timeZone: "UTC" }).format(d);
+  return shortForm ? dtfOf("mon", { month: "short", timeZone: "UTC" }).format(d) : dtfOf("month-year", { month: "long", year: "numeric", timeZone: "UTC" }).format(d);
 }
 /** "10 November 2026", for prose. */
 export function dateWords(iso) {
   const d = new Date(iso + "T12:00:00Z");
-  return Number.isFinite(d.getTime()) ? new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(d) : "—";
+  return Number.isFinite(d.getTime()) ? dtfOf("date-words", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(d) : "—";
 }
 /** "Tue 10 Nov". */
 export function dayShort(iso) {
   const d = new Date(iso + "T12:00:00Z");
-  return Number.isFinite(d.getTime()) ? new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" }).format(d) : "—";
+  return Number.isFinite(d.getTime()) ? dtfOf("day-short", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" }).format(d) : "—";
 }
 const COUNT_WORDS = ["No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve"];
 export const countWord = (n) => COUNT_WORDS[n] || String(n);
