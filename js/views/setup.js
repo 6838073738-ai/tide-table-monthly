@@ -7,14 +7,14 @@ import {
   app, h, clear, icon, L, S, prices, commit, toast, hooks, card, field, errorState, sourceLink, today, now,
   fM, fB, fUsd, fThb, fNum, long, dayShort, dateWords, monthName, locked, parseNum, svg,
   M, commitPlanChange, explain, fixed, openMonthIds, resolvedMonths, mixIsOwn, store, universeOn,
-} from "../core.js?v=2.2.0";
-import { scalePlan, thbToUsd, usdToThb, beforeJoin, ownIdMonth, MIN_MONTHLY_USD, MAX_MONTHLY_USD, BASE_MONTHLY_USD } from "../scale.js?v=2.2.0";
-import { importState } from "./settings.js?v=2.2.0";
-import * as book from "../book.js?v=2.2.0";
-import * as LK from "../lock.js?v=2.2.0";
-import { lockDateLine } from "./naming.js?v=2.2.0";
-import * as ALM from "./almanac.js?v=2.2.0";
-import { rateNow as rateToday, readTyped, inputRecord, recordWords, placedWarning, monthWordOf, monthOption, listAnd, holdName, paidBy } from "./amounts.js?v=2.2.0";
+} from "../core.js?v=2.3.0";
+import { scalePlan, thbToUsd, usdToThb, beforeJoin, ownIdMonth, MIN_MONTHLY_USD, MAX_MONTHLY_USD, BASE_MONTHLY_USD } from "../scale.js?v=2.3.0";
+import { importState } from "./settings.js?v=2.3.0";
+import * as book from "../book.js?v=2.3.0";
+import * as LK from "../lock.js?v=2.3.0";
+import { lockDateLine } from "./naming.js?v=2.3.0";
+import * as ALM from "./almanac.js?v=2.3.0";
+import { rateNow as rateToday, readTyped, inputRecord, recordWords, placedWarning, monthWordOf, monthOption, listAnd, holdName, paidBy } from "./amounts.js?v=2.3.0";
 
 const GROUP_TOKEN = { index: "--series-1", growth: "--series-7", crypto: "--series-5" };
 /** The locked 10% (lock.js LOCK_GROUP) is a single stock like the plan's others, so the mix counts it with them in

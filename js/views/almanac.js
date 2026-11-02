@@ -26,8 +26,8 @@
 // slots that already hold their room, so the page never moves when they arrive and the page's own task does not grow.
 // The hero box is built once and kept; js/hero.js is asked for only after the page is drawn.
 
-import { h } from "../core.js?v=2.2.0";
-import * as book from "../book.js?v=2.2.0";
+import { h } from "../core.js?v=2.3.0";
+import * as book from "../book.js?v=2.3.0";
 
 /** Each page's fixed place in the contents (main.js VIEWS), for its heading's glyph and Folio: the same number on
  *  every visit, with or without the open data. The glyph never follows what a page shows. */
@@ -195,12 +195,12 @@ export function mountHero(box) {
   const onFail = (e) => {
     if (!heroWarned) { heroWarned = true; console.warn("The hero stays a still picture:", e && e.message ? e.message : e); }
   };
-  import('../hero.js?v=2.2.0').then((m) => m.mountHero(box)).catch(onFail);
+  import('../hero.js?v=2.3.0').then((m) => m.mountHero(box)).catch(onFail);
 }
 /** Today is left: hero.js pauses (and lets its context go a while later). Nothing to do if it was never asked for. */
 export function unmountHero() {
   if (!heroAsked) return;
-  import('../hero.js?v=2.2.0').then((m) => m.unmountHero()).catch(() => { /* never loaded */ });
+  import('../hero.js?v=2.3.0').then((m) => m.unmountHero()).catch(() => { /* never loaded */ });
 }
 
 /**

@@ -11,22 +11,22 @@ import {
   pre, isPreOrder, isPreTransfer, isPreDate, joinedPlan, joinedBudgetUsd, progressNow, coinQty, leftoverText, coinMinUsd, skippedUsd,
   copyDue, exportState, howOf, dateNotesFor, openMonthIds, isBoughtInst, prepNotNeeded,
   tickerOf, isFieldInst, universeOn, hasFieldMonths, fixed, monthOf, dtfOf,
-} from "../core.js?v=2.2.0";
-import { ownIdMonth } from "../scale.js?v=2.2.0";
-import { orderWhy, waitingWhy } from "../split.js?v=2.2.0";
-import * as book from "../book.js?v=2.2.0";
-import * as FU from "../fieldsui.js?v=2.2.0";
-import * as D from "../datafiles.js?v=2.2.0";
-import { fieldName } from "../fields-catalog.js?v=2.2.0";
-import { monthAmountLink } from "./amounts.js?v=2.2.0";
-import { splitLine } from "./split.js?v=2.2.0";
-import { upcomingChecked } from "./fields.js?v=2.2.0";
-import * as LK from "../lock.js?v=2.2.0";
-import { nameEl, nameText, whatNamed, lockWhyLine, lockFacts } from "./naming.js?v=2.2.0";
-import { typedKey } from "../store.js?v=2.2.0";
-import { recordedPaid, deskPrice } from "../tracker.js?v=2.2.0";
-import { growthCard } from "./growth.js?v=2.2.0";
-import * as ALM from "./almanac.js?v=2.2.0";
+} from "../core.js?v=2.3.0";
+import { ownIdMonth } from "../scale.js?v=2.3.0";
+import { orderWhy, waitingWhy } from "../split.js?v=2.3.0";
+import * as book from "../book.js?v=2.3.0";
+import * as FU from "../fieldsui.js?v=2.3.0";
+import * as D from "../datafiles.js?v=2.3.0";
+import { fieldName } from "../fields-catalog.js?v=2.3.0";
+import { monthAmountLink } from "./amounts.js?v=2.3.0";
+import { splitLine } from "./split.js?v=2.3.0";
+import { upcomingChecked } from "./fields.js?v=2.3.0";
+import * as LK from "../lock.js?v=2.3.0";
+import { nameEl, nameText, whatNamed, lockWhyLine, lockFacts } from "./naming.js?v=2.3.0";
+import { typedKey } from "../store.js?v=2.3.0";
+import { recordedPaid, deskPrice } from "../tracker.js?v=2.3.0";
+import { growthCard } from "./growth.js?v=2.3.0";
+import * as ALM from "./almanac.js?v=2.3.0";
 
 /** The one-time panel for a friend with records, on their first 2.0 visit (spec 8.2), is remembered here. */
 const INTRO_KEY = "ttm:fields-intro";

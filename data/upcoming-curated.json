@@ -1,8 +1,8 @@
 {
   "schema": "tt-upcoming/1",
   "licence": "open",
-  "asOf": "2026-10-27T03:17:00Z",
-  "dataDate": "2026-10-27",
+  "asOf": "2026-11-01T05:50:00Z",
+  "dataDate": "2026-11-01",
   "entries": [
     {
       "key": "anthropic",
@@ -29,12 +29,22 @@
       },
       "firstTradeFrom": null,
       "estimate": {
-        "mostLikely": "2026-11-19",
+        "mostLikely": "2026-11-20",
         "earliest": "2026-11-16",
         "latest": "2026-11-25",
         "confidence": "medium",
-        "asOf": "2026-10-27",
+        "asOf": "2026-11-01",
         "sources": [
+          {
+            "label": "CoinDesk",
+            "date": "2026-10-31",
+            "url": "https://www.coindesk.com/business/2026/10/31/traders-are-already-placing-leveraged-bets-on-anthropic-s-ipo-using-crypto-contracts"
+          },
+          {
+            "label": "Renaissance Capital",
+            "date": "2026-10-30",
+            "url": "https://www.renaissancecapital.com/IPO-Center/News/122506/us-ipo-weekly-recap-anthropic-files-for-potentially-record-breaking-ipo"
+          },
           {
             "label": "The Wall Street Journal, relayed by Investing.com",
             "date": "2026-10-26",
@@ -291,7 +301,7 @@
       "links": {
         "edgar": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0002130357"
       },
-      "checkedAt": "2026-10-27T03:17:00Z",
+      "checkedAt": "2026-11-01T05:40:00Z",
       "checkedBy": "curated"
     }
   ]

@@ -474,10 +474,13 @@ main [data-view] :is(h1, h2)[tabindex="-1"]:focus { outline: none; }
 .st-item {
   display: grid; gap: 10px; min-width: 0; padding: 18px 18px 16px; border-radius: var(--r-tile);
   background: var(--paper-raised); box-shadow: var(--shadow-lift);
-  /* a card off screen is not laid out until it nears the view (review finding UI-1: focusing the page's heading laid
-     out every card of a 13,500 px page); the browser remembers each card's height once it has drawn it */
-  content-visibility: auto; contain-intrinsic-size: auto 640px;
 }
+/* a stock's card off screen is not laid out until it nears the view (review finding UI-1: focusing the page's heading
+   laid out every card of a 13,500 px page); the browser remembers each card's height once it has drawn it. A fund's or a
+   coin's card is small and fills nothing in later, so it is laid out with the page, once: the veil's calm check (main.js
+   calmAround) reads a box inside every card, and each read inside a card off screen lays that card out on its own, which
+   made one task of 124 to 141 ms at 4x CPU on opening the page (news-files-api.md 12). */
+.st-item[data-kind="stock"] { content-visibility: auto; contain-intrinsic-size: auto 640px; }
 @media (min-width: 760px) { .st-item { padding: 22px 26px 20px; } }
 .st-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
 .st-name { margin: 0; font-family: var(--font-display); font-size: var(--t-h3); line-height: 1.3; min-width: 0; }
@@ -503,6 +506,11 @@ main [data-view] :is(h1, h2)[tabindex="-1"]:focus { outline: none; }
 .st-sources .bk-links { margin-top: 4px; }
 .st-link { margin: 0; }
 .st-link .link-arrow { display: inline-flex; align-items: center; min-height: var(--tap); }
+/* 2.3: "In the news" (news-files-api.md 12): two plain lists, the same ink, one under the other; nothing in it moves */
+.st-desk { min-width: 0; }
+.st-desk + .st-desk { margin-top: 28px; }
+.st-desk .bk-section-head { margin-bottom: 8px; }
+.st-desk > .bk-note { margin-top: 10px; }
 
 /* ---------------------------------------------------------------- 2.1: a tab bar of six (addendum D.1) */
 /* Every tab labelled, nothing under "More" (brief G10): on a phone a bar of six uses the short words (Split, Year)

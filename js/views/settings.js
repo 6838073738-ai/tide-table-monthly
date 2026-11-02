@@ -7,12 +7,12 @@ import {
   fM, fB, fNum, fThb, fPrice, long, short, countWord, plural, ago, parseNum,
   pill, card, cardHead, viewHead, field, disclosure, sourceLink, commit, modal, confirmDialog, exportState,
   M, fixed, joinedMonthIds, openMonthIds, amountWords, mixIsOwn, joinedBudgetUsd, resolvedMonths, isBoughtInst, pre,
-} from "../core.js?v=2.2.0";
-import { nameEl, nameText } from "./naming.js?v=2.2.0";
-import { DEFAULT_STATE, MAX_IMPORT_BYTES, MAX_DEPTH, STILL_KEY, depthOf, cleanPlan, validateImport, withoutUnbought } from "../store.js?v=2.2.0";
-import * as book from "../book.js?v=2.2.0";
-import { openMonthDialog, monthWordOf, typedWords } from "./amounts.js?v=2.2.0";
-import { mixCard } from "./mix.js?v=2.2.0";
+} from "../core.js?v=2.3.0";
+import { nameEl, nameText } from "./naming.js?v=2.3.0";
+import { DEFAULT_STATE, MAX_IMPORT_BYTES, MAX_DEPTH, STILL_KEY, depthOf, cleanPlan, validateImport, withoutUnbought } from "../store.js?v=2.3.0";
+import * as book from "../book.js?v=2.3.0";
+import { openMonthDialog, monthWordOf, typedWords } from "./amounts.js?v=2.3.0";
+import { mixCard } from "./mix.js?v=2.3.0";
 
 function setSetting(key, value) { commit((d) => { d.settings[key] = value; }); }
 

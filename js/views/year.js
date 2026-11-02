@@ -6,15 +6,15 @@ import {
   app, h, S, L, today, ost, isDone, instById, schedule, funding, carry, autoDeskDate, fM, fB, fUsd, long, short, dayShort,
   inDays, plural, statusPill, pill, viewHead, card, progressNow, pre, isPreDate, skippedUsd, monthName, joinedBudgetUsd, dateNotesFor,
   monthOf, fixed, amountWords, mixIsOwn, tickerOf,
-} from "../core.js?v=2.2.0";
-import { openDesk, chapterPages } from "./today.js?v=2.2.0";
-import { waitingWhy } from "../split.js?v=2.2.0";
-import { fieldName } from "../fields-catalog.js?v=2.2.0";
-import { openMonthDialog, monthWordOf, recordWords, listAnd } from "./amounts.js?v=2.2.0";
-import { upcomingChecked } from "./fields.js?v=2.2.0";
-import * as LK from "../lock.js?v=2.2.0";
-import { nameEl, nameText, lockNow, lockMonthLine, lockShareWords } from "./naming.js?v=2.2.0";
-import * as ALM from "./almanac.js?v=2.2.0";
+} from "../core.js?v=2.3.0";
+import { openDesk, chapterPages } from "./today.js?v=2.3.0";
+import { waitingWhy } from "../split.js?v=2.3.0";
+import { fieldName } from "../fields-catalog.js?v=2.3.0";
+import { openMonthDialog, monthWordOf, recordWords, listAnd } from "./amounts.js?v=2.3.0";
+import { upcomingChecked } from "./fields.js?v=2.3.0";
+import * as LK from "../lock.js?v=2.3.0";
+import { nameEl, nameText, lockNow, lockMonthLine, lockShareWords } from "./naming.js?v=2.3.0";
+import * as ALM from "./almanac.js?v=2.3.0";
 
 const TX_PILL = { todo: ["To send", "neutral", "□"], sent: ["Sent", "sky", "↗"], arrived: ["Arrived", "kelp", "✓"] };
 const ROLL_WORDS = { below_min: "Not bought at your amount", not_in_mix: "Not in your mix" };

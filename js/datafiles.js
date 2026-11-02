@@ -3,17 +3,19 @@
 // load. It holds no path of either app: the host calls configure({base}) first. Pure ES module: nothing runs at
 // import, and every network call goes through the fetch the host gives (or the browser's own).
 
-import { isFieldId } from "./fields-catalog.js?v=2.2.0";
+import { isFieldId } from "./fields-catalog.js?v=2.3.0";
 
-/** File names a set may hold (spec 4.13); anything else is never asked for. */
-export const NAME_RE = /^(index|fields|search|risk|field-[a-z]{3,16}|co-[0-9a-f]{2})\.json$/;
+/** File names a set may hold (spec 4.13; desks: docs/tt2/build/news-files-api.md); anything else is never asked for. */
+export const NAME_RE = /^(index|fields|search|risk|desks|field-[a-z]{3,16}|co-[0-9a-f]{2})\.json$/;
 /** A company id of either set (s, j, l in both; y only in the personal set). */
 export const COMPANY_ID_RE = /^[sjly][0-9A-Z]{1,19}$/;
 /** Each file kind's schema name and the one major this app reads (Appendix B.1). */
 export const SCHEMAS = Object.freeze({
   index: ["tt-index", 2], fields: ["tt-fields", 2], field: ["tt-field", 2], companies: ["tt-companies", 2],
-  search: ["tt-search", 2], risk: ["tt-risk", 1],
+  search: ["tt-search", 2], risk: ["tt-risk", 1], desks: ["tt-desks", 1],
 });
+/** The two lists desks.json holds, in the order a page shows them (news-files-api.md 1). */
+export const DESK_IDS = Object.freeze(["markets", "crypto"]);
 /** The capabilities a set can switch on; all are false until an index has loaded. */
 export const CAPABILITY_KEYS = Object.freeze(["universe", "profits", "fx", "news", "prices", "risk"]);
 /** Facts older than this many days get the stale banner (spec 4.11, 4.13). */
@@ -344,6 +346,43 @@ export function loadRisk() {
     if (!isObj(json.vwra) || !isObj(json.fields)) throw new DataError("bad", "risk.json: vwra or fields missing");
     return json;
   });
+}
+
+/** "desks.json" when the loaded index names that file; null for a set without it (from before 2.3, or no list part). */
+export function desksFile() {
+  const idx = indexState && indexState.status === "ok" ? indexState.index : null;
+  return idx && idx.files.desks === "desks.json" ? "desks.json" : null;
+}
+
+/**
+ * desks.json (the friends' Stocks page, 2.3: news-files-api.md 1): the file plus byId, each desk this app knows by its
+ * id. Resolves to null, without a fetch, for a set that does not name the file or an index that is not there, and to
+ * null for a file the set names but the site does not have. A file it cannot read is refused like any other.
+ */
+export function loadDesks() {
+  return once("desks.json", async () => {
+    const st = await loadIndex();
+    if (st.status !== "ok" || st.index.files.desks !== "desks.json") return null;
+    const { json } = await getJson("desks.json", { allowMissing: true });
+    if (json === null) return null;
+    schemaMajor(json, "desks");
+    checkLicence(json, "desks.json");
+    const byId = {};
+    for (const d of Array.isArray(json.desks) ? json.desks : []) if (isObj(d) && DESK_IDS.includes(d.id)) byId[d.id] = d;
+    if (!Object.keys(byId).length) throw new DataError("bad", "desks.json: no desk this app knows");
+    return { ...json, byId };
+  });
+}
+
+/**
+ * index.parts.news.readSince: the first day of the unbroken stretch Tide Table has read GDELT's bulk files, while that
+ * is under the 30-day window (addendum of 1 Nov 2026, C.2). Null when the window is whole, for a set from before 2.3,
+ * and until an index has loaded. Both apps' sets carry the key, so both say the same.
+ */
+export function newsReadSince() {
+  const idx = indexState && indexState.status === "ok" ? indexState.index : null;
+  const news = idx && isObj(idx.parts) && isObj(idx.parts.news) ? idx.parts.news : null;
+  return news && typeof news.readSince === "string" && /^\d{4}-\d{2}-\d{2}$/.test(news.readSince) ? news.readSince : null;
 }
 
 // ---------------------------------------------------------------- shards

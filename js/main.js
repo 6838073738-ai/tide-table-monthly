@@ -22,30 +22,30 @@ import {
   app, hooks, h, clear, ui, L, store, prices, $, $$, S, today, initNow, now, saveUi, errorState, modal, ago,
   sourceLink, M, amountWords, mixIsOwn, confirmDialog, toast, long, universeOn, hasFieldMonths,
   commitPlanChange, dayShort, pre, bkkTime,
-} from "./core.js?v=2.2.0";
-import * as scale from "./scale.js?v=2.2.0";
-import * as book from "./book.js?v=2.2.0";
-import * as D from "./datafiles.js?v=2.2.0";
-import * as FU from "./fieldsui.js?v=2.2.0";
-import { fieldName, isFieldId } from "./fields-catalog.js?v=2.2.0";
-import { THEME_KEY, STILL_KEY, cleanPlan, validateImport, withoutUnbought } from "./store.js?v=2.2.0";
-import * as LK from "./lock.js?v=2.2.0";
-import { renderSetup } from "./views/setup.js?v=2.2.0";
-import { renderToday, stopTodayTicker } from "./views/today.js?v=2.2.0";
-import { renderYear } from "./views/year.js?v=2.2.0";
-import { renderMoney } from "./views/money.js?v=2.2.0";
-import { renderHoldings } from "./views/holdings.js?v=2.2.0";
-import { renderRules } from "./views/rules.js?v=2.2.0";
-import { renderSettings } from "./views/settings.js?v=2.2.0";
-import { renderMix } from "./views/mix.js?v=2.2.0";
-import { renderFields, configureFieldsUi, upcomingDoc } from "./views/fields.js?v=2.2.0";
-import { renderField } from "./views/field.js?v=2.2.0";
-import { renderCompany } from "./views/company.js?v=2.2.0";
-import { renderSplit } from "./views/split.js?v=2.2.0";
-import { renderStocks } from "./views/stocks.js?v=2.2.0";
-import { renderGrowth, growthNow } from "./views/growth.js?v=2.2.0";
-import { resetDraft } from "./views/draft.js?v=2.2.0";
-import { markHead, withColophon, unmountHero } from "./views/almanac.js?v=2.2.0";
+} from "./core.js?v=2.3.0";
+import * as scale from "./scale.js?v=2.3.0";
+import * as book from "./book.js?v=2.3.0";
+import * as D from "./datafiles.js?v=2.3.0";
+import * as FU from "./fieldsui.js?v=2.3.0";
+import { fieldName, isFieldId } from "./fields-catalog.js?v=2.3.0";
+import { THEME_KEY, STILL_KEY, cleanPlan, validateImport, withoutUnbought } from "./store.js?v=2.3.0";
+import * as LK from "./lock.js?v=2.3.0";
+import { renderSetup } from "./views/setup.js?v=2.3.0";
+import { renderToday, stopTodayTicker } from "./views/today.js?v=2.3.0";
+import { renderYear } from "./views/year.js?v=2.3.0";
+import { renderMoney } from "./views/money.js?v=2.3.0";
+import { renderHoldings } from "./views/holdings.js?v=2.3.0";
+import { renderRules } from "./views/rules.js?v=2.3.0";
+import { renderSettings } from "./views/settings.js?v=2.3.0";
+import { renderMix } from "./views/mix.js?v=2.3.0";
+import { renderFields, configureFieldsUi, upcomingDoc } from "./views/fields.js?v=2.3.0";
+import { renderField } from "./views/field.js?v=2.3.0";
+import { renderCompany } from "./views/company.js?v=2.3.0";
+import { renderSplit } from "./views/split.js?v=2.3.0";
+import { renderStocks } from "./views/stocks.js?v=2.3.0";
+import { renderGrowth, growthNow } from "./views/growth.js?v=2.3.0";
+import { resetDraft } from "./views/draft.js?v=2.3.0";
+import { markHead, withColophon, unmountHero } from "./views/almanac.js?v=2.3.0";
 
 const BASE_TITLE = "Tide Table · Monthly";
 const VIEWS = [

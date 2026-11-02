@@ -71,10 +71,14 @@ the time it was built.
 | SEC EDGAR (www.sec.gov, data.sec.gov) | US listings, industry codes, yearly and quarterly reports, and the filings of upcoming listings | "Yearly reports via SEC EDGAR" |
 | ESEF filings (filings.xbrl.org) | yearly reports of European filers that upload them | "Yearly reports via filings.xbrl.org (ESEF)" |
 | European Central Bank euro reference rates, via Frankfurter | exchange rates | "Calculated by Tide Table from European Central Bank euro reference rates, via Frankfurter" |
-| GDELT Project | headlines: title, publisher, date and link only | "Headlines found through the GDELT Project (https://www.gdeltproject.org/)" |
+| GDELT Project (its news files, and its search when it answers) | headlines: title, publisher, date and link only | "Headlines found through the GDELT Project (https://www.gdeltproject.org/)" |
 | CoinGecko (in your browser) | coin prices | "Crypto prices by CoinGecko" |
 
-Headlines are third-party text. They are quoted as they are, outside both sides, never coloured or tagged.
+Headlines are third-party text. They are quoted as they are, outside both sides, never coloured or tagged. A build reads
+GDELT's news files on the maintainer's computer, and no browser asks that site for anything. A list says when it was last
+checked. While those files have been read for under 30 days, an empty list says since which day it found none. The Stocks
+page's two short lists, Markets and Coins, take their titles from a reviewed list of established publishers. They rank
+nothing and judge nothing.
 
 **Switched off, until their terms allow it:** BBC News feeds (their terms do not allow taking metadata from the
 feeds without permission), Bangkok Post and Guardian feeds (terms not read yet), and Japan Exchange Group's list of
@@ -84,7 +88,7 @@ listed companies (its terms do not allow its data to be adapted without permissi
 
 | When | What it does |
 |---|---|
-| Every morning, about 07:30 Bangkok time, when the computer is on | exchange rates, headlines on a rotation, the upcoming listings' check with the SEC, and every line rendered again from the stored figures |
+| Every morning, about 07:30 Bangkok time, when the computer is on | exchange rates, headlines from GDELT's news files since the last run, the upcoming listings' check with the SEC, and every line rendered again from the stored figures |
 | Saturdays (Bangkok time), the first run, and any morning the list is a week old or more | also SEC's bulk files, ESEF, the list, the fields, the profit rule and the yearly figures |
 
 - Every request goes through one honest client: a list of allowed hosts, an honest User-Agent, pacing per host,

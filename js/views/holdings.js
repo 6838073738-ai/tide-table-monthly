@@ -13,13 +13,13 @@ import {
   fM, fUsd, fPct, fNum, fPrice, short, fmtQty, plural, statusPill, pill,
   card, cardHead, viewHead, empty, chipGroup, downloadFile, today, hooks, progressNow, joinedBudgetUsd, isPreOrder, isPreTransfer,
   mixIsOwn, resolvedMonths, amountWords, tickerOf, isFieldInst, fieldMonthsOn, fieldsSpecNow,
-} from "../core.js?v=2.2.0";
-import { openFillDialog, undoOrder } from "./today.js?v=2.2.0";
-import { notBought, notBoughtMonth } from "./mix.js?v=2.2.0";
-import { splitLine } from "./split.js?v=2.2.0";
-import * as LK from "../lock.js?v=2.2.0";
-import { nameEl, nameText, lockNow, lockSubject, lockDateLine, lockMonthWords, lockShareWords } from "./naming.js?v=2.2.0";
-import * as ALM from "./almanac.js?v=2.2.0";
+} from "../core.js?v=2.3.0";
+import { openFillDialog, undoOrder } from "./today.js?v=2.3.0";
+import { notBought, notBoughtMonth } from "./mix.js?v=2.3.0";
+import { splitLine } from "./split.js?v=2.3.0";
+import * as LK from "../lock.js?v=2.3.0";
+import { nameEl, nameText, lockNow, lockSubject, lockDateLine, lockMonthWords, lockShareWords } from "./naming.js?v=2.3.0";
+import * as ALM from "./almanac.js?v=2.3.0";
 
 const GROUP_TOKEN = { index: "--series-1", growth: "--series-7", crypto: "--series-5", fields: "--series-4" };
 const GROUP_ORDER = ["index", "growth", "crypto", "fields"];

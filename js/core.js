@@ -8,12 +8,12 @@
 // A friend's amounts and mix can differ by month (months.js). Every change to them goes through one path,
 // commitPlanChange, which refuses any change that would alter a month the friend's records fix.
 
-import * as ui from "./ui.js?v=2.2.0";
-import * as L from "./logic-core.js?v=2.2.0";
-import { fmtMoney, fmtBaht, beforeJoin } from "./scale.js?v=2.2.0";
-import { store, hasLogged, withDefaults } from "./store.js?v=2.2.0";
-import { prices } from "./prices.js?v=2.2.0";
-import * as M from "./months.js?v=2.2.0";
+import * as ui from "./ui.js?v=2.3.0";
+import * as L from "./logic-core.js?v=2.3.0";
+import { fmtMoney, fmtBaht, beforeJoin } from "./scale.js?v=2.3.0";
+import { store, hasLogged, withDefaults } from "./store.js?v=2.3.0";
+import { prices } from "./prices.js?v=2.3.0";
+import * as M from "./months.js?v=2.3.0";
 
 export const { h, clear, icon, pill, toast } = ui;
 export { ui, L, store, prices, M };

@@ -129,7 +129,7 @@ function context() {
 }
 function load() {
   const gl = S.gl;
-  (M ? Promise.resolve(M) : import("./hero-gl.js?v=2.2.0")).then((m) => {
+  (M ? Promise.resolve(M) : import("./hero-gl.js?v=2.3.0")).then((m) => {
     M = m;
     if (S.gl !== gl || S.lost) return;
     const sc = (S.scene = m.createScene(gl));

@@ -17,15 +17,20 @@
 // full name ("NVDA · NVIDIA CORP", names.js), and a company's page has its figures year by year, its debt, and its
 // share-price change where the set has prices (docs/tt2/build/data-records.md). The figures are drawn from the
 // record as the data holds it: nothing is estimated, re-picked or ranked.
+//
+// Tide Table 2.3 (docs/tt2/ADDENDUM-2026-11-01.md C.2, docs/tt2/build/news-files-api.md 12): every line about a headline
+// list claims only how far back that list was read (newsReach), from since when the bulk files have been read
+// (index.parts.news.readSince), in both apps. headlineParts is the one way a list of headlines is drawn; the friends'
+// Stocks page uses it for its two lists, and newsNote for the fixed line over them.
 
-import * as book from "./book.js?v=2.2.0";
-import * as ui from "./ui.js?v=2.2.0";
-import * as data from "./datafiles.js?v=2.2.0";
-import * as names from "./names.js?v=2.2.0";
-import { money, CUR_NAME } from "./facts.js?v=2.2.0";
+import * as book from "./book.js?v=2.3.0";
+import * as ui from "./ui.js?v=2.3.0";
+import * as data from "./datafiles.js?v=2.3.0";
+import * as names from "./names.js?v=2.3.0";
+import { money, CUR_NAME } from "./facts.js?v=2.3.0";
 import {
   SECTORS, CLOSEUPS, INSIDE, fieldById, fieldName, alsoWords, isFieldId, matchFields, foldText, joinAnd,
-} from "./fields-catalog.js?v=2.2.0";
+} from "./fields-catalog.js?v=2.3.0";
 
 // ---------------------------------------------------------------- configuration
 
@@ -1121,32 +1126,100 @@ function attributionOf(items) {
 }
 
 /**
- * The words around "In the news" (spec 7.4), from a list's headlinesCheckedAt (exported for the tests): none, the
- * line shown when the list is empty, and checked, the "Headlines checked on" line. A list never checked (null: no
- * run has yet read every source that can give it headlines, pipeline/news.py) says so and has no "checked on" line,
- * so an empty list is never read as "none found". what: "company" or "field".
+ * How far back a list was read: every line about the list goes by this (addendum of 1 Nov 2026, C.2). checkedAt: its
+ * headlinesCheckedAt. readSince: index.parts.news.readSince. The bulk files reach back only as far as Tide Table has read
+ * them. kind:
+ *   "never"   no run has yet read every source that can give it headlines (pipeline/news.py);
+ *   "window"  the whole 30 days: the stretch the files were read reaches them, or a set from before 2.3 (no readSince);
+ *   "since"   the files reach back only to readSince, under 30 days, and this list was read over that stretch (since);
+ *   "older"   its own last check came before that day (it kept its last good: a company no source can match;
+ *             pipeline/news.py), so it was never read over that stretch.
+ * day: its last check's day in Bangkok, in words. readSince is a UTC day, and a list read whole in a run has a UTC day at
+ * or after it, so the two compare exactly.
  */
-export function newsWords(checkedAt, what = "company") {
+function newsReach(checkedAt, readSince) {
   const p = checkedAt ? bangkokParts(checkedAt) : null;
-  if (!p) return { none: `Tide Table has not checked headlines for this ${what === "field" ? "field" : "company"} yet.`, checked: null };
+  if (!p) return { kind: "never" };
   const day = dayWords(p.date);
-  return { none: `No headlines found in the sources Tide Table reads in the 30 days to ${day}.`, checked: `Headlines checked on ${day}.` };
+  const since = typeof readSince === "string" && /^\d{4}-\d{2}-\d{2}$/.test(readSince) ? readSince : null;
+  if (!since) return { kind: "window", day };
+  if (since > new Date(Date.parse(checkedAt)).toISOString().slice(0, 10)) return { kind: "older", day };
+  return { kind: "since", day, since };
 }
 
-/** "In the news" (spec 7.4): third-party headlines, newest first, outside both sides. */
-function newsSection(list, checkedAt, noteContent, { level = 2, what = "company" } = {}) {
-  const items = (Array.isArray(list) ? list : []).filter((x) => x && x.title && x.url);
-  const words = newsWords(checkedAt, what);
-  return section(
-    B("sectionHead", { title: COPY.news, level }),
+/**
+ * The words around "In the news" (spec 7.4), from a list's headlinesCheckedAt (exported for the tests): none, the
+ * line shown when the list is empty, and checked, the "Headlines checked on" line. A list never checked says so and has
+ * no "checked on" line, so an empty list is never read as "none found". what: "company", "field" or "list" (a desk of the
+ * Stocks page). readSince: while the files reach back under 30 days an empty list says since when, never "in the 30
+ * days"; a list last checked before that day names no stretch, and its "checked on" line says when (newsReach).
+ */
+export function newsWords(checkedAt, what = "company", readSince = null) {
+  const r = newsReach(checkedAt, readSince);
+  if (r.kind === "never") return { none: `Tide Table has not checked headlines for this ${what === "field" || what === "list" ? what : "company"} yet.`, checked: null };
+  const none = r.kind === "window" ? `No headlines found in the sources Tide Table reads in the 30 days to ${r.day}.`
+    : r.kind === "older" ? "No headlines found in the sources Tide Table reads when it last checked."
+      : `No headlines found in the sources Tide Table reads since ${dayWords(r.since)}.`;
+  return { none, checked: `Headlines checked on ${r.day}.` };
+}
+
+/**
+ * The fixed line over headlines (spec 7.4, brief 4.10), claiming only the reach of the lists under it, so it can never
+ * disagree with a list's own lines (addendum C.2). about: what follows "Headlines", as Content ("that name ..."). lists:
+ * each list it stands over, [{ items: the headlines drawn, checkedAt }]. readSince: as newsWords; by default the loaded
+ * index's.
+ *   Every list "window": "Headlines from the last 30 days {about}, newest first. ...", the words of spec 7.4.
+ *   Every list "since", every headline drawn on or after that day: "Headlines since {day} {about}, newest first. ...".
+ *   Every list "since", a headline older than that day: a list keeps its last good within the 30 days (an extra source's
+ *   answer, or a read from before a gap), so the line cannot say "since" of its rows, and names the day in a sentence of
+ *   its own.
+ *   Anything else (a list never checked or last checked before that day, or lists that differ): no reach at all.
+ */
+export function newsNote(about, lists, readSince = data.newsReadSince()) {
+  const reach = lists.map((l) => newsReach(l.checkedAt, readSince));
+  const all = (kind) => reach.length > 0 && reach.every((r) => r.kind === kind);
+  const since = all("since") ? reach[0].since : null;
+  const within = since && lists.every((l) => l.items.every((x) => typeof x.date === "string" && x.date >= since));
+  const lead = all("window") ? "Headlines from the last 30 days " : within ? `Headlines since ${dayWords(since)} ` : "Headlines ";
+  const read = since && !within ? ` Its main source has been read without a break since ${dayWords(since)}, so older headlines can be missing.` : "";
+  return [lead, about, `, newest first. Tide Table does not sort them into either side.${read}`];
+}
+
+/** The headlines a page can draw: each with a title and a link out over https (the pipeline stores no other; a page
+ *  does not take that on trust, whatever a file holds). */
+export function headlineItems(list) {
+  return (Array.isArray(list) ? list : []).filter((x) => x && typeof x.title === "string" && x.title
+    && typeof x.url === "string" && /^https:\/\/\S+$/i.test(x.url));
+}
+
+/**
+ * One headline list as every page draws it (spec 7.4), shared by a company's and a field's page and the friends'
+ * Stocks page: [the list, then the "Headlines checked on" line or null]. The list holds each title quoted as a link, its
+ * publisher and day, the attribution line, or the honest line for an empty list. about: what newsNote's fixed line over
+ * it says it holds, if it has that line. what: as newsWords. readSince: as newsWords; by default the loaded index's.
+ */
+export function headlineParts(list, checkedAt, { about = null, what = "company", readSince = data.newsReadSince() } = {}) {
+  const items = headlineItems(list);
+  const words = newsWords(checkedAt, what, readSince);
+  return [
     B("headlineList", {
       items: items.map((x) => ({ title: x.title, publisher: x.publisher || "", date: dayWords(x.date), url: x.url })),
-      note: noteContent,
+      note: about ? newsNote(about, [{ items, checkedAt }], readSince) : null,
       none: words.none,
       attribution: attributionOf(items),
     }),
     words.checked ? B("note", words.checked) : null,
-  );
+  ];
+}
+
+/** "In the news" (spec 7.4): third-party headlines, newest first, outside both sides. readFrom: a company's
+ *  headlinesReadFrom, the first day a list that joined after the stretch began was read (docs/tt2/build/news-files-api.md
+ *  4): the later of that and the set's day is how far back this list was read. */
+function newsSection(list, checkedAt, about, { level = 2, what = "company", readFrom = null } = {}) {
+  const set = data.newsReadSince();
+  const own = typeof readFrom === "string" && /^\d{4}-\d{2}-\d{2}$/.test(readFrom) ? readFrom : null;
+  const readSince = own && (!set || own > set) ? own : set;
+  return section(B("sectionHead", { title: COPY.news, level }), ...headlineParts(list, checkedAt, { about, what, readSince }));
 }
 
 /** Whether the host's company action can add this company (its canAdd, else the data's addable). */
@@ -1461,8 +1534,7 @@ export function fieldPage(fieldId, { company = null, headingId } = {}) {
         }),
       ));
       body.append(newsSection(e.headlines, e.headlinesCheckedAt,
-        [`Headlines from the last 30 days that name a company in ${f.name} or the ${f.name} industry, newest first. `,
-          "Tide Table does not sort them into either side."], { what: "field" }));
+        `that name a company in ${f.name} or the ${f.name} industry`, { what: "field" }));
     }
     const list = companyList(f.id, { open: company });
     body.append(list);
@@ -1821,9 +1893,7 @@ function drawDetail(body, rec, { fieldId, compact, standalone }) {
   const prices = !!data.capabilities().prices;
   if (compact) body.append(B("fold", { summary: FIGURES_COPY.fold, children: [figuresBlock(rec, { level: headLevel, prices, compact: true })] }));
   else body.append(figuresBlock(rec, { level: headLevel, prices }));
-  body.append(newsSection(rec.headlines, rec.headlinesCheckedAt,
-    ["Headlines from the last 30 days that name ", mask(rec.name), ", newest first. Tide Table does not sort them into either side."],
-    { level: headLevel, what: "company" }));
+  body.append(newsSection(rec.headlines, rec.headlinesCheckedAt, ["that name ", mask(rec.name)], { level: headLevel, what: "company", readFrom: rec.headlinesReadFrom }));
   const filings = (rec.filings || []).filter((x) => x && x.form && x.url).slice(0, 3);
   if (filings.length) {
     body.append(section(B("sectionHead", { title: COPY.filings, level: headLevel }),

@@ -20,7 +20,7 @@
 // price known for it: the host's latest price, the series' last close, or a price paid; on the same date the latest
 // price comes first, then the close, then a price paid. An order is valued at its cost until its price paid's date.
 
-import { tickerName, fullNameOf } from "./names.js?v=2.2.0";
+import { tickerName, fullNameOf } from "./names.js?v=2.3.0";
 
 /** Every sentence and label of the tracker, by id. "{…}" marks a value the host fills; money and dates come formatted
  *  by the host (for dates, ui.js dateWords: "Tue 10 Nov 2026"). */

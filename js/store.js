@@ -26,12 +26,12 @@
 // a copy of the typed prices beside the state (TYPED_COPY_KEY) and puts them back: in this tab when such a save arrives,
 // and at the next load when no 2.2 tab was open (review finding RR-02).
 
-import { isMonthlyUsdInRange, MIX_TENTHS_MAX } from "./scale.js?v=2.2.0";
-import { explainFit, monthWord, monthOfOrder } from "./months.js?v=2.2.0";
-import { readLock } from "./lock.js?v=2.2.0";
+import { isMonthlyUsdInRange, MIX_TENTHS_MAX } from "./scale.js?v=2.3.0";
+import { explainFit, monthWord, monthOfOrder } from "./months.js?v=2.3.0";
+import { readLock } from "./lock.js?v=2.3.0";
 import {
   FIELD_IDS, FIELD_ID, COMPANY_ID, SPLIT_MAX, MAX_FIELD_COMPANIES, MAX_COMPANIES, fieldOrder, nameSnapshot, isAddableVenue,
-} from "./split.js?v=2.2.0";
+} from "./split.js?v=2.3.0";
 
 export const PLAN_ID = "monthly-2026-27";
 export const STATE_VERSION = 2;

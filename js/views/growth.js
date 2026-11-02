@@ -16,11 +16,11 @@
 import {
   app, h, ui, S, prices, now, today, pre, hooks, instById, fUsd, fThb, fNum, fPrice, viewHead, settings, sourceLink,
   fxInfo, isFieldInst,
-} from "../core.js?v=2.2.0";
-import * as G from "../growth.js?v=2.2.0";
-import * as book from "../book.js?v=2.2.0";
-import { trackerInput, typeableUnpriced, coinsWaiting } from "../tracker.js?v=2.2.0";
-import { nameEl } from "./naming.js?v=2.2.0";
+} from "../core.js?v=2.3.0";
+import * as G from "../growth.js?v=2.3.0";
+import * as book from "../book.js?v=2.3.0";
+import { trackerInput, typeableUnpriced, coinsWaiting } from "../tracker.js?v=2.3.0";
+import { nameEl } from "./naming.js?v=2.3.0";
 
 /** The page's own words (2.2; plain, describing, never judging). The tracker's sentences are growth.js GROWTH_TEXT. */
 export const COPY = Object.freeze({

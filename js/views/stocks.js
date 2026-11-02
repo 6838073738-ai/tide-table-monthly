@@ -6,21 +6,26 @@
 // thesis lines. With the open data, a stock the list holds shows its figures year by year, its debt and its facts
 // from both sides, with a link to its company page; without it, one plain line says when they appear. The sentences
 // describe; they never judge.
+//
+// Tide Table 2.3 (docs/tt2/ADDENDUM-2026-11-01.md C.5, docs/tt2/build/news-files-api.md 12): with a set that holds
+// desks.json the page ends with "In the news", two lists of third-party headlines (Markets, Coins) drawn by the same
+// parts as a field's page. It ranks nothing and names no plan. It comes last, so nothing moves when it arrives; with
+// no such file there is no section and the page is what it was.
 
 import {
   app, h, S, schedule, autoDeskDate, monthOf, joinedPlan, ceilingOf, fmtCeil, fM, fNum, dayShort, monthName, viewHead,
   universeOn, savedFields, fieldsSpecNow, fieldMonthsOn, accountLabel, countWord, plural, instById,
-} from "../core.js?v=2.2.0";
-import * as book from "../book.js?v=2.2.0";
-import * as FU from "../fieldsui.js?v=2.2.0";
-import * as D from "../datafiles.js?v=2.2.0";
-import * as N from "../names.js?v=2.2.0";
-import * as LK from "../lock.js?v=2.2.0";
-import { fieldName } from "../fields-catalog.js?v=2.2.0";
-import { notBought, notBoughtMonth } from "./mix.js?v=2.2.0";
+} from "../core.js?v=2.3.0";
+import * as book from "../book.js?v=2.3.0";
+import * as FU from "../fieldsui.js?v=2.3.0";
+import * as D from "../datafiles.js?v=2.3.0";
+import * as N from "../names.js?v=2.3.0";
+import * as LK from "../lock.js?v=2.3.0";
+import { fieldName } from "../fields-catalog.js?v=2.3.0";
+import { notBought, notBoughtMonth } from "./mix.js?v=2.3.0";
 import {
   nameEl, nameText, lockNow, lockEntry, lockSubject, lockChips, lockDateLine, lockMonthWords, andList,
-} from "./naming.js?v=2.2.0";
+} from "./naming.js?v=2.3.0";
 
 /** The page's own words (new in 2.1; plain, describing, never judging). */
 export const COPY = Object.freeze({
@@ -44,6 +49,10 @@ export const COPY = Object.freeze({
   noOrder: (m) => `No order in ${m}.`,
   theYear: "Over your year",
   thisMonth: (m) => `In ${m}`,
+  // 2.3: "In the news" (its title is the shared FU.COPY.news); a list's other words, and how far back the line over the
+  // lists says they reach, are fieldsui's, as on a field's page (FU.newsNote: this is what it says they hold)
+  newsAbout: "about stock and bond markets and the crypto market as a whole, in their publishers' own words",
+  markets: "Markets",
 });
 
 const KIND_OF_GROUP = { crypto: "coin", index: "fund" };
@@ -430,6 +439,52 @@ function figures(rec, key) {
   return out;
 }
 
+// ---------------------------------------------------------------- in the news (2.3; news-files-api.md 12)
+
+/** The two lists, in the order the file holds them; the file holds no display words, so these are the page's own. */
+const DESKS = Object.freeze([{ id: "markets", title: COPY.markets }, { id: "crypto", title: COPY.coins }]);
+/** At most 12 headlines a list (addendum C.5), whatever a file holds. */
+const DESK_MAX = 12;
+
+/** One list as this page holds it: the headlines it draws and when it was last checked. A list the file does not hold
+ *  reads as never checked. */
+function deskOf({ id }, doc) {
+  const desk = doc.byId[id] || {};
+  return { items: FU.headlineItems(desk.headlines).slice(0, DESK_MAX), checkedAt: desk.headlinesCheckedAt };
+}
+
+/** One list: its heading, then its headlines as a field's page draws them. */
+function deskPart(d, doc) {
+  const { items, checkedAt } = deskOf(d, doc);
+  return h("div.st-desk", { "data-st-desk": d.id },
+    book.sectionHead({ title: d.title, level: 3 }),
+    FU.headlineParts(items, checkedAt, { what: "list" }));
+}
+
+function newsSectionOf(doc) {
+  const id = "st-sec-news";
+  const intro = FU.newsNote(COPY.newsAbout, DESKS.map((d) => deskOf(d, doc)));
+  return h("section.bk-section.st-section.st-news", { "data-st-news": "", "aria-labelledby": id },
+    book.sectionHead({ title: FU.COPY.news, level: 2, id, intro }),
+    DESKS.map((d) => deskPart(d, doc)));
+}
+
+/**
+ * "In the news" for this drawing of the page, or null: no list of companies (Stage A) or a set that names no desks.json.
+ * A file already read is drawn at once; otherwise a hidden host takes no room and gives way to the section when the file
+ * comes. A file the site does not have, or that cannot be read, leaves no section: the rest of the page never depends on
+ * it, and a file that could not be fetched is asked for again the next time the page is drawn.
+ */
+export function inTheNews() {
+  if (!universeOn() || !D.desksFile()) return null;
+  const known = D.peek("desks.json");
+  if (known !== undefined) return known ? newsSectionOf(known) : null;
+  const host = h("div", { hidden: true, "data-st-news-wait": "", "data-ready": "false" });
+  D.loadDesks().then((doc) => { if (doc) host.replaceWith(newsSectionOf(doc)); else host.remove(); })
+    .catch((e) => { console.warn("the headlines of the Stocks page did not load", e); host.remove(); });
+  return host;
+}
+
 // ---------------------------------------------------------------- the page
 
 function sectionOf(kind, title, intro, rows, cx) {
@@ -464,5 +519,6 @@ export function renderStocks() {
   out.push(sectionOf("coins", COPY.coins, `The plan's ${countWord(coins.length).toLowerCase()} coins. ${COPY.coinsIntro}`, coins, cx));
   const fresh = idx ? FU.freshnessWords(idx.asOf) : null;
   if (fresh) out.push(book.note(fresh));
+  out.push(inTheNews());
   return out.filter(Boolean);
 }

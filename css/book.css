@@ -468,6 +468,8 @@
 .bk-news-meta, .bk-link-meta { display: block; margin-top: 0; font-size: var(--t-small); color: var(--ink-soft); }
 .bk-attrib { margin: 12px 0 0; max-width: 52em; font-size: var(--t-small); color: var(--ink-soft); }
 
+.bk-news-link, .bk-news-meta, .bk-attrib { overflow-wrap: anywhere; }
+
 .bk-table, .bk-compare, .bk-ledger { width: 100%; border-collapse: collapse; font-size: var(--t-small); }
 :is(.bk-table, .bk-compare, .bk-ledger) caption { text-align: left; font: 700 var(--t-h3)/1.2 var(--font-display); color: var(--lapis); padding-bottom: 10px; }
 :is(.bk-table, .bk-compare, .bk-ledger) :is(th, td) { padding: 10px 12px 10px 0; border-bottom: 1px solid var(--rule); text-align: left; vertical-align: top; }
